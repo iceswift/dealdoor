@@ -1,0 +1,24 @@
+# DealDoor - Render.com Configuration
+
+services:
+  - type: web
+    name: dealdoor
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm build
+    startCommand: node dist/server/entry.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 4321
+      - key: DATABASE_URL
+        value: /opt/render/project/src/db/prod.db
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: dealdoor-db
+      mountPath: /opt/render/project/src/db
+      sizeGB: 1

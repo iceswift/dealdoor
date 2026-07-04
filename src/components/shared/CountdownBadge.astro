@@ -1,0 +1,45 @@
+---
+// src/components/shared/CountdownBadge.astro
+import Icon from '../icons/index.astro';
+
+interface Props {
+  endDate: Date;
+}
+
+const { endDate } = Astro.props;
+
+const now = new Date();
+const end = new Date(endDate);
+const diff = end.getTime() - now.getTime();
+const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
+const hoursLeft = Math.ceil(diff / (1000 * 60 * 60));
+
+let badgeClass = '';
+let text = '';
+
+if (daysLeft <= 0) {
+  badgeClass = 'badge';
+  text = 'หมดอายุแล้ว';
+} else if (hoursLeft <= 24) {
+  badgeClass = 'badge badge-danger animate-pulse';
+  text = 'หมดอายุวันนี้';
+} else if (daysLeft <= 3) {
+  badgeClass = 'badge badge-warning';
+  text = `เหลือ ${daysLeft} วัน`;
+} else if (daysLeft <= 7) {
+  badgeClass = 'badge badge-warning';
+  text = `เหลือ ${daysLeft} วัน`;
+} else {
+  badgeClass = 'badge';
+  text = `เหลือ ${daysLeft} วัน`;
+}
+---
+
+<span
+  class:list={[badgeClass, 'inline-flex items-center gap-1']}
+  role="timer"
+  aria-label={`เหลือ ${daysLeft} วัน`}
+>
+  <Icon name="clock" class="h-3 w-3" />
+  {text}
+</span>

@@ -1,0 +1,122 @@
+---
+// src/pages/privacy/index.astro
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="นโยบายความเป็นส่วนตัว">
+  <article class="mx-auto max-w-3xl px-4 py-8">
+    <h1 class="text-3xl font-bold text-secondary">นโยบายความเป็นส่วนตัว</h1>
+    <p class="mt-2 text-text-secondary">วันที่มีผล: 1 กรกฎาคม 2568</p>
+
+    <div class="prose mt-8 space-y-6 text-text-secondary">
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">1. ข้อมูลที่เราเก็บรวบรวม</h2>
+        
+        <h3 class="mt-4 text-lg font-medium text-secondary">ข้อมูลที่คุณให้เรา</h3>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+          <li>ชื่อ อีเมล เบอร์โทร</li>
+          <li>ข้อมูลร้านค้า (ชื่อ ที่อยู่ ประเภท)</li>
+          <li>ข้อมูลโปรโมชันและดีล</li>
+          <li>รูปภาพ (หากอัปโหลด)</li>
+        </ul>
+
+        <h3 class="mt-4 text-lg font-medium text-secondary">ข้อมูลที่เก็บอัตโนมัติ</h3>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+          <li>ที่อยู่ IP</li>
+          <li>ประเภทเบราว์เซอร์และอุปกรณ์</li>
+          <li>หน้าที่เข้าชม</li>
+          <li>วันที่และเวลาเข้าชม</li>
+          <li>คุกกี้</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">2. วิธีการใช้ข้อมูล</h2>
+        <p class="mt-2">เราใช้ข้อมูลของคุณเพื่อ:</p>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+          <li>ให้บริการและดูแลรักษาแพลตฟอร์ม</li>
+          <li>ปรับปรุงประสบการณ์ผู้ใช้</li>
+          <li>ส่งการแจ้งเตือนเกี่ยวกับดีล</li>
+          <li>วิเคราะห์การใช้งานเพื่อปรับปรุงบริการ</li>
+          <li>ป้องกันการฉ้อโกงและละเมิด</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">3. การแบ่งปันข้อมูล</h2>
+        <p class="mt-2">
+          เราไม่ขายข้อมูลส่วนบุคคลของคุณ เราอาจแบ่งปันข้อมูลกับ:
+        </p>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+          <li>ผู้ให้บริการที่เชื่อถือได้ (เช่น โฮสติ้ง วิเคราะห์)</li>
+          <li>หน่วยงานกฎหมาย หากจำเป็นตามกฎหมาย</li>
+          <li>บุคคลที่สาม เมื่อได้รับความยินยอมจากคุณ</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">4. การเก็บรักษาข้อมูล</h2>
+        <p class="mt-2">
+          เราเก็บข้อมูลของคุณตราบเท่าที่จำเป็นในการให้บริการ 
+          หากคุณลบบัญชี เราจะลบข้อมูลส่วนบุคคลภายใน 30 วัน
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">5. สิทธิ์ของคุณ (PDPA)</h2>
+        <p class="mt-2">
+          ภายใต้พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA) คุณมีสิทธิ์:
+        </p>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+          <li>สิทธิ์เข้าถึงข้อมูล - ขอสำเนาข้อมูลของคุณ</li>
+          <li>สิทธิ์แก้ไขข้อมูล - แก้ไขข้อมูลที่ไม่ถูกต้อง</li>
+          <li>สิทธิ์ลบข้อมูล - ขอลบข้อมูลของคุณ</li>
+          <li>สิทธิ์คัดค้าน - คัดค้านการประมวลผลข้อมูล</li>
+          <li>สิทธิ์ถอนความยินยอม - ถอนความยินยอมเมื่อใดก็ได้</li>
+        </ul>
+        <p class="mt-4">
+          <a href="/privacy/request" class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark">
+            ยื่นคำขอใช้สิทธิ์
+          </a>
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">6. คุกกี้</h2>
+        <p class="mt-2">
+          เราใช้คุกกี้เพื่อปรับปรุงประสบการณ์ของคุณ คุณสามารถจัดการคุกกี้ได้ในการตั้งค่าเบราว์เซอร์
+        </p>
+        <p class="mt-2">
+          ดูรายละเอียดเพิ่มเติมใน <a href="/cookies" class="text-primary hover:underline">นโยบายคุกกี้</a>
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">7. ความปลอดภัย</h2>
+        <p class="mt-2">
+          เราใช้มาตรการรักษาความปลอดภัยที่เหมาะสมเพื่อปกป้องข้อมูลของคุณ 
+          รวมถึงการเข้ารหัส การควบคุมการเข้าถึง และการตรวจสอบเป็นประจำ
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">8. การเปลี่ยนแปลงนโยบาย</h2>
+        <p class="mt-2">
+          เราอาจอัปเดตนโยบายความเป็นส่วนตัวเป็นครั้งคราว 
+          การเปลี่ยนแปลงจะมีผลทันทีที่ประกาศบนแพลตฟอร์ม
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">9. การติดต่อ</h2>
+        <p class="mt-2">
+          หากคุณมีคำถามเกี่ยวกับนโยบายความเป็นส่วนตัว กรุณาติดต่อ:
+        </p>
+        <p class="mt-2">
+          อีเมล: <a href="mailto:privacy@dealdoor.co" class="text-primary hover:underline">privacy@dealdoor.co</a>
+        </p>
+      </section>
+    </div>
+  </article>
+</BaseLayout>

@@ -1,0 +1,33 @@
+---
+// src/components/shared/SkipLink.astro
+
+interface Props {
+  targetId?: string;
+  label?: string;
+}
+
+const { targetId = 'main-content', label = 'ข้ามไปยังเนื้อหา' } = Astro.props;
+---
+
+<a href={`#${targetId}`} class="skip-link">
+  {label}
+</a>
+
+<style>
+  .skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    z-index: 9999;
+    padding: 0.75rem 1.5rem;
+    background: var(--color-primary);
+    color: white;
+    font-weight: 500;
+    text-decoration: none;
+    transition: top 0.2s;
+  }
+
+  .skip-link:focus {
+    top: 0;
+  }
+</style>

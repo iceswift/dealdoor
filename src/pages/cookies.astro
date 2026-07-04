@@ -1,0 +1,89 @@
+---
+// src/pages/cookies.astro
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="นโยบายคุกกี้">
+  <article class="mx-auto max-w-3xl px-4 py-8">
+    <h1 class="text-3xl font-bold text-secondary">นโยบายคุกกี้</h1>
+    <p class="mt-2 text-text-secondary">วันที่มีผล: 1 กรกฎาคม 2568</p>
+
+    <div class="prose mt-8 space-y-6 text-text-secondary">
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">คุกกี้คืออะไร?</h2>
+        <p class="mt-2">
+          คุกกี้เป็นไฟล์ขนาดเล็กที่เก็บไว้ในเบราว์เซอร์ของคุณเมื่อเข้าชมเว็บไซต์ 
+          คุกกี้ช่วยให้เว็บไซต์จดจำการตั้งค่าและปรับปรุงประสบการณ์ของคุณ
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">ประเภทคุกกี้ที่เราใช้</h2>
+
+        <div class="mt-4 space-y-4">
+          <div class="rounded-lg border border-border p-4">
+            <h3 class="font-medium text-secondary">คุกกี้ที่จำเป็น</h3>
+            <p class="mt-1 text-sm">
+              คุกกี้เหล่านี้จำเป็นสำหรับการทำงานของแพลตฟอร์ม ไม่สามารถปิดได้
+            </p>
+            <p class="mt-2 text-xs text-text-tertiary">
+              ตัวอย่าง: การตั้งค่าธีม, ภาษา, เซสชัน
+            </p>
+          </div>
+
+          <div class="rounded-lg border border-border p-4">
+            <h3 class="font-medium text-secondary">คุกกี้วิเคราะห์</h3>
+            <p class="mt-1 text-sm">
+              ช่วยให้เราเข้าใจการใช้งานแพลตฟอร์ม เพื่อปรับปรุงบริการ
+            </p>
+            <p class="mt-2 text-xs text-text-tertiary">
+              ตัวอย่าง: Plausible Analytics (ไม่ระบุตัวตน)
+            </p>
+          </div>
+
+          <div class="rounded-lg border border-border p-4">
+            <h3 class="font-medium text-secondary">คุกกี้การตลาด</h3>
+            <p class="mt-1 text-sm">
+              ใช้เพื่อแสดงโฆษณาที่เกี่ยวข้อง (หากมี)
+            </p>
+            <p class="mt-2 text-xs text-text-tertiary">
+              ปัจจุบันไม่ได้ใช้
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">การจัดการคุกกี้</h2>
+        <p class="mt-2">
+          คุณสามารถจัดการคุกกี้ได้ในการตั้งค่าเบราว์เซอร์:
+        </p>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+          <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" class="text-primary hover:underline">Google Chrome</a></li>
+          <li><a href="https://support.mozilla.org/en-US/kb/enhanced-tracking-protection-firefox-desktop" target="_blank" class="text-primary hover:underline">Mozilla Firefox</a></li>
+          <li><a href="https://support.apple.com/guide/safari/manage-cookies-sfri11471/mac" target="_blank" class="text-primary hover:underline">Safari</a></li>
+          <li><a href="https://support.microsoft.com/en-us/microsoft-edge/delete-cookies-in-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09" target="_blank" class="text-primary hover:underline">Microsoft Edge</a></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">การเปลี่ยนแปลงนโยบาย</h2>
+        <p class="mt-2">
+          เราอาจอัปเดตนโยบายคุกกี้เป็นครั้งคราว 
+          การเปลี่ยนแปลงจะมีผลทันทีที่ประกาศบนแพลตฟอร์ม
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-secondary">การติดต่อ</h2>
+        <p class="mt-2">
+          หากคุณมีคำถามเกี่ยวกับนโยบายคุกกี้ กรุณาติดต่อ:
+        </p>
+        <p class="mt-2">
+          อีเมล: <a href="mailto:privacy@dealdoor.co" class="text-primary hover:underline">privacy@dealdoor.co</a>
+        </p>
+      </section>
+    </div>
+  </article>
+</BaseLayout>

@@ -1,0 +1,220 @@
+---
+// src/components/shop/ShopInfo.astro
+
+import type { Shop } from '../../db/schema';
+import { parseOpeningHours } from '../../lib/utils';
+import Icon from '../icons/index.astro';
+
+interface Props {
+  // ─── BACKEND DATABASE BINDINGS ───
+  shop: Shop;
+  // ─────────────────────────────────
+}
+
+const { shop } = Astro.props;
+
+// ─── BACKEND PROPERTIES ───
+const hours = parseOpeningHours(shop.openingHours);
+const dayLabels: Record<string, string> = {
+  mon: 'จันทร์',
+  tue: 'อังคาร',
+  wed: 'พุธ',
+  thu: 'พฤหัสบดี',
+  fri: 'ศุกร์',
+  sat: 'เสาร์',
+  sun: 'อาทิตย์',
+};
+// ──────────────────────────
+---
+
+<section class="mt-8 rounded-3xl border border-border/40 bg-card-bg/60 backdrop-blur-sm p-6 shadow-md">
+  <h2 class="mb-5 text-xl font-bold text-secondary flex items-center gap-2.5">
+    <Icon name="store" class="h-5.5 w-5.5 text-primary" />
+    ข้อมูลร้านค้า
+  </h2>
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="space-y-4">
+      {shop.address && (
+        <div class="flex items-start gap-3">
+          <div class="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+            <Icon name="map-pin" class="h-5 w-5" />
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-text-primary">ที่อยู่ร้าน</h3>
+            <p class="text-sm text-text-secondary mt-0.5 leading-relaxed">{shop.address}</p>
+          </div>
+        </div>
+      )}
+
+      {shop.phone && (
+        <div class="flex items-start gap-3">
+          <div class="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+            <Icon name="phone" class="h-5 w-5" />
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-text-primary">เบอร์โทรศัพท์</h3>
+            <a href={`tel:${shop.phone}`} class="text-sm text-primary hover:underline font-semibold mt-0.5 block">{shop.phone}</a>
+          </div>
+        </div>
+      )}
+
+      {/* Social Links */}
+      <div class="pt-4 border-t border-border/40">
+        <h3 class="text-sm font-bold text-text-primary mb-3">ช่องทางการติดต่อโซเชียล</h3>
+        <div class="flex flex-wrap gap-2.5">
+          {shop.lineId && (
+            <a
+              href={shop.lineId.startsWith('@') ? `https://line.me/ti/p/${shop.lineId}` : shop.lineId}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn py-2 px-4 rounded-xl text-xs font-bold bg-[#06C755]/10 text-[#05B34C] hover:bg-[#06C755]/20 border-none shadow-sm"
+            >
+              <Icon name="line" class="h-4 w-4" />
+              <span>LINE</span>
+            </a>
+          )}
+          {shop.facebookUrl && (
+            <a
+              href={shop.facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn py-2 px-4 rounded-xl text-xs font-bold bg-[#1877F2]/10 text-[#1877F2] hover:bg-[#1877F2]/20 border-none shadow-sm"
+            >
+              <Icon name="facebook" class="h-4 w-4" />
+              <span>Facebook</span>
+            </a>
+          )}
+          {shop.instagramUrl && (
+            <a
+              href={shop.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn py-2 px-4 rounded-xl text-xs font-bold bg-pink-550/10 text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 border-none shadow-sm"
+              style="background-color: rgba(219, 39, 119, 0.08); color: rgb(219, 39, 119);"
+            >
+              <Icon name="instagram" class="h-4 w-4" />
+              <span>Instagram</span>
+            </a>
+          )}
+          {shop.websiteUrl && (
+            <a
+              href={shop.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn py-2 px-4 rounded-xl text-xs font-bold bg-secondary/10 dark:bg-secondary/20 text-secondary dark:text-white hover:bg-secondary/20 border-none shadow-sm"
+            >
+              <Icon name="globe" class="h-4 w-4" />
+              <span>Website</span>
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Hours info */}
+    <div>
+      {Object.keys(hours).length > 0 && (
+        <div class="flex items-start gap-3">
+          <div class="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+            <Icon name="clock" class="h-5 w-5" />
+          </div>
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-text-primary mb-3">เวลาเปิด-ปิดร้าน</h3>
+            <div class="rounded-2xl border border-border/40 overflow-hidden bg-bg-secondary/40">
+              <table class="w-full text-sm border-collapse text-left">
+                <tbody>
+                  {Object.entries(hours).map(([day, time], idx) => (
+                    <tr class:list={[
+                      'border-b border-border/30 last:border-0 hover:bg-bg-tertiary/20 transition-colors',
+                      idx % 2 === 0 ? 'bg-bg-secondary/20' : 'bg-transparent'
+                    ]}>
+                      <td class="px-4 py-2.5 font-bold text-text-secondary w-28">{dayLabels[day] || day}</td>
+                      <td class:list={[
+                        'px-4 py-2.5',
+                        time === 'closed' ? 'text-danger font-semibold' : 'text-text-primary'
+                      ]}>
+                        {time === 'closed' ? 'ปิดให้บริการ' : time}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* Live Leaflet Map Preview section */}
+  {shop.latitude && shop.longitude && (
+    <div class="mt-6 border-t border-border/40 pt-6">
+      <h3 class="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+        <svg class="h-4.5 w-4.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        </svg>
+        <span>พิกัดและตำแหน่งที่ตั้ง</span>
+      </h3>
+      
+      {/* Leaflet CSS CDN */}
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+      
+      <div class="overflow-hidden rounded-2xl border border-border/50 shadow-inner relative bg-bg-secondary h-64 w-full">
+        <div id="shop-map" class="h-full w-full z-10" data-lat={shop.latitude} data-lng={shop.longitude} data-name={shop.name}></div>
+      </div>
+      
+      <div class="mt-3 flex justify-between items-center flex-wrap gap-2 text-xs">
+        <span class="text-text-tertiary">พิกัดแผนที่: {shop.latitude.toFixed(5)}, {shop.longitude.toFixed(5)}</span>
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-primary font-bold hover:underline flex items-center gap-1 min-h-[44px]"
+        >
+          <span>เปิดนำทางด้วย Google Maps →</span>
+        </a>
+      </div>
+    </div>
+  )}
+</section>
+
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const mapEl = document.getElementById('shop-map');
+    if (!mapEl) return;
+
+    const lat = parseFloat(mapEl.getAttribute('data-lat') || '');
+    const lng = parseFloat(mapEl.getAttribute('data-lng') || '');
+    const name = mapEl.getAttribute('data-name') || 'ร้านค้า';
+
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const initMap = () => {
+      if (typeof L === 'undefined') {
+        setTimeout(initMap, 100);
+        return;
+      }
+      
+      try {
+        const map = L.map('shop-map', {
+          zoomControl: true,
+          scrollWheelZoom: false
+        }).setView([lat, lng], 16);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        L.marker([lat, lng]).addTo(map)
+          .bindPopup(`<b>${name}</b>`)
+          .openPopup();
+      } catch (e) {
+        console.error('Failed to initialize Leaflet Map:', e);
+      }
+    };
+
+    initMap();
+  });
+</script>

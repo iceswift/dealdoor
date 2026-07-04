@@ -1,0 +1,93 @@
+{
+  "brand": {
+    "name": "DealDoor",
+    "tagline": "ดีลไหนดี",
+    "description": "หน้าโปรโมชันร้านค้า แชร์ง่าย หมดอายุเอง"
+  },
+  "nav": {
+    "explore": "ดีลใกล้ตัว",
+    "createShop": "สร้างหน้าร้าน",
+    "dashboard": "แดชบอร์ด"
+  },
+  "action": {
+    "share": "แชร์",
+    "copy": "คัดลอก",
+    "copied": "คัดลอกแล้ว",
+    "edit": "แก้ไข",
+    "delete": "ลบ",
+    "cancel": "ยกเลิก",
+    "confirm": "ยืนยัน",
+    "back": "กลับ",
+    "close": "ปิด",
+    "viewMore": "ดูเพิ่มเติม",
+    "viewAll": "ดูทั้งหมด",
+    "save": "บันทึก",
+    "loading": "กำลังโหลด..."
+  },
+  "status": {
+    "open": "เปิดอยู่",
+    "closed": "ปิดแล้ว",
+    "active": "ใช้งาน",
+    "inactive": "ปิดใช้งาน",
+    "expired": "หมดอายุแล้ว",
+    "expiringSoon": "หมดอายุเร็วๆ นี้"
+  },
+  "time": {
+    "daysLeft": "เหลือ {count} วัน",
+    "hoursLeft": "เหลือ {count} ชั่วโมง",
+    "expiresToday": "หมดอายุวันนี้",
+    "expired": "หมดอายุแล้ว",
+    "expiresOn": "หมดอายุ: {date}"
+  },
+  "category": {
+    "restaurant": "ร้านอาหาร",
+    "cafe": "คาเฟ่",
+    "dessert": "ของหวาน",
+    "beauty": "ความงาม",
+    "clinic": "คลินิก",
+    "retail": "ร้านค้า",
+    "service": "บริการ",
+    "other": "อื่นๆ"
+  },
+  "dealCategory": {
+    "birthday": "Birthday",
+    "monthly": "รายเดือน",
+    "festival": "เทศกาล",
+    "special_day": "วันพิเศษ",
+    "senior": "ผู้สูงอายุ",
+    "kids": "เด็ก",
+    "student": "นักเรียน/นักศึกษา",
+    "flash": "Flash Deal",
+    "custom": "ทั่วไป"
+  },
+  "claimType": {
+    "copy_code": "คัดลอกโค้ด",
+    "show_at_shop": "แสดงที่ร้าน",
+    "contact_shop": "ติดต่อร้าน",
+    "open_line": "เปิด LINE"
+  },
+  "empty": {
+    "noDeals": "ยังไม่มีโปรโมชัน",
+    "noDealsDesc": "ร้านนี้ยังไม่ได้เพิ่มดีล",
+    "noResults": "ไม่พบผลลัพธ์",
+    "noResultsDesc": "ลองค้นหาด้วยคำอื่น"
+  },
+  "error": {
+    "notFound": "ไม่พบหน้าที่คุณค้นหา",
+    "notFoundDesc": "ร้านนี้อาจยังไม่มีในระบบ หรือลิงก์อาจไม่ถูกต้อง",
+    "serverError": "เกิดข้อผิดพลาด",
+    "serverErrorDesc": "กรุณาลองใหม่อีกครั้ง"
+  },
+  "shopPage": {
+    "activeDeals": "โปรโมชันตอนนี้",
+    "menu": "เมนู / แคตตาล็อก",
+    "shopInfo": "ข้อมูลร้าน",
+    "address": "ที่อยู่",
+    "openingHours": "เวลาเปิด-ปิด",
+    "phone": "เบอร์โทร",
+    "contactChannels": "ช่องทางติดต่อ",
+    "openMap": "เปิดแผนที่",
+    "createdBy": "สร้างโดย DealDoor",
+    "createYourPage": "สร้างหน้าร้านของคุณ"
+  }
+}

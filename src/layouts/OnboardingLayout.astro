@@ -1,0 +1,35 @@
+---
+// src/layouts/OnboardingLayout.astro
+
+import BaseLayout from './BaseLayout.astro';
+import ProgressIndicator from '../components/onboarding/ProgressIndicator.tsx';
+
+interface Props {
+  title: string;
+  currentStep: number;
+  totalSteps?: number;
+}
+
+const { title, currentStep, totalSteps = 3 } = Astro.props;
+
+const stepLabels = ['ข้อมูลร้าน', 'เพิ่มดีล', 'แชร์'];
+---
+
+<BaseLayout title={`${title} | Onboarding`}>
+  <div class="mx-auto max-w-2xl px-4 py-8">
+    {/* Back Link */}
+    <div class="mb-6">
+      <a href="/" class="text-sm text-text-secondary hover:text-primary">
+        ← กลับหน้าแรก
+      </a>
+    </div>
+
+    {/* Progress */}
+    <div class="mb-8">
+      <ProgressIndicator client:load currentStep={currentStep} totalSteps={totalSteps} labels={stepLabels} />
+    </div>
+
+    {/* Content */}
+    <slot />
+  </div>
+</BaseLayout>

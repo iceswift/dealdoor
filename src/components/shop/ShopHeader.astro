@@ -1,0 +1,112 @@
+---
+// src/components/shop/ShopHeader.astro
+
+import type { Shop } from '../../db/schema';
+import { SHOP_CATEGORY_LABELS, SHOP_CATEGORY_ICONS } from '../../lib/constants';
+import type { ShopCategory } from '../../lib/constants';
+import { isOpenNow, parseOpeningHours } from '../../lib/utils';
+import ContactButtons from './ContactButtons.tsx';
+import FavoriteButton from '../shared/FavoriteButton.tsx';
+import ReportButton from '../shared/ReportButton.tsx';
+import Icon from '../icons/index.astro';
+
+interface Props {
+  // ─── BACKEND DATABASE BINDINGS ───
+  shop: Shop;
+  // ─────────────────────────────────
+}
+
+const { shop } = Astro.props;
+
+// ─── BACKEND PROPERTIES ───
+const categoryLabel = SHOP_CATEGORY_LABELS[shop.category as ShopCategory] || shop.category;
+const categoryIcon = SHOP_CATEGORY_ICONS[shop.category as ShopCategory] || '🏪';
+const hours = parseOpeningHours(shop.openingHours);
+const shopIsOpen = isOpenNow(hours);
+// ──────────────────────────
+---
+
+<div class="relative overflow-hidden rounded-3xl border border-border/40 bg-card-bg/60 backdrop-blur-sm shadow-md mb-8">
+  {/* Cover Image or Premium Mesh Gradient */}
+  <div class="relative h-48 overflow-hidden bg-gradient-to-br from-primary-light via-orange-100/50 to-primary/20 md:h-60">
+    {shop.coverImage ? (
+      <img src={shop.coverImage} alt={shop.name} class="h-full w-full object-cover transition-transform duration-500 hover:scale-103" loading="lazy" />
+    ) : (
+      <div class="absolute inset-0 flex items-center justify-center">
+        {/* Floating background gradient mesh */}
+        <div class="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl"></div>
+        <div class="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-accent/15 blur-3xl"></div>
+        <Icon name="store" class="h-16 w-16 text-primary/30 animate-pulse" />
+      </div>
+    )}
+    {/* Dark gradient overlay at bottom for text contrast */}
+    <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+  </div>
+
+  {/* Header Info Overlay Container */}
+  <div class="relative px-5 pb-6">
+    {/* Logo overlapping the cover */}
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between -mt-12 sm:-mt-16 gap-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+        <div class="h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-2xl border-4 border-card-bg bg-card-bg shadow-xl flex-shrink-0 relative group">
+          {shop.logoImage ? (
+            <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+          ) : (
+            <div class="flex h-full items-center justify-center bg-gradient-to-br from-primary to-orange-400 text-3xl font-extrabold text-white">
+              {shop.name.charAt(0)}
+            </div>
+          )}
+        </div>
+        
+        <div class="mb-1 space-y-1.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              class:list={[
+                'badge border-none shadow-sm font-bold',
+                shopIsOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+              ]}
+            >
+              <span class:list={['h-1.5 w-1.5 rounded-full animate-ping', shopIsOpen ? 'bg-emerald-500' : 'bg-rose-500']} />
+              {shopIsOpen ? 'เปิดอยู่' : 'ปิดแล้ว'}
+            </span>
+            <span class="badge border-none bg-secondary/10 dark:bg-secondary/20 text-secondary dark:text-white font-bold">
+              {categoryLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2 sm:mb-1 self-start sm:self-end">
+        <FavoriteButton client:visible shopId={shop.id} />
+      </div>
+    </div>
+
+    {/* Shop Information Text */}
+    <div class="mt-5">
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-secondary">
+        {shop.name}
+      </h1>
+      
+      {shop.description && (
+        <p class="mt-2.5 text-sm text-text-secondary leading-relaxed max-w-2xl">{shop.description}</p>
+      )}
+      
+      {shop.address && (
+        <div class="mt-3.5 flex items-start gap-2 text-sm text-text-tertiary">
+          <Icon name="map-pin" class="h-4.5 w-4.5 text-primary flex-shrink-0 mt-0.5" />
+          <span class="leading-relaxed">{shop.address}</span>
+        </div>
+      )}
+    </div>
+
+    {/* Contact Action Buttons */}
+    <div class="mt-6 border-t border-border/40 pt-6">
+      <ContactButtons client:visible shop={shop} />
+    </div>
+
+    {/* Flags / Moderation Action */}
+    <div class="mt-4 flex justify-end">
+      <ReportButton client:visible targetType="shop" targetId={shop.id} />
+    </div>
+  </div>
+</div>

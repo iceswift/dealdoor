@@ -1,0 +1,95 @@
+---
+// src/components/explore/ExploreDealCard.astro
+
+import type { Deal, Shop } from '../../db/schema';
+import { DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS } from '../../lib/constants';
+import type { DealCategory } from '../../lib/constants';
+import { getDaysRemaining } from '../../lib/utils';
+import Icon from '../icons/index.astro';
+
+interface Props {
+  // ─── BACKEND DATABASE BINDINGS ───
+  deal: Deal;
+  shop: Shop;
+  // ─────────────────────────────────
+}
+
+const { deal, shop } = Astro.props;
+
+// ─── BACKEND DATABASE PROPERTIES ───
+const now = new Date();
+const endDate = new Date(deal.endDate);
+const isExpired = !deal.isActive || endDate < now;
+const daysLeft = getDaysRemaining(endDate);
+const categoryColor = DEAL_CATEGORY_COLORS[deal.category as DealCategory] || '#6B7280';
+// ───────────────────────────────────
+---
+
+<a
+  href={`/${shop.slug}?deal=${deal.id}`}
+  class:list={[
+    'card group block overflow-hidden bg-card-bg/60 backdrop-blur-sm border border-border/40 rounded-2xl hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg transition-all duration-300',
+    isExpired && 'opacity-65 grayscale-[20%]',
+  ]}
+>
+  {/* Category Glow Accent */}
+  <div class="h-1.2 w-full relative overflow-hidden" style={`background-color: ${categoryColor}`}>
+    <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+  </div>
+  
+  <div class="p-5">
+    {/* Category Badge & Timer */}
+    <div class="flex items-center justify-between">
+      <span
+        class="badge border-none font-bold"
+        style={`background-color: ${categoryColor}12; color: ${categoryColor}`}
+      >
+        {DEAL_CATEGORY_LABELS[deal.category as DealCategory] || deal.category}
+      </span>
+      {!isExpired && daysLeft <= 7 && (
+        <span class="badge border-none bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">
+          <Icon name="clock" class="h-3.5 w-3.5" />
+          <span>เหลือ {daysLeft} วัน</span>
+        </span>
+      )}
+      {isExpired && (
+        <span class="badge border-none bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold">หมดอายุ</span>
+      )}
+    </div>
+
+    {/* Title */}
+    <h3 class="mt-4 text-base font-bold text-secondary line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+      {deal.title}
+    </h3>
+
+    {/* Discount Badge */}
+    {deal.discountText && (
+      <div class="mt-3.5 inline-flex items-center gap-1.5 rounded-xl px-3 py-1 border border-border/10 transition-all duration-300" style={`background-color: ${categoryColor}10`}>
+        <Icon name="tag" class="h-4 w-4" style={`color: ${categoryColor}`} />
+        <span class="text-xs font-extrabold" style={`color: ${categoryColor}`}>
+          {deal.discountText}
+        </span>
+      </div>
+    )}
+
+    {/* Shop Information Row */}
+    <div class="mt-5 flex items-center gap-3 border-t border-border/30 pt-4 relative">
+      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-orange-100/50 text-sm font-extrabold text-primary">
+        {shop.logoImage ? (
+          <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover rounded-xl" />
+        ) : (
+          shop.name.charAt(0)
+        )}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-bold text-secondary truncate">{shop.name}</p>
+        <p class="text-[11px] text-text-tertiary truncate mt-0.5">
+          {shop.address?.split(' ').slice(-2).join(' ') || 'ดูรายละเอียด'}
+        </p>
+      </div>
+      <div class="h-8 w-8 rounded-lg bg-bg-secondary flex items-center justify-center text-text-tertiary transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+        <Icon name="chevron-right" class="h-4.5 w-4.5 transition-transform group-hover:translate-x-0.5" />
+      </div>
+    </div>
+  </div>
+</a>

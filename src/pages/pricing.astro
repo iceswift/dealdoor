@@ -1,0 +1,180 @@
+---
+// src/pages/pricing.astro
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { PRICING_PLANS } from '../lib/tiers';
+import Icon from '../components/icons/index.astro';
+---
+
+<BaseLayout title="ราคา">
+  <div class="mx-auto max-w-5xl px-4 py-16">
+    {/* Header */}
+    <div class="text-center">
+      <h1 class="text-3xl font-bold text-secondary md:text-4xl">
+        เลือกแพลนที่เหมาะกับร้านคุณ
+      </h1>
+      <p class="mt-4 text-lg text-text-secondary">
+        เริ่มต้นฟรี อัปเกรดเมื่อพร้อม
+      </p>
+    </div>
+
+    {/* Pricing Cards */}
+    <div class="mt-12 grid gap-8 md:grid-cols-2 lg:max-w-3xl lg:mx-auto">
+      {PRICING_PLANS.map((plan) => (
+        <div
+          class:list={[
+            'relative rounded-2xl border-2 p-8 transition-all',
+            plan.isPopular
+              ? 'border-primary bg-bg shadow-lg scale-105'
+              : 'border-border bg-bg',
+          ]}
+        >
+          {/* Popular Badge */}
+          {plan.isPopular && (
+            <div class="absolute -top-4 left-1/2 -translate-x-1/2">
+              <span class="rounded-full bg-primary px-4 py-1 text-sm font-medium text-white">
+                แนะนำ
+              </span>
+            </div>
+          )}
+
+          {/* Plan Header */}
+          <div class="text-center">
+            <h2 class="text-2xl font-bold text-secondary">{plan.nameTh}</h2>
+            <p class="mt-1 text-sm text-text-secondary">{plan.name}</p>
+          </div>
+
+          {/* Price */}
+          <div class="mt-6 text-center">
+            <div class="flex items-baseline justify-center gap-1">
+              <span class="text-4xl font-bold text-secondary">
+                ฿{plan.priceMonthly}
+              </span>
+              <span class="text-text-secondary">/เดือน</span>
+            </div>
+            {plan.price === 0 && (
+              <p class="mt-2 text-sm text-green-600">ฟรีตลอดไป</p>
+            )}
+          </div>
+
+          {/* Features */}
+          <ul class="mt-8 space-y-3">
+            {plan.featuresTh.map((feature) => (
+              <li class="flex items-start gap-3">
+                <Icon name="check" class="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" />
+                <span class="text-text-secondary">{feature}</span>
+              </li>
+            ))}
+          </ul>
+
+          {/* CTA */}
+          <div class="mt-8">
+            {plan.id === 'free' ? (
+              <a
+                href="/auth/register"
+                class="btn btn-secondary w-full min-h-[48px]"
+              >
+                เริ่มต้นฟรี
+              </a>
+            ) : (
+              <button
+                id="upgrade-pro-btn"
+                class="btn btn-primary w-full min-h-[48px]"
+                data-tier={plan.id}
+              >
+                ติดต่อเพื่ออัปเกรด
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Coming Soon Modal */}
+    <div id="coming-soon-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+      <div class="w-full max-w-sm rounded-2xl bg-bg p-6 mx-4">
+        <div class="text-center">
+          <Icon name="rocket" class="h-10 w-10 mx-auto text-primary" />
+          <h3 class="mt-4 text-xl font-bold text-secondary">เร็วๆ นี้!</h3>
+          <p class="mt-2 text-text-secondary">
+            ระบบชำระเงินจะเปิดให้บริการเร็วๆ นี้
+          </p>
+          <p class="mt-2 text-sm text-text-tertiary">
+            กรุณาติดต่อ support@dealdoor.co เพื่ออัปเกรด
+          </p>
+          <button 
+            id="close-modal-btn"
+            class="btn btn-primary mt-6 w-full min-h-[44px]"
+          >
+            รับทราบ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* FAQ */}
+    <div class="mt-16">
+      <h2 class="text-center text-2xl font-bold text-secondary">
+        คำถามที่พบบ่อย
+      </h2>
+      <div class="mt-8 grid gap-6 md:grid-cols-2">
+        <div class="rounded-xl border border-border bg-bg p-6">
+          <h3 class="font-semibold text-secondary">ชำระเงินอย่างไร?</h3>
+          <p class="mt-2 text-sm text-text-secondary">
+            รองรับบัตรเครดิต/เดบิต โอนผ่านธนาคาร PromptPay (เร็วๆ นี้)
+          </p>
+        </div>
+        <div class="rounded-xl border border-border bg-bg p-6">
+          <h3 class="font-semibold text-secondary">ยกเลิกเมื่อไรก็ได้?</h3>
+          <p class="mt-2 text-sm text-text-secondary">
+            ใช่ ยกเลิกเมื่อไรก็ได้ ไม่มีข้อผูกมัด
+          </p>
+        </div>
+        <div class="rounded-xl border border-border bg-bg p-6">
+          <h3 class="font-semibold text-secondary">มีทดลองใช้ไหม?</h3>
+          <p class="mt-2 text-sm text-text-secondary">
+            แพลนฟรีใช้ได้ตลอดไป ไม่ต้องใส่บัตรเครดิต
+          </p>
+        </div>
+        <div class="rounded-xl border border-border bg-bg p-6">
+          <h3 class="font-semibold text-secondary">ดีลเก่าหายไหม?</h3>
+          <p class="mt-2 text-sm text-text-secondary">
+            ไม่หาย ดีลเก่ายังอยู่ แค่ไม่แสดงเกินจำนวนที่กำหนด
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const upgradeBtn = document.getElementById('upgrade-pro-btn');
+  const modal = document.getElementById('coming-soon-modal');
+  const closeBtn = document.getElementById('close-modal-btn');
+
+  upgradeBtn?.addEventListener('click', () => {
+    modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
+  });
+
+  closeBtn?.addEventListener('click', () => {
+    modal?.classList.add('hidden');
+    modal?.classList.remove('flex');
+  });
+
+  // Close on backdrop click
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  });
+
+  // Close on escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal?.classList.contains('hidden')) {
+      modal?.classList.add('hidden');
+      modal?.classList.remove('flex');
+    }
+  });
+</script>

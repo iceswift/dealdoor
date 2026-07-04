@@ -1,0 +1,21 @@
+---
+// src/components/shared/CategoryBadge.astro
+
+import { DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS } from '../../lib/constants';
+import type { DealCategory } from '../../lib/constants';
+
+interface Props {
+  category: DealCategory;
+}
+
+const { category } = Astro.props;
+const label = DEAL_CATEGORY_LABELS[category] || category;
+const color = DEAL_CATEGORY_COLORS[category] || '#6B7280';
+---
+
+<span
+  class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+  style={`background-color: ${color}20; color: ${color}`}
+>
+  {label}
+</span>

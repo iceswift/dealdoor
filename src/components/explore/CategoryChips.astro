@@ -1,0 +1,41 @@
+---
+// src/components/explore/CategoryChips.astro
+
+import { SHOP_CATEGORIES, SHOP_CATEGORY_LABELS } from '../../lib/constants';
+import type { ShopCategory } from '../../lib/constants';
+
+interface Props {
+  active?: string;
+}
+
+const { active = 'all' } = Astro.props;
+---
+
+<div class="overflow-x-auto scrollbar-hide -mx-4 px-4">
+  <div class="flex gap-2 pb-2">
+    <a
+      href="/explore"
+      class:list={[
+        'flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all',
+        active === 'all' 
+          ? 'bg-primary text-white shadow-sm shadow-primary/20' 
+          : 'bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
+      ]}
+    >
+      ทั้งหมด
+    </a>
+    {SHOP_CATEGORIES.map((cat) => (
+      <a
+        href={`/explore/${cat}`}
+        class:list={[
+          'flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all',
+          active === cat 
+            ? 'bg-primary text-white shadow-sm shadow-primary/20' 
+            : 'bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
+        ]}
+      >
+        {SHOP_CATEGORY_LABELS[cat]}
+      </a>
+    ))}
+  </div>
+</div>

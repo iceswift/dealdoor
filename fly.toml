@@ -1,0 +1,34 @@
+# DealDoor - Fly.io Configuration
+
+app = "dealdoor"
+primary_region = "bkg" # Bangkok
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "4321"
+  HOST = "0.0.0.0"
+
+[http_service]
+  internal_port = 4321
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/api/health"
+
+[mounts]
+  source = "dealdoor_data"
+  destination = "/app/db"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

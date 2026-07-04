@@ -1,0 +1,10 @@
+---
+// src/pages/onboarding/index.astro
+
+import OnboardingLayout from '../../layouts/OnboardingLayout.astro';
+import ShopSetupForm from '../../components/onboarding/ShopSetupForm.tsx';
+---
+
+<OnboardingLayout title="ตั้งค่าร้าน" currentStep={1}>
+  <ShopSetupForm client:load onNext={() => window.location.href = '/onboarding/deals'} />
+</OnboardingLayout>

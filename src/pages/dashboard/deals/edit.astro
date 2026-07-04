@@ -1,0 +1,38 @@
+---
+// src/pages/dashboard/deals/edit.astro
+
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import { db } from '../../../lib/db';
+import { shops } from '../../../../db/schema';
+import DealFormEditWrapper from '../../../components/dashboard/DealFormEditWrapper.tsx';
+import Icon from '../../../components/icons/index.astro';
+
+// ─── BACKEND WORKFLOW: MERCHANT SHOP SELECTION ───
+const shop = await db.select().from(shops).limit(1).get();
+
+if (!shop) {
+  return Astro.redirect('/dashboard');
+}
+// ─────────────────────────────────────────────────
+---
+
+<DashboardLayout title="แก้ไขดีล" activeTab="deals" hideMobileNav={true}>
+  <div class="space-y-6">
+    {/* Page Header */}
+    <div class="flex items-center gap-3.5 border-b border-border/30 pb-4">
+      <a href="/dashboard/deals" class="btn btn-secondary py-2 px-3.5 rounded-xl text-xs font-bold hover:bg-bg-tertiary">
+        <Icon name="chevron-left" class="h-4 w-4 text-primary" />
+        <span>กลับ</span>
+      </a>
+      <div>
+        <h2 class="text-base font-bold text-secondary">แก้ไขคูปองโปรโมชัน</h2>
+        <p class="text-xs text-text-secondary mt-0.5">ปรับเปลี่ยนข้อเสนอ เงื่อนไข หรือวันสิ้นสุดของคูปอง</p>
+      </div>
+    </div>
+
+    {/* Form Wrapper inside Premium Glass Card */}
+    <div class="rounded-3xl border border-border/40 bg-card-bg/60 backdrop-blur-sm p-6 shadow-md">
+      <DealFormEditWrapper client:only="react" shopId={shop.id} />
+    </div>
+  </div>
+</DashboardLayout>

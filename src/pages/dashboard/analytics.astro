@@ -1,0 +1,64 @@
+---
+// src/pages/dashboard/analytics.astro
+
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { db } from '../../lib/db';
+import { shops, merchants } from '../../../db/schema';
+import { eq } from 'drizzle-orm';
+import { getMerchantFromUser, getMerchantShop } from '../../lib/auth';
+import StatsOverview from '../../components/dashboard/analytics/StatsOverview.tsx';
+import TopDeals from '../../components/dashboard/analytics/TopDeals.tsx';
+import Icon from '../../components/icons/index.astro';
+
+// ─── BACKEND WORKFLOW: MERCHANT SESSION & SHOP RETRIEVAL ───
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/auth/login');
+}
+
+const merchant = await getMerchantFromUser(user.id);
+const shop = merchant ? await getMerchantShop(merchant.id) : null;
+
+if (!shop) {
+  return Astro.redirect('/dashboard');
+}
+// ───────────────────────────────────────────────────────────
+---
+
+<DashboardLayout title="วิเคราะห์ข้อมูล" activeTab="analytics">
+  <div class="space-y-6">
+    {/* Page Header */}
+    <div class="border-b border-border/30 pb-4">
+      <h1 class="text-base font-bold text-secondary flex items-center gap-2">
+        <Icon name="chart" class="h-5.5 w-5.5 text-primary" />
+        <span>วิเคราะห์สถิติและการตอบรับ</span>
+      </h1>
+      <p class="text-xs text-text-secondary mt-0.5">ติดตามการตอบรับ ความคุ้มค่าของคูปอง และความสนใจของผู้เข้าชมหน้าร้าน</p>
+    </div>
+
+    {/* Analytics Stats Overview React Component */}
+    <div>
+      <StatsOverview client:load shopId={shop.id} days={30} />
+    </div>
+
+    {/* Top performing Deals React Component */}
+    <div>
+      <TopDeals client:load shopId={shop.id} />
+    </div>
+
+    {/* Detailed Info Card */}
+    <div class="rounded-3xl border border-border/40 bg-card-bg/60 backdrop-blur-sm p-5 shadow-md">
+      <div class="flex items-start gap-3">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-info-bg text-info flex-shrink-0">
+          <Icon name="info" class="h-4.5 w-4.5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-secondary">เกี่ยวกับข้อมูลสถิติ</p>
+          <p class="mt-1 text-xs text-text-secondary leading-relaxed">
+            ระบบจัดเก็บสถิติผู้เข้าเยี่ยมชมแบบเรียลไทม์ การคลิกปุ่มแชร์และการคัดลอกรหัสโปรโมชันจะบันทึกแบบอัปเดตรายชั่วโมง เพื่อป้องกันความผิดพลาดและกรองแสปมคลิกซ้ำซ้อน
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>

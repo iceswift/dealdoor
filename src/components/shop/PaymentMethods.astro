@@ -1,0 +1,41 @@
+---
+// src/components/shop/PaymentMethods.astro
+
+import type { Shop } from '../../db/schema';
+
+interface Props {
+  shop: Shop;
+}
+
+const { shop } = Astro.props;
+
+const methods = [
+  { key: 'acceptsPromptPay', label: 'PromptPay', icon: '💳', description: 'QR พร้อมเพย์' },
+  { key: 'acceptsCash', label: 'เงินสด', icon: '💵', description: 'ชำระเงินสด' },
+  { key: 'acceptsCreditCard', label: 'บัตรเครดิต', icon: '💳', description: 'Visa, Mastercard' },
+  { key: 'acceptsTrueMoney', label: 'TrueMoney', icon: '📱', description: 'TrueMoney Wallet' },
+  { key: 'acceptsRabbitLinePay', label: 'Rabbit LINE Pay', icon: '🐰', description: 'LINE Pay' },
+];
+
+const activeMethods = methods.filter(m => shop[m.key as keyof Shop]);
+---
+
+{activeMethods.length > 0 && (
+  <section class="mt-6">
+    <h2 class="mb-3 text-lg font-semibold text-secondary">💳 ช่องทางชำระเงิน</h2>
+    <div class="flex flex-wrap gap-2">
+      {activeMethods.map(method => (
+        <div class="flex items-center gap-2 rounded-lg border border-border bg-bg-secondary px-3 py-2">
+          <span class="text-lg">{method.icon}</span>
+          <div>
+            <p class="text-sm font-medium text-text-primary">{method.label}</p>
+            <p class="text-xs text-text-tertiary">{method.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+    {shop.paymentNotes && (
+      <p class="mt-2 text-sm text-text-secondary">{shop.paymentNotes}</p>
+    )}
+  </section>
+)}

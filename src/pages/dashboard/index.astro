@@ -1,0 +1,162 @@
+---
+// src/pages/dashboard/index.astro
+
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { db } from '../../lib/db';
+import { shops, merchants, deals, dailyStats } from '../../../db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { getMerchantFromUser, getMerchantShop } from '../../lib/auth';
+import ShopFormWrapper from '../../components/dashboard/ShopFormWrapper.tsx';
+import ShareLink from '../../components/dashboard/ShareLink.tsx';
+import QRCodeSection from '../../components/dashboard/QRCodeSection.tsx';
+import UpgradeBanner from '../../components/dashboard/UpgradeBanner.tsx';
+import type { Tier } from '../../lib/tiers';
+import Icon from '../../components/icons/index.astro';
+
+// ─── BACKEND WORKFLOW: MERCHANT SHOP CONFIGURATION ───
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/auth/login');
+}
+
+const merchant = await getMerchantFromUser(user.id);
+const shop = merchant ? await getMerchantShop(merchant.id) : null;
+const tier: Tier = (shop?.tier as Tier) || 'free';
+
+// ─── QUERY STATISTICS FROM DATABASE ───
+let dealCount = 0;
+let totalViews = 0;
+let totalShares = 0;
+
+if (shop) {
+  // 1. Count deals for this shop
+  const shopDeals = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(deals)
+    .where(eq(deals.shopId, shop.id))
+    .get();
+  dealCount = shopDeals?.count || 0;
+
+  // 2. Sum views and shares for this shop
+  const shopStatsSum = await db
+    .select({
+      views: sql<number>`sum(${dailyStats.pageViews})`,
+      shares: sql<number>`sum(${dailyStats.shares})`
+    })
+    .from(dailyStats)
+    .where(eq(dailyStats.shopId, shop.id))
+    .get();
+  totalViews = shopStatsSum?.views || 0;
+  totalShares = shopStatsSum?.shares || 0;
+}
+// ─────────────────────────────────────────────────────
+---
+
+<DashboardLayout title="ข้อมูลร้าน" activeTab="shop">
+  <div class="space-y-6">
+    {/* Welcome Header (Option 1: Minimalist Typography with Time-of-Day Client Greeting) */}
+    <div class="py-2">
+      <h1 class="text-xl sm:text-2xl font-black text-secondary tracking-tight flex items-center gap-2">
+        <span id="welcome-greeting">สวัสดี</span>, {user.name}!
+        <span class="inline-block animate-bounce origin-bottom-right">👋</span>
+      </h1>
+      <p class="text-xs text-text-tertiary font-bold mt-1">
+        ยินดีต้อนรับกลับมา! นี่คือรายงานภาพรวมและสถิติล่าสุดของร้านค้าคุณ
+      </p>
+    </div>
+
+    <script is:inline>
+      (function() {
+        try {
+          const hours = new Date().getHours();
+          let greeting = 'สวัสดี';
+          if (hours >= 5 && hours < 12) {
+            greeting = 'อรุณสวัสดิ์';
+          } else if (hours >= 12 && hours < 17) {
+            greeting = 'สวัสดีตอนบ่าย';
+          } else if (hours >= 17 && hours < 20) {
+            greeting = 'สวัสดีตอนเย็น';
+          } else {
+            greeting = 'สวัสดีตอนค่ำ';
+          }
+          const greetingEl = document.getElementById('welcome-greeting');
+          if (greetingEl) {
+            greetingEl.textContent = greeting;
+          }
+        } catch (e) {
+          console.error('Failed to set client timezone greeting:', e);
+        }
+      })();
+    </script>
+
+    {/* Quick Real Stats Section */}
+    {shop && (
+      <div class="grid gap-4 grid-cols-3">
+        {/* Deal Count */}
+        <div class="rounded-2xl border border-border/20 bg-card-bg/60 backdrop-blur-md p-4 flex items-center gap-3.5 shadow-sm hover:border-primary/20 transition-all duration-200 group">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-info-bg text-info flex-shrink-0 shadow-sm">
+            <Icon name="clipboard" class="h-5.5 w-5.5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider">ดีลทั้งหมด</p>
+            <p class="text-xs sm:text-sm font-black text-secondary mt-0.5">{dealCount} ดีล</p>
+          </div>
+        </div>
+
+        {/* Page Views */}
+        <div class="rounded-2xl border border-border/20 bg-card-bg/60 backdrop-blur-md p-4 flex items-center gap-3.5 shadow-sm hover:border-primary/20 transition-all duration-200 group">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-success-bg text-success flex-shrink-0 shadow-sm">
+            <Icon name="eye" class="h-5.5 w-5.5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider">ผู้เข้าชมทั้งหมด</p>
+            <p class="text-xs sm:text-sm font-black text-secondary mt-0.5">{totalViews.toLocaleString('th-TH')} ครั้ง</p>
+          </div>
+        </div>
+
+        {/* Shares count */}
+        <div class="rounded-2xl border border-border/20 bg-card-bg/60 backdrop-blur-md p-4 flex items-center gap-3.5 shadow-sm hover:border-primary/20 transition-all duration-200 group">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-light text-primary flex-shrink-0 shadow-sm">
+            <Icon name="share" class="h-5.5 w-5.5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider">จำนวนการแชร์</p>
+            <p class="text-xs sm:text-sm font-black text-secondary mt-0.5">{totalShares.toLocaleString('th-TH')} ครั้ง</p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Quick Actions Dock */}
+    {shop && (
+      <div class="flex flex-wrap gap-3">
+        <a href={`/dashboard/deals`} class="btn btn-primary py-2.5 px-5 rounded-xl text-xs shadow-md">
+          <Icon name="tag" class="h-4 w-4" />
+          <span>จัดการคูปอง / เพิ่มดีล</span>
+        </a>
+        <a href={`/${shop.slug}`} class="btn btn-secondary py-2.5 px-5 rounded-xl text-xs hover:bg-bg-tertiary">
+          <Icon name="eye" class="h-4 w-4 text-primary" />
+          <span>ดูหน้าร้านของคุณ</span>
+        </a>
+      </div>
+    )}
+
+    {/* Share Link & QR Code Cards layout (Moved Up for easy access) */}
+    {shop && (
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div class="glass rounded-3xl border border-border/40 shadow-sm p-1.5">
+          <ShareLink client:load slug={shop.slug} shopName={shop.name} />
+        </div>
+        <div class="glass rounded-3xl border border-border/40 shadow-sm p-1.5">
+          <QRCodeSection client:load slug={shop.slug} shopName={shop.name} logoUrl={shop.logoImage} />
+        </div>
+      </div>
+    )}
+
+    {/* Shop Form Wrapper with Live Preview Mockup */}
+    <ShopFormWrapper client:load shop={shop} merchantId={merchant?.id} />
+
+    {/* Tier Upgrade Banner (Moved to the bottom) */}
+    <UpgradeBanner client:load currentTier={tier} />
+  </div>
+</DashboardLayout>

@@ -1,0 +1,25 @@
+---
+// src/pages/500.astro
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="เกิดข้อผิดพลาด">
+  <div class="flex min-h-[60vh] items-center justify-center px-4">
+    <div class="text-center">
+      <span class="text-6xl">⚠️</span>
+      <h1 class="mt-4 text-2xl font-bold text-secondary">เกิดข้อผิดพลาด</h1>
+      <p class="mt-2 text-text-secondary">
+        กรุณาลองใหม่อีกครั้ง
+      </p>
+      <div class="mt-6">
+        <button
+          onclick="window.location.reload()"
+          class="rounded-lg bg-primary px-4 py-2 text-white hover:bg-primary-dark"
+        >
+          ลองใหม่
+        </button>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

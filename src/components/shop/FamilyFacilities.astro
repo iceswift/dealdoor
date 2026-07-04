@@ -1,0 +1,37 @@
+---
+// src/components/shop/FamilyFacilities.astro
+
+import type { Shop } from '../../db/schema';
+
+interface Props {
+  shop: Shop;
+}
+
+const { shop } = Astro.props;
+
+const familyFeatures = [
+  { key: 'kidsMenu', label: 'เมนูเด็ก', icon: '🧒' },
+  { key: 'highChairs', label: 'เก้าอี้สูง', icon: '🪑' },
+  { key: 'playArea', label: 'สนามเด็กเล่น', icon: '🎠' },
+  { key: 'babyChanging', label: 'ที่เปลี่ยนผ้าอ้อม', icon: '👶' },
+];
+
+const activeFamilyFeatures = familyFeatures.filter(f => shop[f.key as keyof Shop]);
+---
+
+{activeFamilyFeatures.length > 0 && (
+  <section class="mt-6">
+    <h2 class="mb-3 text-lg font-semibold text-secondary">👶 สิ่งอำนวยความสะดวกสำหรับครอบครัว</h2>
+    <div class="flex flex-wrap gap-2">
+      {activeFamilyFeatures.map(feature => (
+        <div class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+          <span class="text-lg">{feature.icon}</span>
+          <span class="text-sm font-medium text-blue-800">{feature.label}</span>
+        </div>
+      ))}
+    </div>
+    {shop.familyNotes && (
+      <p class="mt-2 text-sm text-text-secondary">{shop.familyNotes}</p>
+    )}
+  </section>
+)}

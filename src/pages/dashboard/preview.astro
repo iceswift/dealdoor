@@ -1,0 +1,63 @@
+---
+// src/pages/dashboard/preview.astro
+
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { db } from '../../lib/db';
+import { shops } from '../../../db/schema';
+import Icon from '../../components/icons/index.astro';
+
+// ─── BACKEND WORKFLOW: MERCHANT SHOP PREVIEW RETRIEVAL ───
+// MVP: Fetch the active store for preview.
+const shop = await db.select().from(shops).limit(1).get();
+
+if (!shop) {
+  return Astro.redirect('/dashboard');
+}
+// ─────────────────────────────────────────────────────────
+---
+
+<DashboardLayout title="ดูตัวอย่างหน้าร้าน" activeTab="preview">
+  <div class="space-y-6">
+    {/* Page Header */}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-4">
+      <div>
+        <h2 class="text-base font-bold text-secondary flex items-center gap-2">
+          <Icon name="eye" class="h-5 w-5 text-primary" />
+          <span>จำลอง / ดูตัวอย่างหน้าโปรโมชัน</span>
+        </h2>
+        <p class="text-xs text-text-secondary mt-0.5">พรีวิวหน้าร้านค้าของคุณก่อนที่จะนำลิงก์ไปแชร์ลงโซเชียล</p>
+      </div>
+      
+      <a
+        href={`/${shop.slug}`}
+        target="_blank"
+        class="btn btn-primary py-2 px-4 rounded-xl text-xs font-bold shadow-md self-start sm:self-center"
+      >
+        <span>เปิดหน้าร้านจริง</span>
+        <Icon name="arrow-right" class="h-4 w-4" />
+      </a>
+    </div>
+
+    {/* Viewport Frame Mockup Container */}
+    <div class="overflow-hidden rounded-3xl border border-border/50 shadow-xl bg-card-bg/60 backdrop-blur-sm">
+      {/* Mockup browser top-bar */}
+      <div class="bg-bg-secondary px-4 py-3 border-b border-border/40 flex items-center gap-2">
+        <div class="flex gap-1.5">
+          <span class="h-3 w-3 rounded-full bg-red-400"></span>
+          <span class="h-3 w-3 rounded-full bg-yellow-400"></span>
+          <span class="h-3 w-3 rounded-full bg-green-400"></span>
+        </div>
+        <div class="flex-1 max-w-md mx-auto bg-bg rounded-xl border border-border/30 py-1 px-3 text-center text-[10px] text-text-tertiary select-none font-semibold truncate">
+          https://dealdoor.co/{shop.slug}
+        </div>
+      </div>
+      
+      {/* Frame view */}
+      <iframe
+        src={`/${shop.slug}`}
+        class="h-[600px] w-full"
+        title="Preview Frame"
+      />
+    </div>
+  </div>
+</DashboardLayout>

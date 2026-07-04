@@ -1,0 +1,10 @@
+---
+// src/pages/onboarding/complete.astro
+
+import OnboardingLayout from '../../layouts/OnboardingLayout.astro';
+import ShareSuccess from '../../components/onboarding/ShareSuccess.tsx';
+---
+
+<OnboardingLayout title="เสร็จสิ้น" currentStep={3}>
+  <ShareSuccess client:load />
+</OnboardingLayout>

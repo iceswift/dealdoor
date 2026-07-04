@@ -1,0 +1,280 @@
+---
+// src/pages/[slug].astro
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { db } from '../lib/db';
+import { shops, deals, menuItems } from '../../db/schema';
+import { eq, and, gte, lt, asc } from 'drizzle-orm';
+import ShopHeader from '../components/shop/ShopHeader.astro';
+import DealCard from '../components/shop/DealCard.astro';
+import DealDetailModal from '../components/shop/DealDetailModal.tsx';
+import MenuList from '../components/shop/MenuList.astro';
+import ShopInfo from '../components/shop/ShopInfo.astro';
+import PaymentMethods from '../components/shop/PaymentMethods.astro';
+import AccessibilityInfo from '../components/shop/AccessibilityInfo.astro';
+import ParkingInfo from '../components/shop/ParkingInfo.astro';
+import PetPolicy from '../components/shop/PetPolicy.astro';
+import FamilyFacilities from '../components/shop/FamilyFacilities.astro';
+import { getLangFromUrl, t } from '../i18n';
+import { generateLocalBusinessSchema, generateOfferSchema, generateBreadcrumbSchema } from '../lib/seo';
+import Icon from '../components/icons/index.astro';
+
+export function getStaticPaths() {
+  const allShops = db.select({ slug: shops.slug }).from(shops).all();
+  return allShops.map(shop => ({
+    params: { slug: shop.slug },
+  }));
+}
+
+const lang = getLangFromUrl(Astro.url);
+const common = (key: string, params?: Record<string, string | number>) => 
+  t(lang, 'common', key, params);
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/');
+}
+
+// ─── BACKEND WORKFLOW: FETCH INDIVIDUAL MERCHANT SHOP ───
+const shop = await db.select().from(shops).where(eq(shops.slug, slug)).get();
+
+if (!shop) {
+  return Astro.redirect('/404');
+}
+
+const now = new Date();
+const activeDeals = await db
+  .select()
+  .from(deals)
+  .where(and(eq(deals.shopId, shop.id), eq(deals.isActive, true), gte(deals.endDate, now)))
+  .orderBy(asc(deals.endDate));
+
+const expiredDeals = await db
+  .select()
+  .from(deals)
+  .where(and(eq(deals.shopId, shop.id), lt(deals.endDate, now)))
+  .orderBy(asc(deals.endDate));
+
+const menuItemsList = await db
+  .select()
+  .from(menuItems)
+  .where(eq(menuItems.shopId, shop.id))
+  .orderBy(asc(menuItems.sortOrder));
+
+const dealId = Astro.url.searchParams.get('deal');
+const highlightedDeal = dealId ? [...activeDeals, ...expiredDeals].find(d => d.id === dealId) : null;
+// ────────────────────────────────────────────────────────
+
+const localBusinessSchema = generateLocalBusinessSchema(shop);
+const offerSchemas = activeDeals.map(deal => generateOfferSchema(deal, shop));
+const breadcrumbSchema = generateBreadcrumbSchema([
+  { name: 'DealDoor', url: 'https://dealdoor.co' },
+  { name: 'Explore', url: 'https://dealdoor.co/explore' },
+  { name: shop.name, url: `https://dealdoor.co/${shop.slug}` },
+]);
+---
+
+<BaseLayout title={shop.name} description={shop.description || undefined}>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(localBusinessSchema)} />
+    {offerSchemas.map(schema => (
+      <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+    ))}
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+  </Fragment>
+
+  <div class="mx-auto max-w-3xl px-4 pt-8 pb-20 md:pb-8 relative">
+    {/* Background meshes */}
+    <div class="absolute top-0 right-0 bg-mesh bg-mesh-coral h-64 w-64 opacity-5"></div>
+    <div class="absolute bottom-20 left-0 bg-mesh bg-mesh-teal h-64 w-64 opacity-5"></div>
+
+    {/* Shop Profile Header */}
+    <ShopHeader shop={shop} />
+
+    {/* Active Coupons/Deals Listing */}
+    <section class="mt-8">
+      <div class="flex items-center gap-2.5 mb-5 border-b border-border/30 pb-3">
+        <div class="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+          <Icon name="fire" class="h-5 w-5" />
+        </div>
+        <h2 class="text-lg font-bold text-secondary">
+          {common('shopPage.activeDeals')} ({activeDeals.length})
+        </h2>
+      </div>
+      
+      {activeDeals.length > 0 ? (
+        <div class="grid gap-6 sm:grid-cols-2">
+          {activeDeals.map((deal) => (
+            <DealCard deal={deal} shopLineId={shop.lineId} />
+          ))}
+        </div>
+      ) : (
+        <div class="border border-dashed border-border/80 p-10 text-center rounded-2xl bg-bg-secondary/40 max-w-sm mx-auto">
+          <Icon name="clipboard" class="h-10 w-10 mx-auto text-text-tertiary" />
+          <h3 class="mt-4 text-base font-bold text-secondary">{common('empty.noDeals')}</h3>
+          <p class="mt-1 text-xs text-text-secondary">{common('empty.noDealsDesc')}</p>
+        </div>
+      )}
+    </section>
+
+    {/* Expired Coupons/Deals Listing */}
+    {expiredDeals.length > 0 && (
+      <section class="mt-12">
+        <div class="flex items-center gap-2.5 mb-5 border-b border-border/30 pb-3">
+          <div class="h-8 w-8 rounded-xl bg-border/20 flex items-center justify-center text-text-tertiary">
+            <Icon name="clock" class="h-5 w-5" />
+          </div>
+          <h2 class="text-lg font-bold text-text-tertiary">
+            ดีลที่หมดอายุ ({expiredDeals.length})
+          </h2>
+        </div>
+        <div class="grid gap-6 sm:grid-cols-2 opacity-60">
+          {expiredDeals.map((deal) => (
+            <DealCard deal={deal} shopLineId={shop.lineId} />
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* Custom Catalogue/Menu Listing */}
+    <div class="mt-8">
+      <MenuList items={menuItemsList} />
+    </div>
+
+    {/* Payment Methods */}
+    <div class="px-4">
+      <PaymentMethods shop={shop} />
+    </div>
+
+    {/* Accessibility Info */}
+    <div class="px-4">
+      <AccessibilityInfo shop={shop} />
+    </div>
+
+    {/* Parking & Transport */}
+    <div class="px-4">
+      <ParkingInfo shop={shop} />
+    </div>
+
+    {/* Pet Policy */}
+    <div class="px-4">
+      <PetPolicy shop={shop} />
+    </div>
+
+    {/* Family Facilities */}
+    <div class="px-4">
+      <FamilyFacilities shop={shop} />
+    </div>
+
+    {/* Detailed Info Card */}
+    <div class="mt-8 pb-10">
+      <ShopInfo shop={shop} />
+    </div>
+
+    {/* Premium Footer Glass CTA */}
+    <div class="rounded-3xl border border-border/40 bg-bg-secondary/50 backdrop-blur-sm p-8 text-center shadow-sm relative overflow-hidden mt-10">
+      <div class="absolute -right-16 -bottom-16 h-36 w-36 rounded-full bg-primary/10 blur-2xl"></div>
+      
+      <p class="text-xs text-text-tertiary tracking-wider uppercase font-semibold">{common('shopPage.createdBy')}</p>
+      <h3 class="text-lg font-extrabold text-secondary mt-1.5">อยากจัดโปรโมชันแชร์ง่ายๆ แบบนี้บ้างไหม?</h3>
+      <p class="text-xs text-text-secondary mt-1 max-w-sm mx-auto">สร้างหน้าคูปองร้านของคุณฟรี เสร็จภายใน 2 นาที แชร์ได้ทันที</p>
+      
+      <a
+        href="/"
+        class="btn btn-primary mt-5 py-2.5 px-6 rounded-xl text-xs font-bold"
+      >
+        <Icon name="rocket" class="h-4.5 w-4.5" />
+        <span>{common('shopPage.createYourPage')}</span>
+      </a>
+    </div>
+  </div>
+
+  {/* Sticky Floating Dock bar on mobile screens */}
+  <div class="fixed bottom-4 left-4 right-4 z-40 md:hidden">
+    <div class="glass rounded-2xl p-2.5 flex gap-1.5 shadow-2xl border border-border/50">
+      {shop.lineId && (
+        <a
+          href={shop.lineId.startsWith('@') ? `https://line.me/ti/p/${shop.lineId}` : shop.lineId}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn flex-1 py-3 px-2 bg-[#06C755] text-white hover:bg-[#05B34C] border-none shadow-md shadow-[#06C755]/10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 min-h-[44px]"
+        >
+          <Icon name="line" class="h-4.5 w-4.5" />
+          <span>LINE</span>
+        </a>
+      )}
+      {shop.phone && (
+        <a
+          href={`tel:${shop.phone}`}
+          class="btn btn-secondary flex-1 py-3 px-2 rounded-xl text-xs font-bold hover:bg-bg-tertiary flex items-center justify-center gap-1 min-h-[44px]"
+        >
+          <Icon name="phone" class="h-4.5 w-4.5 text-primary" />
+          <span>โทรออก</span>
+        </a>
+      )}
+      {shop.latitude && shop.longitude && (
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-secondary flex-1 py-3 px-2 rounded-xl text-xs font-bold hover:bg-bg-tertiary flex items-center justify-center gap-1 min-h-[44px]"
+        >
+          <Icon name="map-pin" class="h-4.5 w-4.5 text-primary" />
+          <span>แผนที่</span>
+        </a>
+      )}
+    </div>
+  </div>
+
+
+
+  {/* Deal Detail Modal (client-side interactive component) */}
+  <DealDetailModal
+    client:visible
+    deal={highlightedDeal}
+    shopName={shop.name}
+    shopLineId={shop.lineId}
+    onClose={() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('deal');
+      window.history.replaceState({}, '', url.toString());
+    }}
+  />
+</BaseLayout>
+
+<script is:inline define:vars={{ shopId: shop.id }}>
+  // ─── BACKEND WORKFLOW: TRACK ANALYTICS EVENT ───
+  fetch('/api/analytics/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'page_view',
+      shopId: shopId,
+    }),
+  }).catch(() => {});
+
+  // Auto-open modal if deal parameter is highlighted
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const dealId = params.get('deal');
+    
+    if (dealId) {
+      fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'deal_view',
+          shopId: shopId,
+          dealId: dealId,
+        }),
+      }).catch(() => {});
+
+      const dealCard = document.querySelector(`[data-deal-id="${dealId}"]`);
+      if (dealCard) {
+        dealCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  });
+  // ───────────────────────────────────────────────
+</script>

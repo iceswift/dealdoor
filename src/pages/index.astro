@@ -1,0 +1,424 @@
+---
+// src/pages/index.astro
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { db } from '../lib/db';
+import { shops, deals } from '../../db/schema';
+import { eq, and, gte } from 'drizzle-orm';
+import { getLangFromUrl, t } from '../i18n';
+import { DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS, SHOP_CATEGORY_LABELS } from '../lib/constants';
+import Icon from '../components/icons/index.astro';
+
+const lang = getLangFromUrl(Astro.url);
+const common = (key: string) => t(lang, 'common', key);
+
+// ─── BACKEND WORKFLOW: DATA FETCHING FOR LANDING PAGE ───
+// This block reads shop accounts and active deals from the SQLite database to showcase examples.
+const sampleShops = await db.select().from(shops).limit(3);
+
+const sampleShopsWithDeals = await Promise.all(
+  sampleShops.map(async (shop) => {
+    const shopDeals = await db
+      .select()
+      .from(deals)
+      .where(and(eq(deals.shopId, shop.id), eq(deals.isActive, true), gte(deals.endDate, new Date())))
+      .limit(2);
+    return { ...shop, deals: shopDeals };
+  })
+);
+// ────────────────────────────────────────────────────────
+---
+
+<BaseLayout title={common('brand.tagline')}>
+  {/* Hero Section */}
+  <section class="relative overflow-hidden mt-[-120px] pt-40 pb-24 md:pt-48 md:pb-32 bg-gradient-to-b from-primary-subtle to-bg">
+    {/* Dynamic Background Mesh Blobs */}
+    <div class="absolute top-0 right-0 bg-mesh bg-mesh-coral h-96 w-96 opacity-10 animate-drift-1"></div>
+    <div class="absolute bottom-0 left-0 bg-mesh bg-mesh-teal h-96 w-96 opacity-5 animate-drift-3"></div>
+    
+    <div class="relative mx-auto max-w-4xl px-4 text-center z-10">
+      {/* Dynamic Animated Badge */}
+      <div class="animate-fade-in mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-bg px-4.5 py-2 shadow-sm">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+          <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary"></span>
+        </span>
+        <span class="text-xs font-bold uppercase tracking-wider text-primary">ฟรี ไม่ต้องผูกบัตรเครดิต</span>
+      </div>
+      
+      {/* Title */}
+      <h1 class="animate-slide-up text-4xl font-extrabold leading-tight text-secondary md:text-5xl lg:text-6xl tracking-tight">
+        {lang === 'th' ? (
+          <>
+            สร้างหน้า<span class="text-gradient">โปรโมชัน</span>
+            <br />ร้านของคุณในไม่กี่นาที
+          </>
+        ) : (
+          <>
+            Create Your Shop
+            <br /><span class="text-gradient">Deal Page</span> in Minutes
+          </>
+        )}
+      </h1>
+      
+      {/* Subtitle */}
+      <p class="animate-slide-up stagger-1 mx-auto mt-6 max-w-2xl text-base md:text-lg text-text-secondary leading-relaxed">
+        {lang === 'th' 
+          ? 'แชร์ลิงก์เดียวให้ลูกค้าเห็นทุกดีล พร้อมแผนที่และปุ่มติดต่อ ดึงดูดลูกค้าและหมดอายุดีลแบบอัตโนมัติ'
+          : 'Share one link containing all deals. Includes Map, contact buttons, and auto-expiring coupons.'}
+      </p>
+      
+      {/* Action CTA Buttons */}
+      <div class="animate-slide-up stagger-2 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <a href="/onboarding" class="btn btn-primary py-3.5 px-8 rounded-2xl shadow-lg hover:shadow-primary/30 w-full sm:w-auto">
+          <Icon name="rocket" class="h-5 w-5" />
+          <span>{lang === 'th' ? 'เริ่มสร้างหน้าร้านฟรี' : 'Create Shop Page'}</span>
+        </a>
+        <a href="/explore" class="btn btn-secondary py-3.5 px-8 rounded-2xl w-full sm:w-auto">
+          <Icon name="search" class="h-5 w-5 text-primary" />
+          <span>{lang === 'th' ? 'ค้นหาดีลรอบตัว' : 'Explore Deals'}</span>
+        </a>
+      </div>
+      
+      {/* Values Grid */}
+      <div class="animate-fade-in stagger-3 mt-16 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
+        <div class="glass p-4.5 rounded-2xl border border-border/40 flex items-center gap-3">
+          <div class="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+            <Icon name="check" class="h-5 w-5" />
+          </div>
+          <span class="text-sm font-bold text-secondary">กรอกข้อมูลง่ายใน 2 นาที</span>
+        </div>
+        <div class="glass p-4.5 rounded-2xl border border-border/40 flex items-center gap-3">
+          <div class="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+            <Icon name="check" class="h-5 w-5" />
+          </div>
+          <span class="text-sm font-bold text-secondary">แชร์ลงโซเชียลได้ทันที</span>
+        </div>
+        <div class="glass p-4.5 rounded-2xl border border-border/40 flex items-center gap-3">
+          <div class="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+            <Icon name="check" class="h-5 w-5" />
+          </div>
+          <span class="text-sm font-bold text-secondary">หมดอายุดีลอัตโนมัติ</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* Features Section */}
+  <section class="bg-bg py-20 md:py-28 border-t border-border/30 relative overflow-hidden">
+    {/* Background Glow */}
+    <div class="absolute -right-24 top-0 bg-mesh bg-mesh-teal h-96 w-96 opacity-5 pointer-events-none"></div>
+
+    <div class="mx-auto max-w-4xl px-4 z-10 relative">
+      <div class="text-center max-w-xl mx-auto">
+        <h2 class="text-3xl font-extrabold tracking-tight text-secondary sm:text-4xl">
+          {lang === 'th' ? (
+            <>
+              ทำไมต้อง <span class="text-gradient">DealDoor</span>?
+            </>
+          ) : (
+            <>
+              Why <span class="text-gradient">DealDoor</span>?
+            </>
+          )}
+        </h2>
+        <p class="mt-4 text-sm text-text-secondary leading-relaxed">
+          {lang === 'th' ? 'เครื่องมือการตลาดแชร์โปรโมชันที่ออกแบบมาเพื่อร้านค้าออฟไลน์และร้านค้าท้องถิ่นโดยเฉพาะ' : 'Marketing tools designed specifically for local and offline shops'}
+        </p>
+      </div>
+
+      <div class="mt-16 grid gap-6 md:grid-cols-3">
+        {/* Feature 1 */}
+        <div class="animate-fade-in glass-card p-8 rounded-3xl border border-border/40 hover:border-info/40 hover:shadow-lg hover:shadow-info/10 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between h-full group">
+          <div>
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-info-bg/70 dark:bg-info-bg/10 text-info mb-6 border border-info/10 group-hover:scale-110 group-hover:bg-info group-hover:text-white transition-all duration-300 shadow-sm">
+              <Icon name="link" class="h-6 w-6" />
+            </div>
+            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
+              {lang === 'th' ? 'ลิงก์เดียวแชร์ได้หมด' : 'One Link For All'}
+            </h3>
+            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
+              {lang === 'th' 
+                ? 'ไม่ต้องคอยส่งรูปหรือข้อความดีลแยกกันหลายครั้ง ส่งลิงก์หน้าร้านของคุณครั้งเดียว ลูกค้าเห็นหมดครบถ้วน'
+                : 'Send your shop link once, and customers see all of your active promo cards.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Feature 2 */}
+        <div class="animate-fade-in stagger-1 glass-card p-8 rounded-3xl border border-border/40 hover:border-success/40 hover:shadow-lg hover:shadow-success/10 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between h-full group">
+          <div>
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-success-bg/70 dark:bg-success-bg/10 text-success mb-6 border border-success/10 group-hover:scale-110 group-hover:bg-success group-hover:text-white transition-all duration-300 shadow-sm">
+              <Icon name="clock" class="h-6 w-6" />
+            </div>
+            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
+              {lang === 'th' ? 'ระบบปิดดีลอัตโนมัติ' : 'Auto-Expiring'}
+            </h3>
+            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
+              {lang === 'th' 
+                ? 'กำหนดวันหมดอายุของคูปองโปรโมชัน เมื่อถึงเวลาระบบจะนำดีลนั้นออกเอง ไม่ต้องย้อนกลับมาไล่ลบโพสต์เก่า'
+                : 'Set dates and deals hide automatically when they expire. No manual cleanup needed.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Feature 3 */}
+        <div class="animate-fade-in stagger-2 glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between h-full group">
+          <div>
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-light/70 dark:bg-primary-light/10 text-primary mb-6 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
+              <Icon name="map-pin" class="h-6 w-6" />
+            </div>
+            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
+              {lang === 'th' ? 'ปุ่มนำทาง & ติดต่อกลับ' : 'Map & Contacts'}
+            </h3>
+            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
+              {lang === 'th' 
+                ? 'ฝังแผนที่สำหรับกดนำทาง แอด LINE ทันที หรือกดโทรออกผ่านมือถือ ช่วยกระตุ้นลูกค้าเดินทางมาหน้าร้านจริง'
+                : 'Map directions, LINE add, and phone call actions optimized to bring visitors directly to your shop.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* How it works Section */}
+  <section class="bg-bg-secondary py-20 md:py-28 border-y border-border/40 relative overflow-hidden">
+    {/* Subtle Background Mesh for visual depth */}
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-mesh bg-mesh-coral h-96 w-96 opacity-5 pointer-events-none"></div>
+
+    <div class="mx-auto max-w-4xl px-4 relative z-10">
+      <div class="text-center max-w-xl mx-auto">
+        <h2 class="text-3xl font-extrabold tracking-tight text-secondary sm:text-4xl">
+          {lang === 'th' ? 'เริ่มต้นสร้างหน้าร้านใน 3 ขั้นตอน' : 'Get Started in 3 Steps'}
+        </h2>
+        <p class="mt-4 text-sm text-text-secondary leading-relaxed">
+          {lang === 'th' ? 'เริ่มต้นได้ง่ายๆ ด้วยตัวคุณเองโดยไม่ต้องใช้โค้ดหรือทักษะพิเศษ' : 'Launch your promotional shop page in minutes without coding.'}
+        </p>
+      </div>
+
+      <div class="mt-16 grid gap-8 md:grid-cols-3">
+        {/* Step 1 */}
+        <div class="relative animate-fade-in group">
+          <div class="glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/30 transition-all duration-300 flex flex-col items-center text-center shadow-md hover:shadow-primary/10 hover:-translate-y-2 h-full">
+            {/* Step Number Badge */}
+            <div class="absolute -top-5 left-1/2 -translate-x-1/2 h-10 w-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-orange-400 text-white font-extrabold text-sm shadow-md shadow-primary/25">
+              <span>1</span>
+            </div>
+            
+            {/* Step Icon */}
+            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-light to-orange-50/50 dark:from-primary-light/10 dark:to-primary-subtle/5 text-primary mb-5 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
+              <Icon name="building" class="h-8 w-8" />
+            </div>
+
+            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
+              {lang === 'th' ? 'กรอกรายละเอียดร้าน' : 'Create Shop Page'}
+            </h3>
+            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
+              {lang === 'th' ? 'ระบุชื่อร้าน หมวดหมู่ ช่องทางการติดต่อ และที่ตั้งแผนที่' : 'Fill in coordinates, contacts, and metadata.'}
+            </p>
+          </div>
+
+        </div>
+
+        {/* Step 2 */}
+        <div class="relative animate-fade-in stagger-1 group">
+          <div class="glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/30 transition-all duration-300 flex flex-col items-center text-center shadow-md hover:shadow-primary/10 hover:-translate-y-2 h-full">
+            {/* Step Number Badge */}
+            <div class="absolute -top-5 left-1/2 -translate-x-1/2 h-10 w-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-orange-400 text-white font-extrabold text-sm shadow-md shadow-primary/25">
+              <span>2</span>
+            </div>
+            
+            {/* Step Icon */}
+            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-light to-orange-50/50 dark:from-primary-light/10 dark:to-primary-subtle/5 text-primary mb-5 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
+              <Icon name="tag" class="h-8 w-8" />
+            </div>
+
+            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
+              {lang === 'th' ? 'เพิ่มข้อเสนอ / ดีลดีๆ' : 'Add Promo Deals'}
+            </h3>
+            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
+              {lang === 'th' ? 'ใส่โปรโมชัน ลด แลก แจก แถม พร้อมตั้งวันหมดอายุและเงื่อนไข' : 'Create coupons, discount descriptions, and timers.'}
+            </p>
+          </div>
+
+        </div>
+
+        {/* Step 3 */}
+        <div class="relative animate-fade-in stagger-2 group">
+          <div class="glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/30 transition-all duration-300 flex flex-col items-center text-center shadow-md hover:shadow-primary/10 hover:-translate-y-2 h-full">
+            {/* Step Number Badge */}
+            <div class="absolute -top-5 left-1/2 -translate-x-1/2 h-10 w-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-orange-400 text-white font-extrabold text-sm shadow-md shadow-primary/25">
+              <span>3</span>
+            </div>
+            
+            {/* Step Icon */}
+            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-light to-orange-50/50 dark:from-primary-light/10 dark:to-primary-subtle/5 text-primary mb-5 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
+              <Icon name="share" class="h-8 w-8" />
+            </div>
+
+            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
+              {lang === 'th' ? 'แชร์ลิงก์ดึงลูกค้า' : 'Share & Drive traffic'}
+            </h3>
+            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
+              {lang === 'th' ? 'แชร์ลิงก์ร้านค้าหรือ QR Code ลงโซเชียลเพื่อรับลูกค้าเข้าหน้าร้านจริง' : 'Distribute links or QR to bring customers to your location.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* Sample Shops Section */}
+  <section class="py-20 md:py-28 bg-bg">
+    <div class="mx-auto max-w-4xl px-4">
+      <div class="text-center max-w-xl mx-auto">
+        <h2 class="text-3xl font-extrabold tracking-tight text-secondary sm:text-4xl">
+          {lang === 'th' ? (
+            <>
+              ตัวอย่างร้านค้าบน <span class="text-gradient">DealDoor</span>
+            </>
+          ) : (
+            <>
+              Sample Shops on <span class="text-gradient">DealDoor</span>
+            </>
+          )}
+        </h2>
+        <p class="mt-4 text-sm text-text-secondary">
+          {lang === 'th' ? 'ตัวอย่างหน้ารวมคูปองโปรโมชันที่สร้างขึ้นโดยร้านค้าพาร์ทเนอร์ของเรา' : 'Explore beautifully designed custom storefront deal cards.'}
+        </p>
+      </div>
+
+      <div class="mt-12 grid gap-6 md:grid-cols-3">
+        {sampleShopsWithDeals.map((shop, index) => (
+          <a 
+            href={`/${shop.slug}`} 
+            class="glass-card group animate-fade-in block overflow-hidden bg-card-bg border border-border/40 hover:border-primary/45 rounded-3xl hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-2 transition-all duration-300 h-full"
+            style={`animation-delay: ${index * 0.08}s`}
+          >
+            <div class="p-6">
+              <div class="flex items-center gap-4">
+                <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-orange-100/50 text-xl font-extrabold text-primary transition-transform group-hover:scale-105">
+                  {shop.logoImage ? (
+                    <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover rounded-2xl" />
+                  ) : (
+                    shop.name.charAt(0)
+                  )}
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-base font-bold text-secondary truncate group-hover:text-primary transition-colors">
+                    {shop.name}
+                  </h3>
+                  <p class="text-xs text-text-tertiary mt-0.5">
+                    {SHOP_CATEGORY_LABELS[shop.category as keyof typeof SHOP_CATEGORY_LABELS] || shop.category}
+                  </p>
+                </div>
+              </div>
+              
+              {shop.deals.length > 0 && (
+                <div class="mt-5 flex flex-wrap gap-2 pt-4 border-t border-border/20">
+                  {shop.deals.slice(0, 2).map((deal) => (
+                    <span
+                      class="badge border-none"
+                      style={`background-color: ${DEAL_CATEGORY_COLORS[deal.category as keyof typeof DEAL_CATEGORY_COLORS] || '#6B7280'}12; color: ${DEAL_CATEGORY_COLORS[deal.category as keyof typeof DEAL_CATEGORY_COLORS] || '#6B7280'}`}
+                    >
+                      {DEAL_CATEGORY_LABELS[deal.category as keyof typeof DEAL_CATEGORY_LABELS] || deal.category}
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              <div class="mt-5 flex items-center gap-1.5 text-xs font-bold text-primary opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                <span>เข้าชมหน้าร้าน</span>
+                <Icon name="arrow-right" class="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      <div class="mt-12 text-center">
+        <a href="/explore" class="btn btn-outline-gradient py-3 px-6 rounded-2xl text-xs font-bold">
+          <span>ดูร้านค้าทั้งหมด</span>
+          <Icon name="arrow-right" class="h-4 w-4 text-primary" />
+        </a>
+      </div>
+    </div>
+  </section>
+
+  {/* CTA Section */}
+  <section class="relative py-24 md:py-32 overflow-hidden bg-secondary border-t border-border/10">
+    {/* Floating Aura Spheres (Animated Shifting Mesh) */}
+    <div class="absolute top-[10%] left-[15%] w-[400px] h-[400px] rounded-full bg-primary/20 blur-[110px] animate-drift-1 pointer-events-none"></div>
+    <div class="absolute bottom-[10%] right-[10%] w-[450px] h-[450px] rounded-full bg-orange-500/15 blur-[120px] animate-drift-2 pointer-events-none"></div>
+    <div class="absolute top-[35%] right-[25%] w-[350px] h-[350px] rounded-full bg-accent/15 blur-[100px] animate-drift-3 pointer-events-none"></div>
+    
+    <div class="relative mx-auto max-w-4xl px-4 text-center z-10">
+      <h2 class="text-3xl font-extrabold text-white md:text-5xl tracking-tight leading-tight max-w-2xl mx-auto">
+        {lang === 'th' ? 'เริ่มสร้างหน้าโปรโมชันร้านของคุณได้แล้ววันนี้' : 'Drive Real Customers to Your Shop'}
+      </h2>
+      <p class="mt-6 text-base md:text-lg text-text-secondary dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
+        {lang === 'th' 
+          ? 'ลงทะเบียนฟรี! ใช้เวลาเพียง 2 นาที หน้าร้านก็พร้อมแชร์ดีลสุดปัง ดึงลูกค้าหน้าร้านจริงให้ยอดขายพุ่งกระฉูด'
+          : 'Sign up for free. It takes less than 2 minutes to publish coupons.'}
+      </p>
+      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="/onboarding" class="btn btn-primary py-4 px-8 rounded-2xl font-bold shadow-lg hover:shadow-primary/30 w-full sm:w-auto hover:scale-105 transition-transform duration-300">
+          <Icon name="rocket" class="h-5 w-5" />
+          <span>{lang === 'th' ? 'สร้างหน้าร้านคูปองฟรี' : 'Get Started For Free'}</span>
+        </a>
+        <a href="/explore" class="btn btn-secondary bg-white/5 border-white/10 hover:bg-white/10 text-white py-4 px-8 rounded-2xl font-bold w-full sm:w-auto">
+          <span>{lang === 'th' ? 'ดูตัวอย่างดีลรอบตัว' : 'Explore Sample Deals'}</span>
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .animate-drift-1 {
+    animation: drift1 22s ease-in-out infinite alternate;
+  }
+  .animate-drift-2 {
+    animation: drift2 26s ease-in-out infinite alternate;
+  }
+  .animate-drift-3 {
+    animation: drift3 18s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift1 {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(60px, -40px) scale(1.15);
+    }
+    100% {
+      transform: translate(-30px, 50px) scale(0.9);
+    }
+  }
+
+  @keyframes drift2 {
+    0% {
+      transform: translate(0, 0) scale(1.05);
+    }
+    50% {
+      transform: translate(-80px, 30px) scale(0.85);
+    }
+    100% {
+      transform: translate(40px, -60px) scale(1.2);
+    }
+  }
+
+  @keyframes drift3 {
+    0% {
+      transform: translate(0, 0) scale(0.95);
+    }
+    50% {
+      transform: translate(30px, 50px) scale(1.1);
+    }
+    100% {
+      transform: translate(-50px, -30px) scale(0.85);
+    }
+  }
+</style>

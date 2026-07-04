@@ -1,0 +1,200 @@
+---
+// src/pages/admin/moderation.astro
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Content Moderation">
+  <div class="mx-auto max-w-5xl px-4 py-8">
+    <h1 class="text-2xl font-bold text-secondary">🛡️ Content Moderation</h1>
+    <p class="mt-2 text-text-secondary">ตรวจสอบรายงานจากผู้ใช้</p>
+
+    {/* Stats */}
+    <div class="mt-6 grid grid-cols-3 gap-4">
+      <div class="rounded-xl border border-border bg-bg p-4 text-center">
+        <p class="text-sm text-text-secondary">รายงานทั้งหมด</p>
+        <p id="stat-total" class="mt-1 text-2xl font-bold text-secondary">-</p>
+      </div>
+      <div class="rounded-xl border border-border bg-bg p-4 text-center">
+        <p class="text-sm text-text-secondary">รอดำเนินการ</p>
+        <p id="stat-pending" class="mt-1 text-2xl font-bold text-orange-600">-</p>
+      </div>
+      <div class="rounded-xl border border-border bg-bg p-4 text-center">
+        <p class="text-sm text-text-secondary">ดำเนินการแล้ว</p>
+        <p id="stat-resolved" class="mt-1 text-2xl font-bold text-green-600">-</p>
+      </div>
+    </div>
+
+    {/* Filters */}
+    <div class="mt-6 flex gap-2">
+      <button class="filter-btn active" data-status="pending">รอดำเนินการ</button>
+      <button class="filter-btn" data-status="reviewed">ตรวจสอบแล้ว</button>
+      <button class="filter-btn" data-status="resolved">ดำเนินการแล้ว</button>
+      <button class="filter-btn" data-status="dismissed">ยกเลิก</button>
+    </div>
+
+    {/* Reports List */}
+    <div id="reports-list" class="mt-4 space-y-4">
+      <div class="flex items-center justify-center py-12">
+        <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .filter-btn {
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+  }
+  .filter-btn:hover {
+    background-color: var(--color-bg-tertiary);
+  }
+  .filter-btn.active {
+    background-color: var(--color-primary);
+    color: white;
+  }
+</style>
+
+<script>
+  let currentFilter = 'pending';
+
+  // Filter buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.getAttribute('data-status') || 'pending';
+      fetchReports();
+    });
+  });
+
+  async function fetchReports() {
+    try {
+      const res = await fetch(`/api/reports?status=${currentFilter}`);
+      const data = await res.json();
+
+      if (data.success) {
+        renderStats(data.data.stats);
+        renderReports(data.data.reports);
+      }
+    } catch (err) {
+      console.error('Failed to fetch reports:', err);
+    }
+  }
+
+  function renderStats(stats: any) {
+    document.getElementById('stat-total')!.textContent = stats.total;
+    document.getElementById('stat-pending')!.textContent = stats.pending;
+    document.getElementById('stat-resolved')!.textContent = stats.resolved;
+  }
+
+  function renderReports(reports: any[]) {
+    const container = document.getElementById('reports-list')!;
+
+    if (reports.length === 0) {
+      container.innerHTML = `
+        <div class="rounded-xl border border-dashed p-12 text-center">
+          <span class="text-4xl">✅</span>
+          <p class="mt-4 text-lg font-medium text-secondary">ไม่มีรายงาน</p>
+          <p class="mt-2 text-sm text-text-secondary">ไม่มีรายงานในสถานะนี้</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = reports.map(report => `
+      <div class="rounded-xl border border-border bg-bg p-4" data-report-id="${report.id}">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="badge ${getStatusBadge(report.status)}">${getStatusText(report.status)}</span>
+              <span class="text-sm text-text-tertiary">${report.targetType === 'shop' ? '🏪 ร้านค้า' : '🏷️ ดีล'}</span>
+            </div>
+            <p class="mt-2 text-sm font-medium text-secondary">
+              ${getReasonText(report.reason)}
+            </p>
+            ${report.description ? `<p class="mt-1 text-sm text-text-secondary">${report.description}</p>` : ''}
+            <p class="mt-2 text-xs text-text-tertiary">
+              ${new Date(report.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+
+          ${report.status === 'pending' ? `
+            <div class="flex gap-2">
+              <button onclick="takeAction('${report.id}', 'remove')" class="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600">
+                ลบเนื้อหา
+              </button>
+              <button onclick="takeAction('${report.id}', 'warn')" class="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-600">
+                ตักเตือน
+              </button>
+              <button onclick="takeAction('${report.id}', 'no_action')" class="rounded-lg bg-gray-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-600">
+                ไม่ดำเนินการ
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function getStatusBadge(status: string) {
+    const badges: Record<string, string> = {
+      pending: 'bg-orange-100 text-orange-700',
+      reviewed: 'bg-blue-100 text-blue-700',
+      resolved: 'bg-green-100 text-green-700',
+      dismissed: 'bg-gray-100 text-gray-700',
+    };
+    return badges[status] || badges.pending;
+  }
+
+  function getStatusText(status: string) {
+    const texts: Record<string, string> = {
+      pending: 'รอดำเนินการ',
+      reviewed: 'ตรวจสอบแล้ว',
+      resolved: 'ดำเนินการแล้ว',
+      dismissed: 'ยกเลิก',
+    };
+    return texts[status] || status;
+  }
+
+  function getReasonText(reason: string) {
+    const reasons: Record<string, string> = {
+      spam: 'สแปม',
+      fake: 'ข้อมูลเท็จ',
+      offensive: 'เนื้อหาไม่เหมาะสม',
+      scam: 'หลอกลวง',
+      expired: 'หมดอายุ',
+      incorrect: 'ข้อมูลผิด',
+      other: 'อื่นๆ',
+    };
+    return reasons[reason] || reason;
+  }
+
+  async function takeAction(reportId: string, action: string) {
+    try {
+      const res = await fetch(`/api/reports/${reportId}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+
+      if (res.ok) {
+        fetchReports();
+      }
+    } catch (err) {
+      console.error('Failed to take action:', err);
+    }
+  }
+
+  // Initial fetch
+  fetchReports();
+
+  // Make functions available globally
+  (window as any).takeAction = takeAction;
+</script>

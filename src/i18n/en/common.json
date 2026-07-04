@@ -1,0 +1,93 @@
+{
+  "brand": {
+    "name": "DealDoor",
+    "tagline": "Which Deal?",
+    "description": "Shareable shop promotion pages with auto-expiring deals"
+  },
+  "nav": {
+    "explore": "Explore Deals",
+    "createShop": "Create Shop Page",
+    "dashboard": "Dashboard"
+  },
+  "action": {
+    "share": "Share",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "close": "Close",
+    "viewMore": "View More",
+    "viewAll": "View All",
+    "save": "Save",
+    "loading": "Loading..."
+  },
+  "status": {
+    "open": "Open Now",
+    "closed": "Closed",
+    "active": "Active",
+    "inactive": "Inactive",
+    "expired": "Expired",
+    "expiringSoon": "Expiring Soon"
+  },
+  "time": {
+    "daysLeft": "{count} days left",
+    "hoursLeft": "{count} hours left",
+    "expiresToday": "Expires today",
+    "expired": "Expired",
+    "expiresOn": "Expires: {date}"
+  },
+  "category": {
+    "restaurant": "Restaurant",
+    "cafe": "Cafe",
+    "dessert": "Dessert",
+    "beauty": "Beauty",
+    "clinic": "Clinic",
+    "retail": "Retail",
+    "service": "Service",
+    "other": "Other"
+  },
+  "dealCategory": {
+    "birthday": "Birthday",
+    "monthly": "Monthly",
+    "festival": "Festival",
+    "special_day": "Special Day",
+    "senior": "Senior",
+    "kids": "Kids",
+    "student": "Student",
+    "flash": "Flash Deal",
+    "custom": "General"
+  },
+  "claimType": {
+    "copy_code": "Copy Code",
+    "show_at_shop": "Show at Shop",
+    "contact_shop": "Contact Shop",
+    "open_line": "Open LINE"
+  },
+  "empty": {
+    "noDeals": "No promotions yet",
+    "noDealsDesc": "This shop hasn't added any deals",
+    "noResults": "No results found",
+    "noResultsDesc": "Try searching with different keywords"
+  },
+  "error": {
+    "notFound": "Page not found",
+    "notFoundDesc": "This shop may not exist or the link may be incorrect",
+    "serverError": "Something went wrong",
+    "serverErrorDesc": "Please try again later"
+  },
+  "shopPage": {
+    "activeDeals": "Current Deals",
+    "menu": "Menu / Catalog",
+    "shopInfo": "Shop Information",
+    "address": "Address",
+    "openingHours": "Opening Hours",
+    "phone": "Phone",
+    "contactChannels": "Contact Channels",
+    "openMap": "Open Map",
+    "createdBy": "Powered by DealDoor",
+    "createYourPage": "Create Your Shop Page"
+  }
+}

@@ -1,0 +1,247 @@
+---
+// src/pages/auth/register.astro
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icon from '../../components/icons/index.astro';
+
+// ─── BACKEND WORKFLOW: AUTHENTICATED SESSION CHECK ───
+if (Astro.locals.user) {
+  return Astro.redirect('/dashboard');
+}
+// ─────────────────────────────────────────────────────
+---
+
+<BaseLayout title="สมัครสมาชิก">
+  <div class="min-h-[80vh] flex items-center justify-center py-10 px-4 relative">
+    {/* Background Glows */}
+    <div class="absolute top-10 right-10 bg-mesh bg-mesh-coral h-72 w-72 opacity-10"></div>
+    <div class="absolute bottom-10 left-10 bg-mesh bg-mesh-teal h-72 w-72 opacity-5"></div>
+
+    {/* Split Layout Container */}
+    <div class="w-full max-w-4xl glass rounded-3xl border border-border/40 overflow-hidden shadow-2xl flex flex-col md:flex-row relative z-10 min-h-[500px]">
+      
+      {/* Brand & Marketing Column (Left) */}
+      <div class="hidden md:flex flex-col justify-between p-10 bg-gradient-to-br from-primary via-primary-hover to-primary-dark text-white w-[42%] relative overflow-hidden">
+        {/* Decorative Circles */}
+        <div class="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl"></div>
+        <div class="absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-white/10 blur-2xl"></div>
+
+        <div class="relative z-10">
+          <div class="flex items-center gap-2">
+            <div class="h-8 w-8 rounded-xl bg-white/15 flex items-center justify-center">
+              <svg class="h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <span class="text-lg font-extrabold tracking-tight">DealDoor</span>
+          </div>
+          <h2 class="text-2xl font-extrabold mt-8 leading-snug">เปิดร้านของคุณ<br />เริ่มต้นใช้งานฟรี</h2>
+          <p class="text-xs text-white/80 mt-3 leading-relaxed">
+            สมัครบัญชีเพื่อเริ่มจัดการดีลและคูปองของร้านค้า เพิ่มยอดขายและดึงลูกค้าเข้ามาใช้สิทธิ์ถึงหน้าร้าน
+          </p>
+        </div>
+
+        <div class="relative z-10 text-[11px] text-white/60">
+          &copy; {new Date().getFullYear()} DealDoor Team
+        </div>
+      </div>
+
+      {/* Form Column (Right) */}
+      <div class="flex-1 p-8 sm:p-10 bg-bg/50 backdrop-blur-sm flex flex-col justify-center">
+        {/* Header */}
+        <div class="mb-6">
+          <h1 class="text-2xl font-extrabold text-secondary tracking-tight">สมัครสมาชิก</h1>
+          <p class="text-xs text-text-secondary mt-1.5">
+            กรอกข้อมูลสั้นๆ เพื่อเริ่มสร้างบัญชีผู้ขายของคุณ
+          </p>
+        </div>
+
+        {/* Social Authentication */}
+        <div class="grid grid-cols-2 gap-3">
+          <button class="btn btn-secondary py-2 px-3 rounded-xl text-xs font-bold justify-center border-border/60 hover:bg-bg-tertiary/50" disabled>
+            <Icon name="facebook" class="h-4.5 w-4.5 text-[#1877F2]" />
+            <span>Facebook</span>
+          </button>
+          <button class="btn btn-secondary py-2 px-3 rounded-xl text-xs font-bold justify-center border-border/60 hover:bg-bg-tertiary/50" disabled>
+            <Icon name="line" class="h-4.5 w-4.5 text-[#06C755]" />
+            <span>LINE</span>
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div class="relative my-5">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-border/40"></div>
+          </div>
+          <div class="relative flex justify-center text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
+            <span class="bg-bg-secondary px-3 py-0.5 rounded-full border border-border/20">หรือสมัครด้วยอีเมล</span>
+          </div>
+        </div>
+
+        {/* Register Form */}
+        <form id="register-form" class="space-y-4">
+          <div id="error-message" class="hidden flex items-start gap-2.5 rounded-2xl border border-danger/20 bg-danger-bg p-4 text-xs text-danger-text font-bold">
+            <Icon name="warning" class="h-4.5 w-4.5 flex-shrink-0 mt-0.5" />
+            <span></span>
+          </div>
+
+          <div>
+            <label for="name" class="block text-xs font-bold text-secondary uppercase tracking-wider">ชื่อผู้ใช้งาน / ชื่อร้าน</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              class="input mt-1.5 py-2.5"
+              placeholder="กรอกชื่อของคุณหรือร้านค้า"
+            />
+          </div>
+
+          <div>
+            <label for="email" class="block text-xs font-bold text-secondary uppercase tracking-wider">ที่อยู่อีเมล</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              class="input mt-1.5 py-2.5"
+              placeholder="name@example.com"
+            />
+          </div>
+
+          <div>
+            <label for="password" class="block text-xs font-bold text-secondary uppercase tracking-wider">รหัสผ่าน</label>
+            <div class="relative mt-1.5">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                minlength="8"
+                class="input pr-10 py-2.5"
+                placeholder="อย่างน้อย 8 ตัวอักษร"
+              />
+              <button
+                type="button"
+                id="toggle-password"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-primary transition-colors p-1"
+                aria-label="แสดงรหัสผ่าน"
+              >
+                <div id="eye-icon-wrapper">
+                  <Icon name="eye" class="h-4.5 w-4.5" />
+                </div>
+                <div id="eye-off-icon-wrapper" class="hidden">
+                  <Icon name="eye" class="h-4.5 w-4.5 text-primary" />
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            id="submit-btn"
+            class="btn btn-primary w-full justify-center py-3 rounded-xl font-bold shadow-md mt-6"
+          >
+            สมัครสมาชิก
+          </button>
+        </form>
+
+        <p class="mt-6 text-center text-xs text-text-secondary font-semibold">
+          มีบัญชีอยู่แล้ว?
+          <a href="/auth/login" class="font-bold text-primary hover:underline ml-1">เข้าสู่ระบบ</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  // Password visibility toggle
+  const togglePassword = document.getElementById('toggle-password');
+  const passwordInput = document.getElementById('password') as HTMLInputElement;
+  const eyeIcon = document.getElementById('eye-icon-wrapper');
+  const eyeOffIcon = document.getElementById('eye-off-icon-wrapper');
+
+  togglePassword?.addEventListener('click', () => {
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+    eyeIcon?.classList.toggle('hidden', !isPassword);
+    eyeOffIcon?.classList.toggle('hidden', isPassword);
+  });
+
+  // ─── BACKEND WORKFLOW: SUBMIT REGISTER REQUEST ───
+  const form = document.getElementById('register-form') as HTMLFormElement;
+  const errorMessage = document.getElementById('error-message');
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorMessage?.classList.add('hidden');
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<svg class="h-4 w-4 animate-spin mr-1.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> กำลังสมัครสมาชิก...';
+    }
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'same-origin',
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error?.message || 'เกิดข้อผิดพลาดในการสร้างบัญชี');
+      }
+
+      showToast('สมัครสมาชิกสำเร็จ', 'success');
+      
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
+    } catch (err: any) {
+      if (errorMessage) {
+        errorMessage.querySelector('span')!.textContent = err.message;
+        errorMessage.classList.remove('hidden');
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'สมัครสมาชิก';
+      }
+    }
+  });
+  // ─────────────────────────────────────────────────
+
+  // Toast notification alert helper
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `flex items-center gap-3 rounded-2xl px-4 py-3 shadow-xl text-xs font-bold animate-slide-down border ${
+      type === 'success' 
+        ? 'bg-[#10B981] border-[#10B981]/15 text-white' 
+        : 'bg-danger border-danger/15 text-white'
+    }`;
+    toast.innerHTML = `
+      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        ${type === 'success' 
+          ? '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />'
+          : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />'
+        }
+      </svg>
+      <span>${message}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+</script>

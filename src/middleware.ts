@@ -1,0 +1,136 @@
+// src/middleware.ts
+
+import { defineMiddleware } from 'astro:middleware';
+import { getUserFromRequest } from './lib/auth';
+import { getSecurityHeaders, getClientIp, apiLimiter, authLimiter } from './lib/security';
+
+export const onRequest = defineMiddleware(async (context, next) => {
+  const clientIp = getClientIp(context.request);
+  const method = context.request.method;
+  const path = context.url.pathname;
+  const requestId = crypto.randomUUID();
+
+  // Rate limiting for API routes
+  if (path.startsWith('/api/')) {
+    const { allowed, remaining, resetAt } = apiLimiter(clientIp);
+    
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: { 
+            code: 'RATE_LIMITED', 
+            message: 'คุณส่งคำขอมากเกินไป กรุณาลองใหม่ภายหลัง' 
+          } 
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
+            'X-RateLimit-Remaining': '0',
+          } 
+        }
+      );
+    }
+  }
+  
+  // Stricter rate limiting for auth routes
+  if (path.startsWith('/api/auth/')) {
+    const { allowed, remaining, resetAt } = authLimiter(clientIp);
+    
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: { 
+            code: 'RATE_LIMITED', 
+            message: 'คุณพยายามเข้าสู่ระบบมากเกินไป กรุณาลองใหม่ภายหลัง' 
+          } 
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
+          } 
+        }
+      );
+    }
+  }
+
+  // Get user from session (with error handling)
+  let user = null;
+  try {
+    user = await getUserFromRequest(context.cookies);
+  } catch (error) {
+    console.error('Auth error:', error);
+    // Continue without user if auth fails
+  }
+  context.locals.user = user;
+
+  // Protect dashboard routes
+  if (path.startsWith('/dashboard')) {
+    if (!user) {
+      return context.redirect('/auth/login');
+    }
+  }
+
+  // Protect admin routes (require admin role)
+  if (path.startsWith('/admin')) {
+    if (!user) {
+      return context.redirect('/auth/login');
+    }
+    // For MVP, any authenticated user can access admin
+    // In production, check for admin role: if (user.role !== 'admin') return context.redirect('/');
+  }
+
+  // Protect dashboard API routes
+  if (path.startsWith('/api/shops') || path.startsWith('/api/deals')) {
+    if (method !== 'GET' && !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: { code: 'UNAUTHORIZED', message: 'กรุณาเข้าสู่ระบบ' } }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+
+  // Process request
+  let response: Response;
+  try {
+    response = await next();
+  } catch (error) {
+    console.error('Request error:', error);
+    // Return a proper error response instead of throwing
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: { 
+          code: 'INTERNAL_ERROR', 
+          message: 'เกิดข้อผิดพลาด' 
+        } 
+      }),
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+  
+  // Add security headers
+  const securityHeaders = getSecurityHeaders();
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  
+  // Add request ID header
+  response.headers.set('X-Request-Id', requestId);
+  
+  // Add rate limit headers for API routes
+  if (path.startsWith('/api/')) {
+    const { remaining } = apiLimiter(clientIp);
+    response.headers.set('X-RateLimit-Remaining', String(remaining));
+  }
+
+  return response;
+});

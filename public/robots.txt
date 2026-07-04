@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /onboarding
+
+Sitemap: https://dealdoor.co/sitemap.xml

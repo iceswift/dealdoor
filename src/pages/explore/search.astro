@@ -1,0 +1,134 @@
+---
+// src/pages/explore/search.astro
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { db } from '../../lib/db';
+import { shops, deals } from '../../../db/schema';
+import { eq, and, gte, desc, like, or } from 'drizzle-orm';
+import CategoryChips from '../../components/explore/CategoryChips.astro';
+import SearchBar from '../../components/explore/SearchBar.tsx';
+import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
+import Icon from '../../components/icons/index.astro';
+
+export const prerender = false;
+
+// ─── BACKEND WORKFLOW: SEARCH SQL STATEMENT ───
+const query = Astro.url.searchParams.get('q')?.trim() || '';
+const now = new Date();
+let searchResults: { deal: typeof deals.$inferSelect; shop: typeof shops.$inferSelect }[] = [];
+
+if (query && query.length > 0) {
+  try {
+    const searchPattern = `%${query}%`;
+    
+    searchResults = await db
+      .select({
+        deal: deals,
+        shop: shops,
+      })
+      .from(deals)
+      .leftJoin(shops, eq(deals.shopId, shops.id))
+      .where(
+        and(
+          eq(deals.isActive, true),
+          gte(deals.endDate, now),
+          or(
+            like(deals.title, searchPattern),
+            like(deals.shortDescription, searchPattern),
+            like(deals.discountText, searchPattern),
+            like(shops.name, searchPattern)
+          )
+        )
+      )
+      .orderBy(desc(deals.createdAt))
+      .limit(50);
+  } catch (error) {
+    console.error('Search error:', error);
+  }
+}
+// ──────────────────────────────────────────────
+---
+
+<BaseLayout title={query ? `ค้นหา: ${query} | Explore` : 'ค้นหา | Explore'}>
+  {/* Ambient background decoration */}
+  <div class="relative min-h-screen">
+    <div class="absolute top-0 right-0 bg-mesh bg-mesh-coral h-72 w-72 opacity-10"></div>
+    <div class="absolute bottom-20 left-0 bg-mesh bg-mesh-teal h-72 w-72 opacity-5"></div>
+    
+    <div class="mx-auto max-w-4xl px-4 py-12 relative z-10">
+      {/* Header Row */}
+      <div class="flex items-center gap-4.5 border-b border-border/30 pb-6">
+        <a href="/explore" class="btn btn-secondary py-2.5 px-4 rounded-xl text-xs font-bold hover:bg-bg-tertiary">
+          <Icon name="chevron-left" class="h-4.5 w-4.5 text-primary" />
+          <span>กลับ</span>
+        </a>
+        <div>
+          <h1 class="text-2xl font-extrabold text-secondary tracking-tight">
+            {query ? `ผลการค้นหา: ${query}` : 'ค้นหา'}
+          </h1>
+          <p class="text-xs text-text-secondary mt-1">
+            ค้นหาคูปองดีลหรือร้านค้าด้วยคำสืบค้น
+          </p>
+        </div>
+      </div>
+
+      {/* Search Field Wrapper */}
+      <div class="mt-6">
+        <div class="glass-card p-2 rounded-2xl border border-border/40 shadow-lg max-w-xl">
+          <SearchBar client:load placeholder={query || 'ค้นหาดีล ร้านค้า...'} />
+        </div>
+      </div>
+
+      {/* Category Selection Chips */}
+      <div class="mt-6 overflow-hidden max-w-full">
+        <CategoryChips active="all" />
+      </div>
+
+      {/* Results List Grid */}
+      <section class="mt-8">
+        {query ? (
+          <>
+            <div class="mb-5 flex items-center justify-between">
+              <p class="text-xs font-bold text-text-secondary">
+                พบผลการค้นหา <span class="text-primary font-extrabold">{searchResults.length}</span> ดีล สำหรับคำค้นหา "<span class="text-secondary font-extrabold">{query}</span>"
+              </p>
+            </div>
+
+            {searchResults.length > 0 ? (
+              <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {searchResults.map(({ deal, shop }, index) => (
+                  <div class="animate-fade-in" style={`animation-delay: ${index * 0.04}s`}>
+                    {shop && <ExploreDealCard deal={deal} shop={shop} />}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="border border-dashed border-border/80 p-12 text-center rounded-2xl bg-bg-secondary/40 max-w-md mx-auto mt-8">
+                <div class="h-14 w-14 rounded-full bg-border/20 flex items-center justify-center mx-auto text-text-tertiary">
+                  <Icon name="search" class="h-7 w-7" />
+                </div>
+                <h3 class="mt-4 text-base font-bold text-secondary">ไม่พบดีลที่ใกล้เคียง</h3>
+                <p class="mt-1.5 text-xs text-text-secondary leading-relaxed">
+                  คำค้นของคุณไม่ตรงกับดีล คูปอง หรือร้านค้าใดๆ ในระบบ ลองใช้คำกว้างๆ เช่น ชาบู เสื้อผ้า อาหาร หรือร้านกาแฟ
+                </p>
+                <a href="/explore" class="btn btn-primary mt-6 py-2.5 px-6 rounded-xl text-xs font-bold shadow-md">
+                  สำรวจดีลทั้งหมด
+                </a>
+              </div>
+            )}
+          </>
+        ) : (
+          <div class="border border-dashed border-border/80 p-12 text-center rounded-2xl bg-bg-secondary/40 max-w-md mx-auto mt-8">
+            <div class="h-14 w-14 rounded-full bg-border/20 flex items-center justify-center mx-auto text-text-tertiary animate-pulse">
+              <Icon name="search" class="h-7 w-7" />
+            </div>
+            <h3 class="mt-4 text-base font-bold text-secondary">ค้นหาดีลและร้านค้า</h3>
+            <p class="mt-1.5 text-xs text-text-secondary leading-relaxed">
+              พิมพ์สิ่งที่คุณกำลังมองหาลงในช่องค้นหาด้านบน เพื่อค้นพบโปรโมชันที่ดีที่สุดรอบตัวคุณ
+            </p>
+          </div>
+        )}
+      </section>
+    </div>
+  </div>
+</BaseLayout>

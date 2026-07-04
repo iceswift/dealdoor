@@ -1,0 +1,38 @@
+---
+// src/components/shop/AccessibilityInfo.astro
+
+import type { Shop } from '../../db/schema';
+
+interface Props {
+  shop: Shop;
+}
+
+const { shop } = Astro.props;
+
+const features = [
+  { key: 'wheelchairAccessible', label: 'รถเข็นวีลแชร์', icon: '♿' },
+  { key: 'strollerAccessible', label: 'รถเข็นเด็ก', icon: '👶' },
+  { key: 'seniorFriendlyRestroom', label: 'ห้องน้ำผู้สูงอายุ', icon: '🚻' },
+  { key: 'elevatorAvailable', label: 'ลิฟท์', icon: '🛗' },
+  { key: 'brailleMenu', label: 'เมนูเบรลล์', icon: '📖' },
+];
+
+const activeFeatures = features.filter(f => shop[f.key as keyof Shop]);
+---
+
+{activeFeatures.length > 0 && (
+  <section class="mt-6">
+    <h2 class="mb-3 text-lg font-semibold text-secondary">♿ สิ่งอำนวยความสะดวก</h2>
+    <div class="flex flex-wrap gap-2">
+      {activeFeatures.map(feature => (
+        <div class="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+          <span class="text-lg">{feature.icon}</span>
+          <span class="text-sm font-medium text-green-800">{feature.label}</span>
+        </div>
+      ))}
+    </div>
+    {shop.accessibilityNotes && (
+      <p class="mt-2 text-sm text-text-secondary">{shop.accessibilityNotes}</p>
+    )}
+  </section>
+)}

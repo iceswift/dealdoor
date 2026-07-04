@@ -1,0 +1,115 @@
+---
+// src/pages/privacy/request.astro
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="ยื่นคำขอใช้สิทธิ์ข้อมูล">
+  <div class="mx-auto max-w-2xl px-4 py-8">
+    <h1 class="text-3xl font-bold text-secondary">ยื่นคำขอใช้สิทธิ์ข้อมูล</h1>
+    <p class="mt-2 text-text-secondary">
+      ภายใต้ PDPA คุณมีสิทธิ์เข้าถึง แก้ไข หรือลบข้อมูลส่วนบุคคลของคุณ
+    </p>
+
+    <form id="privacy-request-form" class="mt-8 space-y-6">
+      {/* Request Type */}
+      <div>
+        <label class="block text-sm font-medium text-secondary">ประเภทคำขอ *</label>
+        <div class="mt-2 space-y-2">
+          <label class="flex items-center gap-2">
+            <input type="radio" name="type" value="access" required />
+            <span class="text-sm">ขอสำเนาข้อมูล</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="type" value="rectification" />
+            <span class="text-sm">แก้ไขข้อมูลที่ไม่ถูกต้อง</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="type" value="erasure" />
+            <span class="text-sm">ลบข้อมูล</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="type" value="restriction" />
+            <span class="text-sm">จำกัดการประมวลผล</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="type" value="objection" />
+            <span class="text-sm">คัดค้านการประมวลผล</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Email */}
+      <div>
+        <label for="email" class="block text-sm font-medium text-secondary">
+          อีเมลที่ใช้สมัคร *
+        </label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          class="mt-1 w-full rounded-lg border border-border bg-bg px-4 py-3 text-sm focus:border-primary focus:outline-none"
+          placeholder="your@email.com"
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <label for="description" class="block text-sm font-medium text-secondary">
+          รายละเอียดเพิ่มเติม
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          rows={4}
+          class="mt-1 w-full rounded-lg border border-border bg-bg px-4 py-3 text-sm focus:border-primary focus:outline-none"
+          placeholder="อธิบายคำขอของคุณ (ไม่บังคับ)"
+        />
+      </div>
+
+      {/* Submit */}
+      <button
+        type="submit"
+        class="w-full rounded-lg bg-primary py-3 text-sm font-medium text-white hover:bg-primary-dark"
+      >
+        ส่งคำขอ
+      </button>
+
+      <p class="text-xs text-text-tertiary">
+        เราจะดำเนินการตามคำขอภายใน 30 วัน และจะแจ้งผลให้คุณทราบทางอีเมล
+      </p>
+    </form>
+
+    {/* Success Message */}
+    <div id="success-message" class="hidden mt-8 rounded-lg border border-green-200 bg-green-50 p-6 text-center">
+      <span class="text-4xl">✅</span>
+      <h2 class="mt-4 text-xl font-bold text-secondary">รับคำขอแล้ว</h2>
+      <p class="mt-2 text-text-secondary">
+        เราจะดำเนินการตามคำขอภายใน 30 วัน และจะแจ้งผลให้คุณทราบทางอีเมล
+      </p>
+      <a href="/" class="mt-4 inline-block rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white">
+        กลับหน้าแรก
+      </a>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('privacy-request-form');
+  const successMessage = document.getElementById('success-message');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(form as HTMLFormElement);
+    const data = Object.fromEntries(formData);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Show success
+    form.classList.add('hidden');
+    successMessage?.classList.remove('hidden');
+  });
+</script>

@@ -1,0 +1,36 @@
+---
+// src/components/shop/PetPolicy.astro
+
+import type { Shop } from '../../db/schema';
+
+interface Props {
+  shop: Shop;
+}
+
+const { shop } = Astro.props;
+
+const petFeatures = [
+  { key: 'petFriendly', label: 'นำสัตว์เลี้ยงเข้าได้', icon: '🐾' },
+  { key: 'petMenu', label: 'เมนูสัตว์เลี้ยง', icon: '🍖' },
+  { key: 'petWaterBowl', label: 'ชามน้ำสำหรับสัตว์', icon: '💧' },
+];
+
+const activePetFeatures = petFeatures.filter(f => shop[f.key as keyof Shop]);
+---
+
+{activePetFeatures.length > 0 && (
+  <section class="mt-6">
+    <h2 class="mb-3 text-lg font-semibold text-secondary">🐾 นโยบายสัตว์เลี้ยง</h2>
+    <div class="flex flex-wrap gap-2">
+      {activePetFeatures.map(feature => (
+        <div class="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
+          <span class="text-lg">{feature.icon}</span>
+          <span class="text-sm font-medium text-purple-800">{feature.label}</span>
+        </div>
+      ))}
+    </div>
+    {shop.petNotes && (
+      <p class="mt-2 text-sm text-text-secondary">{shop.petNotes}</p>
+    )}
+  </section>
+)}

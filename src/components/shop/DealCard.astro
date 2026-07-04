@@ -1,0 +1,216 @@
+---
+// src/components/shop/DealCard.astro
+
+import type { Deal } from '../../db/schema';
+import { DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS, CLAIM_TYPE_LABELS } from '../../lib/constants';
+import CountdownBadge from '../shared/CountdownBadge.astro';
+import CategoryBadge from '../shared/CategoryBadge.astro';
+import SaveButton from '../shared/SaveButton.tsx';
+import Icon from '../icons/index.astro';
+import type { DealCategory, ClaimType } from '../../lib/constants';
+
+interface Props {
+  // ─── BACKEND DATABASE BINDINGS ───
+  deal: Deal;
+  shopLineId?: string | null;
+  // ─────────────────────────────────
+}
+
+const { deal, shopLineId } = Astro.props;
+
+// ─── BACKEND DATABASE PROPERTIES ───
+const now = new Date();
+const endDate = new Date(deal.endDate);
+const isExpired = !deal.isActive || endDate < now;
+const categoryLabel = DEAL_CATEGORY_LABELS[deal.category as DealCategory] || deal.category;
+const claimLabel = CLAIM_TYPE_LABELS[deal.claimType as ClaimType] || deal.claimType;
+const categoryColor = DEAL_CATEGORY_COLORS[deal.category as DealCategory] || '#6B7280';
+// ───────────────────────────────────
+---
+
+<article
+  class:list={[
+    'card relative overflow-hidden group transition-all duration-300 border border-border/50 bg-card-bg/60 backdrop-blur-sm rounded-2xl hover:border-primary/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5',
+    isExpired && 'opacity-65 grayscale-[30%]',
+  ]}
+  data-deal-id={deal.id}
+  aria-label={`ดีล: ${deal.title}`}
+>
+  {/* Category Accent Bar & Glow */}
+  <div class="h-1.5 w-full relative overflow-hidden" style={`background-color: ${categoryColor}`}>
+    <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+  </div>
+  
+  {/* Category Badge & Countdown */}
+  <div class="flex items-center justify-between px-5 py-4 relative z-10">
+    <CategoryBadge category={deal.category as DealCategory} />
+    <div class="transform group-hover:scale-102 transition-transform">
+      <CountdownBadge endDate={endDate} />
+    </div>
+  </div>
+
+  {/* Deal Content */}
+  <div class="px-5 pb-5 relative z-10">
+    <h3 class="text-lg font-bold tracking-tight text-secondary group-hover:text-primary transition-colors duration-200">
+      {deal.title}
+    </h3>
+    
+    {deal.shortDescription && (
+      <p class="mt-2 text-sm text-text-secondary line-clamp-2 leading-relaxed">{deal.shortDescription}</p>
+    )}
+
+    {deal.discountText && (
+      <div class="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-border/20 transition-all duration-300 group-hover:scale-103" style={`background-color: ${categoryColor}12`}>
+        <Icon name="tag" class="h-4.5 w-4.5" style={`color: ${categoryColor}`} />
+        <span class="font-extrabold text-sm" style={`color: ${categoryColor}`}>{deal.discountText}</span>
+      </div>
+    )}
+
+    {isExpired && (
+      <div class="absolute inset-0 flex items-center justify-center bg-bg/95 backdrop-blur-md transition-all duration-300">
+        <div class="text-center p-6 rounded-2xl bg-bg-secondary border border-border/40">
+          <div class="h-12 w-12 rounded-full bg-border/20 flex items-center justify-center mx-auto text-text-tertiary">
+            <Icon name="clock" class="h-6 w-6" />
+          </div>
+          <p class="mt-3 font-bold text-text-secondary text-sm">หมดอายุแล้ว</p>
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* Actions */}
+  {!isExpired && (
+    <div class="flex items-center gap-3 border-t border-border/50 px-5 py-4 bg-bg-secondary/40 backdrop-blur-sm relative z-10">
+      {deal.claimType === 'copy_code' && deal.couponCode && (
+        <button
+          class="btn btn-primary py-2.5 px-4 flex-1 rounded-xl text-xs font-bold copy-code-btn"
+          data-code={deal.couponCode}
+          aria-label={`คัดลอกโค้ด ${deal.couponCode}`}
+        >
+          <Icon name="copy" class="h-4 w-4" />
+          <span>{claimLabel}</span>
+        </button>
+      )}
+      {deal.claimType === 'show_at_shop' && (
+        <button class="btn btn-secondary py-2.5 px-4 flex-1 rounded-xl text-xs font-bold hover:bg-bg-tertiary">
+          <Icon name="store" class="h-4 w-4 text-primary" />
+          <span>{claimLabel}</span>
+        </button>
+      )}
+      {deal.claimType === 'contact_shop' && (
+        <button class="btn btn-secondary py-2.5 px-4 flex-1 rounded-xl text-xs font-bold hover:bg-bg-tertiary">
+          <Icon name="chat" class="h-4 w-4 text-primary" />
+          <span>{claimLabel}</span>
+        </button>
+      )}
+      {deal.claimType === 'open_line' && shopLineId && (
+        <a
+          href={shopLineId.startsWith('@') ? `https://line.me/ti/p/${shopLineId}` : shopLineId}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-[#06C755] text-white hover:bg-[#05B34C] border-none shadow-md shadow-[#06C755]/10 hover:shadow-[#06C755]/20"
+        >
+          <Icon name="line" class="h-4 w-4" />
+          <span>{claimLabel}</span>
+        </a>
+      )}
+      
+      <div class="flex items-center gap-1.5 ml-1">
+        <SaveButton client:visible dealId={deal.id} />
+        <button
+          class="btn btn-ghost p-2.5 rounded-xl hover:bg-bg-tertiary transition-colors share-deal-btn"
+          data-deal-id={deal.id}
+          data-deal-title={deal.title}
+          aria-label={`แชร์ดีล ${deal.title}`}
+        >
+          <Icon name="share" class="h-4.5 w-4.5" />
+        </button>
+      </div>
+    </div>
+  )}
+</article>
+
+<script>
+  // Copy code functionality
+  document.querySelectorAll('.copy-code-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const code = btn.getAttribute('data-code');
+      if (code) {
+        try {
+          await navigator.clipboard.writeText(code);
+          const originalHTML = btn.innerHTML;
+          btn.innerHTML = '<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> คัดลอกแล้ว!';
+          btn.classList.add('!bg-green-500', '!text-white', '!border-transparent', 'shadow-lg');
+          
+          setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('!bg-green-500', '!text-white', '!border-transparent', 'shadow-lg');
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy:', err);
+        }
+      }
+    });
+  });
+
+  // Share functionality
+  document.querySelectorAll('.share-deal-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const dealId = btn.getAttribute('data-deal-id');
+      const dealTitle = btn.getAttribute('data-deal-title');
+      const url = `${window.location.origin}${window.location.pathname}?deal=${dealId}`;
+      const text = `ดูดีล "${dealTitle}" จาก DealDoor`;
+      
+      // Remove any existing share menus
+      document.querySelectorAll('.share-menu').forEach(m => m.remove());
+      
+      // Try native share first (mobile)
+      if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+        try {
+          await navigator.share({ title: dealTitle, text, url });
+          return;
+        } catch (err) {
+          // User cancelled, show manual options
+        }
+      }
+      
+      // Show premium share menu
+      const menu = document.createElement('div');
+      menu.className = 'share-menu absolute bottom-full right-0 mb-3 w-52 rounded-2xl border border-border/80 bg-bg/95 backdrop-blur-md shadow-xl z-50 overflow-hidden animate-scale-in p-1';
+      menu.innerHTML = `
+        <a href="https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}" 
+           target="_blank" rel="noopener"
+           class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-bg-secondary rounded-xl transition-colors border-b border-border/40">
+          <svg class="h-5 w-5 text-[#06C755]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 5.82 2 10.5c0 2.72 1.48 5.15 3.79 6.87-.15.56-.57 2.06-.65 2.38-.1.38.14.38.29.28.11-.08 1.83-1.26 2.57-1.78.82.12 1.67.18 2.57.18 5.52 0 10-3.82 10-8.5S17.52 2 12 2z"/></svg>
+          <span class="text-secondary font-semibold">แชร์ทาง LINE</span>
+        </a>
+        <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" 
+           target="_blank" rel="noopener"
+           class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-bg-secondary rounded-xl transition-colors border-b border-border/40">
+          <svg class="h-5 w-5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          <span class="text-secondary font-semibold">Facebook</span>
+        </a>
+        <button onclick="navigator.clipboard.writeText('${url}').then(() => { this.querySelector('span').textContent = 'คัดลอกสำเร็จ!'; this.querySelector('svg').style.color = '#10B981'; })" 
+           class="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-bg-secondary rounded-xl transition-colors">
+          <svg class="h-5 w-5 text-text-tertiary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span class="text-secondary font-semibold">คัดลอกลิงก์</span>
+        </button>
+      `;
+      
+      btn.parentElement.style.position = 'relative';
+      btn.parentElement.appendChild(menu);
+      
+      // Close on click outside
+      const closeMenu = (e) => {
+        if (!menu.contains(e.target) && e.target !== btn) {
+          menu.remove();
+          document.removeEventListener('click', closeMenu);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', closeMenu), 10);
+    });
+  });
+</script>

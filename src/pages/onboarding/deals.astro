@@ -1,0 +1,14 @@
+---
+// src/pages/onboarding/deals.astro
+
+import OnboardingLayout from '../../layouts/OnboardingLayout.astro';
+import DealQuickAdd from '../../components/onboarding/DealQuickAdd.tsx';
+---
+
+<OnboardingLayout title="เพิ่มดีล" currentStep={2}>
+  <DealQuickAdd
+    client:load
+    onNext={() => window.location.href = '/onboarding/complete'}
+    onBack={() => window.location.href = '/onboarding'}
+  />
+</OnboardingLayout>
