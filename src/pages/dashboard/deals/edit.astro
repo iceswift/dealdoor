@@ -2,38 +2,24 @@
 // src/pages/dashboard/deals/edit.astro
 
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
-import { getMerchantFromUser, getMerchantShop } from '../../../lib/auth';
 import DealFormEditWrapper from '../../../components/dashboard/DealFormEditWrapper.tsx';
-import Icon from '../../../components/icons/index.astro';
+import { requireDashboardShop } from '../../../lib/dashboard/server';
 
-const user = Astro.locals.user;
-if (!user) {
-  return Astro.redirect('/auth/login');
-}
-
-const merchant = await getMerchantFromUser(user.id);
-const shop = merchant ? await getMerchantShop(merchant.id) : null;
-
-if (!shop) {
+try {
+  await requireDashboardShop(Astro.locals.user);
+} catch {
   return Astro.redirect('/dashboard');
 }
 ---
 
-<DashboardLayout title="แก้ไขดีล" activeTab="deals" hideMobileNav={true}>
+<DashboardLayout title="แก้ไขดีล" activeTab="deals">
   <div class="space-y-6">
-    <div class="flex items-center gap-3.5 border-b border-border/30 pb-4">
-      <a href="/dashboard/deals" class="btn btn-secondary py-2 px-3.5 rounded-xl text-xs font-bold hover:bg-bg-tertiary">
-        <Icon name="chevron-left" class="h-4 w-4 text-primary" />
-        <span>กลับ</span>
-      </a>
-      <div>
-        <h2 class="text-base font-bold text-secondary">แก้ไขคูปองโปรโมชัน</h2>
-        <p class="text-xs text-text-secondary mt-0.5">ปรับข้อเสนอ เงื่อนไข หรือวันสิ้นสุดของคูปอง</p>
-      </div>
-    </div>
+    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+      <p class="text-xs font-black uppercase tracking-wider text-primary">Edit Deal</p>
+      <h1 class="text-2xl font-black text-secondary">แก้ไขดีล</h1>
+      <p class="mt-1 text-sm font-bold text-text-secondary">โหลดข้อมูลจาก id ใน URL และตรวจสิทธิ์ผ่าน API ของร้านคุณ</p>
+    </section>
 
-    <div class="rounded-3xl border border-border/40 bg-card-bg/60 backdrop-blur-sm p-6 shadow-md">
-      <DealFormEditWrapper client:only="react" shopId={shop.id} />
-    </div>
+    <DealFormEditWrapper client:load />
   </div>
 </DashboardLayout>

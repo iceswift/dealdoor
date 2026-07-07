@@ -2,35 +2,23 @@
 // src/pages/dashboard/edit.astro
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getMerchantFromUser, getMerchantShop } from '../../lib/auth';
 import ShopFormWrapper from '../../components/dashboard/ShopFormWrapper.tsx';
-import Icon from '../../components/icons/index.astro';
+import { getDashboardContext } from '../../lib/dashboard/server';
 
-const user = Astro.locals.user;
-if (!user) {
+const context = await getDashboardContext(Astro.locals.user);
+if (!context) {
   return Astro.redirect('/auth/login');
-}
-
-const merchant = await getMerchantFromUser(user.id);
-const shop = merchant ? await getMerchantShop(merchant.id) : null;
-
-if (!shop) {
-  return Astro.redirect('/dashboard');
 }
 ---
 
-<DashboardLayout title="แก้ไขร้านค้า" activeTab="edit">
+<DashboardLayout title="ข้อมูลร้านค้า" activeTab="edit">
   <div class="space-y-6">
-    <div class="flex items-center gap-3.5 border-b border-border/30 pb-4">
-      <div class="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-        <Icon name="pencil" class="h-5 w-5" />
-      </div>
-      <div>
-        <h2 class="text-base font-bold text-secondary">แก้ไขรายละเอียดร้านค้า</h2>
-        <p class="text-xs text-text-secondary mt-0.5">อัปเดตข้อมูลร้านค้า รูปภาพ และช่องทางติดต่อ</p>
-      </div>
-    </div>
+    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+      <p class="text-xs font-black uppercase tracking-wider text-primary">Shop Profile</p>
+      <h1 class="text-2xl font-black text-secondary">{context.shop ? 'แก้ไขข้อมูลร้านค้า' : 'สร้างร้านค้า'}</h1>
+      <p class="mt-1 text-sm font-bold text-text-secondary">ข้อมูลนี้ถูกใช้กับหน้าร้าน การ์ดดีล หน้า Explore และ Pin Map</p>
+    </section>
 
-    <ShopFormWrapper client:load shop={shop} merchantId={merchant.id} />
+    <ShopFormWrapper client:load shop={context.shop} />
   </div>
 </DashboardLayout>

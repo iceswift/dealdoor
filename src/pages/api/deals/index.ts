@@ -2,63 +2,44 @@
 
 import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
-import { deals, shops } from '../../../../db/schema';
-import { eq, and, gte } from 'drizzle-orm';
+import { deals } from '../../../../db/schema';
 import { createId } from '@paralleldrive/cuid2';
-import { handleApiError, badRequest, notFound, unprocessable } from '../../../lib/errors';
+import { eq } from 'drizzle-orm';
+import { handleApiError, badRequest, unprocessable } from '../../../lib/errors';
 import { dealSchema, validateInput } from '../../../lib/validations';
+import {
+  hasReachedActiveDealLimit,
+  json,
+  listDashboardDeals,
+  requireDashboardShop,
+} from '../../../lib/dashboard/server';
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ locals }) => {
   try {
-    const shopId = url.searchParams.get('shopId');
-
-    if (shopId) {
-      const shopDeals = await db.select().from(deals).where(eq(deals.shopId, shopId));
-      return new Response(
-        JSON.stringify({ success: true, data: shopDeals }),
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const allDeals = await db.select().from(deals);
-    return new Response(
-      JSON.stringify({ success: true, data: allDeals }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    const { shop } = await requireDashboardShop(locals.user);
+    const shopDeals = await listDashboardDeals(shop.id);
+    return json({ success: true, data: shopDeals });
   } catch (error) {
     return handleApiError(error);
   }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
+    const { shop } = await requireDashboardShop(locals.user);
     const rawData = await request.json();
 
-    // Validate with Zod
     const validation = validateInput(dealSchema, rawData);
     if (!validation.success) {
-      throw badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', validation.errors);
+      throw badRequest('VALIDATION_ERROR', 'ข้อมูลดีลไม่ถูกต้อง', validation.errors);
     }
 
     const data = validation.data!;
-
-    // Check if shop exists
-    const shop = await db.select().from(shops).where(eq(shops.id, data.shopId!)).get();
-    if (!shop) {
-      throw notFound('ไม่พบข้อมูลร้าน');
-    }
-
-    // Check deal limit
-    const now = new Date();
-    const activeDeals = await db
-      .select()
-      .from(deals)
-      .where(and(eq(deals.shopId, data.shopId!), eq(deals.isActive, true), gte(deals.endDate, now)));
-
-    if (activeDeals.length >= (shop.maxActiveDeals ?? 6)) {
-      throw unprocessable('DEAL_LIMIT_REACHED', `จำกัดดีลสูงสุด ${shop.maxActiveDeals ?? 6} ดีล`, {
-        current: activeDeals.length,
-        max: shop.maxActiveDeals ?? 6,
+    const limit = await hasReachedActiveDealLimit(shop);
+    if (limit.reached) {
+      throw unprocessable('DEAL_LIMIT_REACHED', `แพ็กเกจของคุณเปิดดีลพร้อมกันได้สูงสุด ${limit.max} ดีล`, {
+        current: limit.current,
+        max: limit.max,
         tier: shop.tier,
       });
     }
@@ -67,7 +48,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     await db.insert(deals).values({
       id: dealId,
-      shopId: data.shopId!,
+      shopId: shop.id,
       title: data.title,
       category: data.category,
       description: data.description || null,
@@ -84,10 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const newDeal = await db.select().from(deals).where(eq(deals.id, dealId)).get();
 
-    return new Response(
-      JSON.stringify({ success: true, data: newDeal }),
-      { status: 201, headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ success: true, data: newDeal }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }

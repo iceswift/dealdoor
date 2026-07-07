@@ -5,45 +5,44 @@ import { db } from '../../../lib/db';
 import { shops } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
-import { handleApiError, badRequest } from '../../../lib/errors';
+import { handleApiError, badRequest, conflict } from '../../../lib/errors';
 import { shopSchema, validateInput } from '../../../lib/validations';
 import { sanitizeSlug } from '../../../lib/security';
+import { json, requireDashboardContext } from '../../../lib/dashboard/server';
 
 export const GET: APIRoute = async () => {
   try {
     const allShops = await db.select().from(shops);
-    return new Response(
-      JSON.stringify({ success: true, data: allShops }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ success: true, data: allShops });
   } catch (error) {
     return handleApiError(error);
   }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    const rawData = await request.json();
+    const { merchant, shop: existingShop } = await requireDashboardContext(locals.user);
+    if (existingShop) {
+      throw conflict('SHOP_ALREADY_EXISTS', 'บัญชีนี้มีร้านค้าแล้ว');
+    }
 
-    const validation = validateInput(shopSchema, rawData);
+    const rawData = await request.json();
+    const validation = validateInput(shopSchema.omit({ merchantId: true }), rawData);
     if (!validation.success) {
-      throw badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', validation.errors);
+      throw badRequest('VALIDATION_ERROR', 'ข้อมูลร้านค้าไม่ถูกต้อง', validation.errors);
     }
 
     const data = validation.data!;
     const slug = sanitizeSlug(data.name);
-
-    const existing = await db.select().from(shops).where(eq(shops.slug, slug)).get();
-    if (existing) {
-      throw badRequest('SLUG_TAKEN', 'ลิงก์นี้ถูกใช้แล้ว', { slug });
+    const existingSlug = await db.select().from(shops).where(eq(shops.slug, slug)).get();
+    if (existingSlug) {
+      throw badRequest('SLUG_TAKEN', 'ลิงก์ร้านนี้ถูกใช้แล้ว', { slug });
     }
 
     const shopId = createId();
-    const merchantId = data.merchantId || createId();
-
     await db.insert(shops).values({
       id: shopId,
-      merchantId,
+      merchantId: merchant.id,
       slug,
       name: data.name,
       description: data.description || null,
@@ -94,11 +93,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     const newShop = await db.select().from(shops).where(eq(shops.id, shopId)).get();
-
-    return new Response(
-      JSON.stringify({ success: true, data: newShop }),
-      { status: 201, headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ success: true, data: newShop }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }

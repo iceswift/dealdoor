@@ -2,53 +2,42 @@
 // src/pages/dashboard/deals.astro
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getMerchantFromUser, getMerchantShop } from '../../lib/auth';
 import DealList from '../../components/dashboard/DealList.tsx';
 import Icon from '../../components/icons/index.astro';
+import { listDashboardDeals, requireDashboardShop } from '../../lib/dashboard/server';
 
-const user = Astro.locals.user;
-if (!user) {
+let context;
+try {
+  context = await requireDashboardShop(Astro.locals.user);
+} catch {
   return Astro.redirect('/auth/login');
 }
 
-const merchant = await getMerchantFromUser(user.id);
-const shop = merchant ? await getMerchantShop(merchant.id) : null;
-
-if (!shop) {
-  return Astro.redirect('/dashboard');
-}
+const { shop } = context;
+const dealRows = await listDashboardDeals(shop.id);
+const maxDeals = shop.maxActiveDeals ?? 6;
 ---
 
 <DashboardLayout title="จัดการดีล" activeTab="deals">
   <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-4">
-      <div class="flex items-center gap-3.5">
-        <div class="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-          <Icon name="tag" class="h-5 w-5" />
+    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-start gap-3">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Icon name="tag" class="h-5 w-5" />
+          </div>
+          <div>
+            <p class="text-xs font-black uppercase tracking-wider text-primary">Deals</p>
+            <h1 class="text-2xl font-black text-secondary">จัดการดีลและคูปอง</h1>
+            <p class="mt-1 text-sm font-bold text-text-secondary">ดีลทั้งหมดในหน้านี้เป็นของร้าน {shop.name} เท่านั้น</p>
+          </div>
         </div>
-        <div>
-          <h2 class="text-base font-bold text-secondary">จัดการโปรโมชัน / ดีลร้านค้า</h2>
-          <p class="text-xs text-text-secondary mt-0.5">เพิ่ม ลบ หรือแก้ไขคูปองเพื่อดึงดูดลูกค้า</p>
-        </div>
+        <a href="/dashboard/deals/new" class="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-primary px-5 text-sm font-black text-white shadow-lg shadow-primary/20">
+          เพิ่มดีลใหม่
+        </a>
       </div>
+    </section>
 
-      <a
-        href="/dashboard/deals/new"
-        class="btn btn-primary py-2 px-4 rounded-xl text-xs font-bold shadow-md self-start sm:self-center"
-      >
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-        <span>เพิ่มดีลใหม่</span>
-      </a>
-    </div>
-
-    <div class="rounded-3xl border border-border/40 bg-card-bg/60 backdrop-blur-sm p-6 shadow-md">
-      <DealList
-        client:load
-        shopId={shop.id}
-        maxDeals={shop.maxActiveDeals}
-      />
-    </div>
+    <DealList client:load initialDeals={dealRows} maxDeals={maxDeals} />
   </div>
 </DashboardLayout>

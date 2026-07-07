@@ -2,60 +2,51 @@
 // src/pages/dashboard/preview.astro
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { db } from '../../lib/db';
-import { shops } from '../../../db/schema';
 import Icon from '../../components/icons/index.astro';
+import { requireDashboardShop } from '../../lib/dashboard/server';
 
-// ─── BACKEND WORKFLOW: MERCHANT SHOP PREVIEW RETRIEVAL ───
-// MVP: Fetch the active store for preview.
-const shop = await db.select().from(shops).limit(1).get();
-
-if (!shop) {
+let context;
+try {
+  context = await requireDashboardShop(Astro.locals.user);
+} catch {
   return Astro.redirect('/dashboard');
 }
-// ─────────────────────────────────────────────────────────
+
+const { shop } = context;
 ---
 
-<DashboardLayout title="ดูตัวอย่างหน้าร้าน" activeTab="preview">
+<DashboardLayout title="พรีวิวหน้าร้าน" activeTab="preview">
   <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-4">
-      <div class="flex items-center gap-3.5">
-        <div class="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-          <Icon name="eye" class="h-5 w-5" />
+    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-start gap-3">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Icon name="eye" class="h-5 w-5" />
+          </div>
+          <div>
+            <p class="text-xs font-black uppercase tracking-wider text-primary">Preview</p>
+            <h1 class="text-2xl font-black text-secondary">พรีวิวหน้าร้าน</h1>
+            <p class="mt-1 text-sm font-bold text-text-secondary">ดูหน้าที่ลูกค้าจะเห็นก่อนนำลิงก์ไปแชร์</p>
+          </div>
         </div>
-        <div>
-          <h2 class="text-base font-bold text-secondary">จำลอง / ดูตัวอย่างหน้าโปรโมชัน</h2>
-          <p class="text-xs text-text-secondary mt-0.5">พรีวิวหน้าร้านค้าของคุณก่อนที่จะนำลิงก์ไปแชร์ลงโซเชียล</p>
-        </div>
+        <a href={`/${shop.slug}`} target="_blank" class="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-primary px-5 text-sm font-black text-white">
+          เปิดหน้าจริง
+        </a>
       </div>
-      
-      <a
-        href={`/${shop.slug}`}
-        target="_blank"
-        class="btn btn-primary py-2 px-4 rounded-xl text-xs font-bold shadow-md self-start sm:self-center"
-      >
-        <span>เปิดหน้าร้านจริง</span>
-        <Icon name="arrow-right" class="h-4 w-4" />
-      </a>
-    </div>
+    </section>
 
-    <div class="overflow-hidden rounded-3xl border border-border/50 shadow-xl bg-card-bg/60 backdrop-blur-sm">
-      <div class="bg-bg-secondary px-4 py-3 border-b border-border/40 flex items-center gap-2">
+    <section class="overflow-hidden rounded-3xl border border-border/50 bg-card-bg shadow-xl">
+      <div class="flex items-center gap-2 border-b border-border/40 bg-bg-secondary px-4 py-3">
         <div class="flex gap-1.5">
           <span class="h-3 w-3 rounded-full bg-red-400"></span>
           <span class="h-3 w-3 rounded-full bg-yellow-400"></span>
           <span class="h-3 w-3 rounded-full bg-green-400"></span>
         </div>
-        <div class="flex-1 max-w-md mx-auto bg-bg rounded-xl border border-border/30 py-1 px-3 text-center text-[10px] text-text-tertiary select-none font-semibold truncate">
+        <div class="mx-auto max-w-md flex-1 truncate rounded-xl border border-border/30 bg-bg px-3 py-1 text-center text-xs font-bold text-text-tertiary">
           https://dealdoor.co/{shop.slug}
         </div>
       </div>
-      
-      <iframe
-        src={`/${shop.slug}`}
-        class="h-[600px] w-full"
-        title="Preview Frame"
-      />
-    </div>
+      <iframe src={`/${shop.slug}`} class="h-[70vh] w-full" title={`Preview ${shop.name}`}></iframe>
+    </section>
   </div>
 </DashboardLayout>

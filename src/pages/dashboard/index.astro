@@ -2,227 +2,144 @@
 // src/pages/dashboard/index.astro
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { db } from '../../lib/db';
-import { deals } from '../../../db/schema';
-import { eq, and } from 'drizzle-orm';
-import { getMerchantFromUser, getMerchantShop } from '../../lib/auth';
-import { getShopStats, getTopDeals } from '../../lib/analytics';
-import { getTierLimits, type Tier } from '../../lib/tiers';
 import SharePanel from '../../components/dashboard/SharePanel.tsx';
-import SetupProgress from '../../components/dashboard/SetupProgress.tsx';
-import StatCards from '../../components/dashboard/StatCards.tsx';
-import DealSnapshot from '../../components/dashboard/DealSnapshot.astro';
-import ExploreReadiness from '../../components/dashboard/ExploreReadiness.astro';
 import UpgradeBanner from '../../components/dashboard/UpgradeBanner.tsx';
 import Icon from '../../components/icons/index.astro';
+import { getDashboardContext, getDashboardOverview } from '../../lib/dashboard/server';
 
-const user = Astro.locals.user;
-if (!user) {
+const context = await getDashboardContext(Astro.locals.user);
+if (!context) {
   return Astro.redirect('/auth/login');
 }
 
-const merchant = await getMerchantFromUser(user.id);
-const shop = merchant ? await getMerchantShop(merchant.id) : null;
-const tier: Tier = (shop?.tier as Tier) || 'free';
-const maxDeals = getTierLimits(tier).maxActiveDeals;
+const { user, shop } = context;
+const overview = shop ? await getDashboardOverview(shop) : null;
 
-// ─── Metrics: build a continuous 60-day daily series for the stat cards ───
-const DAYS = 60;
-let daily: { date: string; views: number; shares: number; clicks: number }[] = [];
-
-// ─── Deal snapshot: top active deals by views ───
-let snapshotDeals: {
-  id: string;
-  title: string;
-  discountText: string | null;
-  imageUrl: string | null;
-  endDate: Date;
-  views: number;
-}[] = [];
-let activeDealCount = 0;
-
-if (shop) {
-  const { stats } = await getShopStats(shop.id, DAYS);
-  const byDate = new Map(stats.map(s => [s.date, s]));
-  for (let i = DAYS - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - i);
-    const key = d.toISOString().split('T')[0];
-    const row = byDate.get(key);
-    daily.push({
-      date: key,
-      views: row?.pageViews || 0,
-      shares: row?.shares || 0,
-      clicks: row?.dealClicks || 0,
-    });
-  }
-
-  const now = new Date();
-  const allDeals = await db
-    .select()
-    .from(deals)
-    .where(and(eq(deals.shopId, shop.id), eq(deals.isActive, true)))
-    .all();
-  const active = allDeals.filter(d => d.endDate && d.endDate.getTime() >= now.getTime());
-  activeDealCount = active.length;
-
-  const topDeals = await getTopDeals(shop.id, 100);
-  const viewsByDeal = new Map(topDeals.map(t => [t.dealId, Number(t.views) || 0]));
-
-  snapshotDeals = active
-    .map(d => ({
-      id: d.id,
-      title: d.title,
-      discountText: d.discountText,
-      imageUrl: d.imageUrl,
-      endDate: d.endDate as Date,
-      views: viewsByDeal.get(d.id) || 0,
-    }))
-    .sort((a, b) => b.views - a.views || a.endDate.getTime() - b.endDate.getTime())
-    .slice(0, 3);
-}
-
-const quickActions = [
-  { label: 'ดูหน้าร้าน', href: shop ? `/${shop.slug}` : '#', icon: 'eye', accent: 'success' },
-  { label: 'สร้างดีล', href: '/dashboard/deals/new', icon: 'tag', accent: 'primary' },
-  { label: 'แก้ไขร้าน', href: '/dashboard/edit', icon: 'pencil', accent: 'info' },
-  { label: 'วิเคราะห์', href: '/dashboard/analytics', icon: 'chart', accent: 'secondary' },
-];
-
-const accentClass: Record<string, string> = {
-  success: 'bg-success-bg text-success',
-  primary: 'bg-primary-light text-primary',
-  info: 'bg-info-bg text-info',
-  secondary: 'bg-bg-secondary text-text-secondary',
-};
+const statCards = overview ? [
+  { label: 'ยอดเข้าชม', value: overview.totals.pageViews, hint: '60 วันที่ผ่านมา' },
+  { label: 'คลิกดีล', value: overview.totals.dealClicks, hint: 'จากทุกดีล' },
+  { label: 'แชร์', value: overview.totals.shares, hint: 'ลิงก์และดีล' },
+  { label: 'ดีลใช้งาน', value: `${overview.activeDealCount}/${overview.maxDeals}`, hint: overview.tier === 'pro' ? 'Pro' : 'Free' },
+] : [];
 ---
 
-<DashboardLayout title="ข้อมูลร้าน" activeTab="shop">
-  {!shop ? (
-    /* ─── Empty state: merchant has no shop yet ─── */
-    <div class="flex flex-col items-center justify-center text-center py-16 px-4">
-      <div class="relative mb-6">
-        <div class="absolute inset-0 bg-primary/20 blur-2xl rounded-full"></div>
-        <div class="relative h-20 w-20 rounded-3xl bg-gradient-to-br from-primary to-orange-400 flex items-center justify-center shadow-lg shadow-primary/20">
-          <Icon name="store" class="h-10 w-10 text-white" />
+<DashboardLayout title="ภาพรวมร้านค้า" activeTab="overview">
+  {!shop || !overview ? (
+    <section class="min-h-[70vh] rounded-3xl border border-border/40 bg-card-bg p-8 shadow-sm">
+      <div class="mx-auto flex max-w-2xl flex-col items-center justify-center py-16 text-center">
+        <div class="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary text-white shadow-lg shadow-primary/20">
+          <Icon name="store" class="h-8 w-8" />
         </div>
+        <h1 class="mt-6 text-2xl font-black text-secondary">เริ่มสร้างร้านของคุณบน DealDoor</h1>
+        <p class="mt-3 text-sm font-bold leading-7 text-text-secondary">
+          กรอกข้อมูลร้าน รูปภาพ ช่องทางติดต่อ และพิกัด เพื่อให้ลูกค้าค้นพบดีลของคุณจากหน้า Explore และหน้าร้านที่แชร์ได้
+        </p>
+        <a href="/dashboard/edit" class="mt-6 inline-flex min-h-[48px] items-center rounded-2xl bg-primary px-6 text-sm font-black text-white shadow-lg shadow-primary/20">
+          สร้างร้านค้า
+        </a>
       </div>
-      <h1 class="text-xl font-black text-secondary tracking-tight">ยินดีต้อนรับ, {user.name}!</h1>
-      <p class="text-sm text-text-secondary font-bold mt-2 max-w-sm">
-        เริ่มต้นสร้างหน้าร้านของคุณบน DealDoor เพื่อให้ลูกค้าค้นพบร้านและดีลของคุณ
-      </p>
-      <a
-        href="/dashboard/edit"
-        class="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-sm font-black hover:bg-primary-hover hover:scale-[1.02] transition-all shadow-md shadow-primary/20"
-      >
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-        <span>สร้างร้านของคุณ</span>
-      </a>
-    </div>
+    </section>
   ) : (
     <div class="space-y-6">
-
-      {/* ─── SECTION 1: Hero Welcome Strip ─── */}
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary-light/50 via-orange-50/30 to-primary-light/20 border border-primary/10 p-5 sm:p-6">
-        <div class="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary/10 blur-2xl pointer-events-none"></div>
-        <div class="absolute -left-6 -bottom-6 h-20 w-20 rounded-full bg-orange-400/10 blur-xl pointer-events-none"></div>
-
-        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div class="space-y-1.5">
-            <h1 class="text-lg sm:text-xl font-black text-secondary tracking-tight flex items-center gap-2">
-              <span id="welcome-greeting">สวัสดี</span>, {user.name}!
-              <span class="inline-block animate-bounce origin-bottom-right text-base">👋</span>
-            </h1>
-            <p class="text-sm text-text-secondary font-bold">
-              ยินดีต้อนรับกลับมา! นี่คือภาพรวมร้านค้าของคุณ
-            </p>
-            <div class="flex items-center gap-2 mt-2">
-              <span class={`inline-flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-full border ${
-                shop.isOpen
-                  ? 'bg-emerald-50 text-emerald-600 border-emerald-500/20'
-                  : 'bg-red-50 text-red-500 border-red-500/20'
-              }`}>
-                <span class={`h-2 w-2 rounded-full ${shop.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-400'}`}></span>
+      <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+        <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
                 {shop.isOpen ? 'เปิดรับลูกค้า' : 'ปิดชั่วคราว'}
               </span>
-              <span class="text-xs font-black px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
-                {tier === 'pro' ? 'PRO' : 'FREE'}
+              <span class="rounded-full bg-bg-secondary px-3 py-1 text-xs font-black text-text-secondary">
+                {shop.tier === 'pro' ? 'Pro' : 'Free'}
               </span>
             </div>
+            <h1 class="mt-4 text-2xl font-black tracking-tight text-secondary">สวัสดี {user.name}, วันนี้ร้าน {shop.name} เป็นอย่างไรบ้าง</h1>
+            <p class="mt-2 max-w-3xl text-sm font-bold leading-6 text-text-secondary">
+              Dashboard ใหม่นี้แยกข้อมูลร้าน ดีล และสถิติออกเป็นระบบเดียวกันชัดเจน เพื่อให้แก้ต่อได้ง่ายและไม่ดึงข้อมูลผิดร้าน
+            </p>
           </div>
-
-          <div class="flex items-center gap-2">
-            <a href={`/${shop.slug}`} class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/80 border border-border/30 text-xs font-black text-secondary hover:bg-white hover:scale-[1.02] transition-all shadow-sm">
-              <Icon name="eye" class="h-4 w-4 text-primary" />
-              <span>ดูหน้าร้าน</span>
+          <div class="flex flex-wrap gap-2">
+            <a href={`/${shop.slug}`} class="inline-flex min-h-[44px] items-center rounded-2xl border border-border/50 px-4 text-sm font-black text-secondary hover:bg-bg-secondary">
+              ดูหน้าร้าน
             </a>
-            <a href={`/dashboard/deals`} class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-black hover:bg-primary-hover hover:scale-[1.02] transition-all shadow-md shadow-primary/20">
-              <Icon name="tag" class="h-4 w-4" />
-              <span>จัดการดีล</span>
+            <a href="/dashboard/deals/new" class="inline-flex min-h-[44px] items-center rounded-2xl bg-primary px-4 text-sm font-black text-white">
+              สร้างดีล
             </a>
           </div>
         </div>
-      </div>
+      </section>
 
-      <script is:inline>
-        (function() {
-          try {
-            const hours = new Date().getHours();
-            let greeting = 'สวัสดี';
-            if (hours >= 5 && hours < 12) {
-              greeting = 'อรุณสวัสดิ์';
-            } else if (hours >= 12 && hours < 17) {
-              greeting = 'สวัสดีตอนบ่าย';
-            } else if (hours >= 17 && hours < 20) {
-              greeting = 'สวัสดีตอนเย็น';
-            } else {
-              greeting = 'สวัสดีตอนค่ำ';
-            }
-            const greetingEl = document.getElementById('welcome-greeting');
-            if (greetingEl) {
-              greetingEl.textContent = greeting;
-            }
-          } catch (e) {
-            console.error('Failed to set client timezone greeting:', e);
-          }
-        })();
-      </script>
-
-      {/* ─── SECTION 2: Quick Actions ─── */}
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {quickActions.map(action => (
-          <a
-            href={action.href}
-            class="flex items-center gap-2.5 rounded-2xl border border-border/20 bg-card-bg/70 backdrop-blur-md p-3.5 shadow-sm hover:border-primary/20 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
-          >
-            <span class={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${accentClass[action.accent]}`}>
-              <Icon name={action.icon} class="h-4.5 w-4.5" />
-            </span>
-            <span class="text-xs font-black text-secondary group-hover:text-primary transition-colors">{action.label}</span>
-          </a>
+      <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {statCards.map((card) => (
+          <div class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+            <p class="text-xs font-black uppercase tracking-wider text-text-tertiary">{card.label}</p>
+            <p class="mt-2 text-3xl font-black text-secondary">{card.value}</p>
+            <p class="mt-1 text-xs font-bold text-text-tertiary">{card.hint}</p>
+          </div>
         ))}
-      </div>
+      </section>
 
-      {/* ─── SECTION 3: Actionable Stat Cards ─── */}
-      <StatCards client:load daily={daily} />
+      <section class="grid gap-6 xl:grid-cols-[1fr_380px]">
+        <div class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-xs font-black uppercase tracking-wider text-primary">Readiness</p>
+              <h2 class="text-xl font-black text-secondary">ความพร้อมสำหรับ Explore</h2>
+            </div>
+            <span class="text-3xl font-black text-secondary">{overview.readiness.score}%</span>
+          </div>
+          <div class="mt-4 h-3 overflow-hidden rounded-full bg-bg-tertiary">
+            <div class="h-full rounded-full bg-primary" style={`width: ${overview.readiness.score}%`}></div>
+          </div>
+          <div class="mt-5 grid gap-3 sm:grid-cols-2">
+            {overview.readiness.checks.map((item) => (
+              <div class:list={[
+                'rounded-2xl border p-4',
+                item.done ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-border/40 bg-bg-secondary text-text-secondary'
+              ]}>
+                <p class="text-sm font-black">{item.done ? 'พร้อม' : 'ยังขาด'}: {item.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {/* ─── SECTION 4: Deal Snapshot ─── */}
-      <DealSnapshot deals={snapshotDeals} activeCount={activeDealCount} maxDeals={maxDeals} />
+        <div class="space-y-6">
+          <SharePanel client:load slug={shop.slug} shopName={shop.name} logoUrl={shop.logoImage} />
+          <UpgradeBanner client:load currentTier={overview.tier} />
+        </div>
+      </section>
 
-      {/* ─── SECTION 5: Explore Readiness ─── */}
-      <ExploreReadiness shop={shop} />
-
-      {/* ─── SECTION 6: Setup Progress (Gamification) ─── */}
-      <SetupProgress client:load shop={shop} dealCount={activeDealCount} />
-
-      {/* ─── SECTION 7: Unified Share Panel ─── */}
-      <SharePanel client:load slug={shop.slug} shopName={shop.name} logoUrl={shop.logoImage} />
-
-      {/* ─── SECTION 8: Upgrade Banner ─── */}
-      <UpgradeBanner client:load currentTier={tier} />
-
+      <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-black uppercase tracking-wider text-primary">Deals</p>
+            <h2 class="text-xl font-black text-secondary">ดีลที่ควรดูแลต่อ</h2>
+          </div>
+          <a href="/dashboard/deals" class="text-sm font-black text-primary hover:underline">จัดการทั้งหมด</a>
+        </div>
+        <div class="mt-5 grid gap-3">
+          {overview.upcomingDeals.length === 0 ? (
+            <div class="rounded-2xl border border-dashed border-border/50 bg-bg-secondary/50 p-6 text-center">
+              <p class="text-sm font-black text-secondary">ยังไม่มีดีลที่กำลังใช้งาน</p>
+              <a href="/dashboard/deals/new" class="mt-3 inline-flex min-h-[44px] items-center rounded-2xl bg-primary px-5 text-sm font-black text-white">สร้างดีลแรก</a>
+            </div>
+          ) : (
+            overview.upcomingDeals.map((deal) => (
+              <a href={`/dashboard/deals/edit?id=${deal.id}`} class="grid gap-3 rounded-2xl border border-border/40 bg-bg p-4 transition hover:border-primary/40 sm:grid-cols-[80px_1fr_auto] sm:items-center">
+                <div class="aspect-square overflow-hidden rounded-xl bg-bg-secondary">
+                  {deal.imageUrl ? <img src={deal.imageUrl} alt={deal.title} class="h-full w-full object-cover" /> : null}
+                </div>
+                <div>
+                  <p class="text-sm font-black text-secondary">{deal.title}</p>
+                  <p class="text-sm font-bold text-primary">{deal.discountText}</p>
+                </div>
+                <p class="text-xs font-black text-text-tertiary">
+                  หมดอายุ {new Date(deal.endDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
+                </p>
+              </a>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   )}
 </DashboardLayout>

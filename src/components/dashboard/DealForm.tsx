@@ -1,59 +1,76 @@
 // src/components/dashboard/DealForm.tsx
 
-import { useState, useEffect } from 'react';
-import { DEAL_CATEGORIES, DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS, CLAIM_TYPES, CLAIM_TYPE_LABELS } from '../../lib/constants';
-import type { DealCategory, ClaimType } from '../../lib/constants';
+import { useMemo, useState } from 'react';
 import type { Deal } from '../../../db/schema';
 import ImageUpload from '../shared/ImageUpload.tsx';
 
 interface DealFormProps {
-  shopId: string;
   deal?: Deal | null;
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export default function DealForm({ shopId, deal, onSuccess, onCancel }: DealFormProps) {
+const categories = [
+  { id: 'birthday', label: 'วันเกิด' },
+  { id: 'monthly', label: 'รายเดือน' },
+  { id: 'festival', label: 'เทศกาล' },
+  { id: 'special_day', label: 'วันพิเศษ' },
+  { id: 'senior', label: 'ผู้สูงอายุ' },
+  { id: 'kids', label: 'เด็ก' },
+  { id: 'student', label: 'นักเรียน/นักศึกษา' },
+  { id: 'flash', label: 'Flash Deal' },
+  { id: 'custom', label: 'ทั่วไป' },
+];
+
+const claimTypes = [
+  { id: 'copy_code', label: 'คัดลอกโค้ด' },
+  { id: 'show_at_shop', label: 'แสดงที่ร้าน' },
+  { id: 'contact_shop', label: 'ติดต่อร้าน' },
+  { id: 'open_line', label: 'เปิด LINE' },
+];
+
+function toInputDate(value?: Date | string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
+export default function DealForm({ deal, onSuccess, onCancel }: DealFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    title: '',
-    category: 'custom' as DealCategory,
-    description: '',
-    shortDescription: '',
-    discountText: '',
-    conditions: '',
-    couponCode: '',
-    claimType: 'copy_code' as ClaimType,
-    startDate: '',
-    endDate: '',
-    imageUrl: '',
+    title: deal?.title || '',
+    category: deal?.category || 'custom',
+    description: deal?.description || '',
+    shortDescription: deal?.shortDescription || '',
+    discountText: deal?.discountText || '',
+    conditions: deal?.conditions || '',
+    couponCode: deal?.couponCode || '',
+    claimType: deal?.claimType || 'copy_code',
+    startDate: toInputDate(deal?.startDate),
+    endDate: toInputDate(deal?.endDate),
+    imageUrl: deal?.imageUrl || '',
   });
 
-  useEffect(() => {
-    if (deal) {
-      setFormData({
-        title: deal.title,
-        category: deal.category as DealCategory,
-        description: deal.description || '',
-        shortDescription: deal.shortDescription || '',
-        discountText: deal.discountText || '',
-        conditions: deal.conditions || '',
-        couponCode: deal.couponCode || '',
-        claimType: deal.claimType as ClaimType,
-        startDate: deal.startDate ? new Date(deal.startDate).toISOString().split('T')[0] : '',
-        endDate: new Date(deal.endDate).toISOString().split('T')[0],
-        imageUrl: deal.imageUrl || '',
-      });
-    }
-  }, [deal]);
+  const previewStatus = useMemo(() => {
+    if (!formData.endDate) return 'ยังไม่กำหนดวันหมดอายุ';
+    const now = new Date();
+    const end = new Date(formData.endDate);
+    if (end < now) return 'วันหมดอายุอยู่ในอดีต';
+    return `หมดอายุ ${end.toLocaleDateString('th-TH', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  }, [formData.endDate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  function updateField(name: string, value: string) {
+    setFormData((current) => ({ ...current, [name]: value }));
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError('');
 
-    if (!formData.title || !formData.category || !formData.discountText || !formData.claimType || !formData.endDate) {
-      setError('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+    if (!formData.title.trim() || !formData.discountText.trim() || !formData.endDate) {
+      setError('กรุณากรอกชื่อดีล ส่วนลด และวันหมดอายุ');
       return;
     }
 
@@ -62,392 +79,246 @@ export default function DealForm({ shopId, deal, onSuccess, onCancel }: DealForm
       return;
     }
 
-    if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
-      setError('วันที่เริ่มต้นต้องมาก่อนวันหมดอายุ');
-      return;
-    }
-
     setLoading(true);
-
     try {
-      const url = deal ? `/api/deals/${deal.id}` : '/api/deals';
-      const method = deal ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
+      const response = await fetch(deal ? `/api/deals/${deal.id}` : '/api/deals', {
+        method: deal ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          shopId,
-        }),
+        body: JSON.stringify(formData),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || 'เกิดข้อผิดพลาดในการบันทึกดีล');
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error?.message || 'บันทึกดีลไม่สำเร็จ');
       }
 
-      onSuccess();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        window.location.href = '/dashboard/deals';
+      }
     } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาด');
+      setError(err.message || 'บันทึกดีลไม่สำเร็จ');
     } finally {
       setLoading(false);
     }
-  };
-
-  const getCategoryEmoji = (cat: string) => {
-    switch (cat.toLowerCase()) {
-      case 'birthday': return '🎂';
-      case 'student': return '🎓';
-      case 'monthly': return '📅';
-      case 'special_day': return '🎉';
-      case 'senior': return '👵';
-      case 'kids': return '👶';
-      case 'flash': return '⚡';
-      case 'festival': return '🏮';
-      default: return '🏷️';
-    }
-  };
-
-  const formatDateString = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('th-TH', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const categoryColor = DEAL_CATEGORY_COLORS[formData.category] || '#6B7280';
+  }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      {/* Left Panel: Form Input Fields */}
-      <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6">
+    <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="space-y-5">
         {error && (
-          <div className="flex items-center gap-3 rounded-2xl border border-danger/20 bg-danger-bg/15 p-4 text-xs text-danger-text font-black">
-            <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>{error}</span>
+          <div className="rounded-2xl border border-danger/20 bg-danger-bg/20 p-4 text-sm font-bold text-danger" role="alert">
+            {error}
           </div>
         )}
 
-        {/* STEP 1: ข้อมูลคูปองทั่วไป */}
-        <div className="rounded-2xl border border-border/20 bg-bg/25 p-5 space-y-5 shadow-sm">
-          <div className="border-b border-border/20 pb-3 flex items-center gap-2">
-            <span className="h-5 w-5 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-black">1</span>
-            <h3 className="text-xs font-black text-secondary uppercase tracking-wider">ข้อมูลคูปองทั่วไป (Basic Info)</h3>
+        <section className="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-wider text-primary">Step 1</p>
+            <h2 className="text-lg font-black text-secondary">ข้อมูลหลักของดีล</h2>
           </div>
 
-          {/* Deal Image Upload */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-secondary">รูปภาพคูปองโปรโมชัน</label>
-            <ImageUpload
-              type="deal"
-              currentUrl={formData.imageUrl}
-              onUpload={(url) => setFormData({ ...formData, imageUrl: url })}
-              label="อัปโหลดรูปภาพดีลร้านค้า (แนะนำสัดส่วน 16:9)"
-            />
-          </div>
-
-          {/* Title */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-secondary">
-              ชื่อคูปองโปรโมชัน <span className="text-danger">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
-              placeholder="เช่น Weekend Coffee Set, เซตเครื่องดื่มฟรีขนมเค้ก"
-              required
-            />
-          </div>
-
-          {/* Category */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-secondary">
-              หมวดหมู่ดีล/คูปอง <span className="text-danger">*</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {DEAL_CATEGORIES.map((cat) => {
-                const isSelected = formData.category === cat;
-                const catColor = DEAL_CATEGORY_COLORS[cat] || '#6B7280';
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, category: cat })}
-                    className="rounded-xl px-3 py-2 text-[11px] font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 border shadow-sm"
-                    style={{
-                      backgroundColor: isSelected ? `${catColor}15` : 'var(--bg-card-bg)',
-                      color: isSelected ? catColor : 'var(--text-secondary)',
-                      borderColor: isSelected ? `${catColor}35` : 'var(--border-color)',
-                    }}
-                  >
-                    <span>{getCategoryEmoji(cat)}</span>
-                    <span>{DEAL_CATEGORY_LABELS[cat]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* STEP 2: รายละเอียดสิทธิประโยชน์ */}
-        <div className="rounded-2xl border border-border/20 bg-bg/25 p-5 space-y-5 shadow-sm">
-          <div className="border-b border-border/20 pb-3 flex items-center gap-2">
-            <span className="h-5 w-5 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-black">2</span>
-            <h3 className="text-xs font-black text-secondary uppercase tracking-wider">รายละเอียดสิทธิประโยชน์ (Benefits & Timeframe)</h3>
-          </div>
-
-          {/* Discount Text */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-secondary">
-              ส่วนลด / ผลประโยชน์ที่ได้รับ <span className="text-danger">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.discountText}
-              onChange={(e) => setFormData({ ...formData, discountText: e.target.value })}
-              className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
-              placeholder="เช่น ลดทันที 15%, ซื้อ 1 แถม 1, ราคาพิเศษ ฿159"
-              required
-            />
-          </div>
-
-          {/* Short Description */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-secondary">คำอธิบายสั้นๆ (Short Summary)</label>
-            <input
-              type="text"
-              value={formData.shortDescription}
-              onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
-              className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
-              placeholder="ข้อความกระชับสำหรับแสดงผลหน้ารวมการ์ดดีล"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-secondary">รายละเอียดเพิ่มเติม (Full Description)</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
-              rows={3}
-              placeholder="ระบุข้อมูลเพิ่มเติม รายละเอียดแพ็กเกจ หรือรายละเอียดสิทธิประโยชน์อื่นๆ"
-            />
-          </div>
-
-          {/* Campaign Dates */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-secondary">
-                วันที่เริ่มโปรโมชัน
-              </label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
+          <div className="space-y-4">
+            <label className="block">
+              <span className="text-sm font-black text-secondary">รูปดีล</span>
+              <ImageUpload
+                type="deal"
+                currentUrl={formData.imageUrl}
+                onUpload={(url) => updateField('imageUrl', url)}
+                className="mt-2"
               />
-            </div>
-
-            <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-secondary">
-              วันหมดอายุการจัดโปรโมชัน <span className="text-danger">*</span>
             </label>
-            <input
-              type="date"
-              value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
-              required
-            />
+
+            <label className="block">
+              <span className="text-sm font-black text-secondary">ชื่อดีล</span>
+              <input
+                value={formData.title}
+                onChange={(event) => updateField('title', event.target.value)}
+                placeholder="เช่น Weekend Coffee Set"
+                className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold text-secondary outline-none focus:border-primary"
+                required
+              />
+            </label>
+
+            <div>
+              <span className="text-sm font-black text-secondary">หมวดหมู่</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => updateField('category', category.id)}
+                    className={`min-h-[40px] rounded-full border px-4 text-xs font-black transition-colors ${
+                      formData.category === category.id
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-border/50 bg-bg text-text-secondary hover:border-primary/40 hover:text-primary'
+                    }`}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* STEP 3: วิธีการรับสิทธิ์และเงื่อนไข */}
-        <div className="rounded-2xl border border-border/20 bg-bg/25 p-5 space-y-5 shadow-sm">
-          <div className="border-b border-border/20 pb-3 flex items-center gap-2">
-            <span className="h-5 w-5 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-black">3</span>
-            <h3 className="text-xs font-black text-secondary uppercase tracking-wider">วิธีการรับสิทธิ์และเงื่อนไข (Claim & Conditions)</h3>
+        <section className="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-wider text-primary">Step 2</p>
+            <h2 className="text-lg font-black text-secondary">รายละเอียดและช่วงเวลา</h2>
           </div>
 
-          {/* Claim Type & Coupon Code */}
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-secondary">
-                วิธีรับสิทธิ์คูปอง <span className="text-danger">*</span>
+          <div className="grid gap-4">
+            <label className="block">
+              <span className="text-sm font-black text-secondary">ส่วนลดหรือประโยชน์ที่ลูกค้าได้รับ</span>
+              <input
+                value={formData.discountText}
+                onChange={(event) => updateField('discountText', event.target.value)}
+                placeholder="เช่น ลด 15%, ซื้อ 1 แถม 1, ฿159"
+                className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold text-secondary outline-none focus:border-primary"
+                required
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-black text-secondary">คำอธิบายสั้น</span>
+              <input
+                value={formData.shortDescription}
+                onChange={(event) => updateField('shortDescription', event.target.value)}
+                placeholder="ประโยคสั้น ๆ ที่แสดงบนการ์ดดีล"
+                className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold text-secondary outline-none focus:border-primary"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-black text-secondary">รายละเอียดเต็ม</span>
+              <textarea
+                value={formData.description}
+                onChange={(event) => updateField('description', event.target.value)}
+                rows={4}
+                placeholder="เล่ารายละเอียดแพ็กเกจ สิ่งที่ลูกค้าจะได้รับ หรือวิธีใช้ดีล"
+                className="mt-2 w-full rounded-2xl border border-border/40 bg-bg p-4 text-sm font-bold text-secondary outline-none focus:border-primary"
+              />
+            </label>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-black text-secondary">วันเริ่มต้น</span>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(event) => updateField('startDate', event.target.value)}
+                  className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold text-secondary outline-none focus:border-primary"
+                />
               </label>
+              <label className="block">
+                <span className="text-sm font-black text-secondary">วันหมดอายุ</span>
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(event) => updateField('endDate', event.target.value)}
+                  className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold text-secondary outline-none focus:border-primary"
+                  required
+                />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-wider text-primary">Step 3</p>
+            <h2 className="text-lg font-black text-secondary">วิธีรับสิทธิ์และเงื่อนไข</h2>
+          </div>
+
+          <div className="grid gap-4">
+            <label className="block">
+              <span className="text-sm font-black text-secondary">วิธีรับสิทธิ์</span>
               <select
                 value={formData.claimType}
-                onChange={(e) => setFormData({ ...formData, claimType: e.target.value as ClaimType })}
-                className="block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
+                onChange={(event) => updateField('claimType', event.target.value)}
+                className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold text-secondary outline-none focus:border-primary"
               >
-                {CLAIM_TYPES.map((type) => (
-                  <option key={type} value={type}>{CLAIM_TYPE_LABELS[type]}</option>
+                {claimTypes.map((type) => (
+                  <option key={type.id} value={type.id}>{type.label}</option>
                 ))}
               </select>
-            </div>
+            </label>
 
             {formData.claimType === 'copy_code' && (
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-secondary">รหัสโค้ดส่วนลด</label>
+              <label className="block">
+                <span className="text-sm font-black text-secondary">โค้ดคูปอง</span>
                 <input
-                  type="text"
                   value={formData.couponCode}
-                  onChange={(e) => setFormData({ ...formData, couponCode: e.target.value.toUpperCase() })}
-                  className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 font-mono tracking-wider focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
-                  placeholder="เช่น CAFECOFFEE15"
+                  onChange={(event) => updateField('couponCode', event.target.value.toUpperCase())}
+                  placeholder="เช่น CAFE15"
+                  className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 font-mono text-sm font-black text-secondary tracking-wider outline-none focus:border-primary"
                 />
-              </div>
+              </label>
+            )}
+
+            <label className="block">
+              <span className="text-sm font-black text-secondary">เงื่อนไข</span>
+              <textarea
+                value={formData.conditions}
+                onChange={(event) => updateField('conditions', event.target.value)}
+                rows={4}
+                placeholder="เช่น จำกัด 1 สิทธิ์ต่อคน, ใช้ได้เฉพาะวันธรรมดา"
+                className="mt-2 w-full rounded-2xl border border-border/40 bg-bg p-4 text-sm font-bold text-secondary outline-none focus:border-primary"
+              />
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <aside className="space-y-4 lg:sticky lg:top-6">
+        <section className="overflow-hidden rounded-3xl border border-border/40 bg-card-bg shadow-sm">
+          <div className="aspect-[4/3] bg-bg-secondary">
+            {formData.imageUrl ? (
+              <img src={formData.imageUrl} alt="ตัวอย่างรูปดีล" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm font-black text-text-tertiary">ตัวอย่างดีล</div>
             )}
           </div>
-
-          {/* Conditions */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-secondary">เงื่อนไขเพิ่มเติมการรับสิทธิ์</label>
-            <textarea
-              value={formData.conditions}
-              onChange={(e) => setFormData({ ...formData, conditions: e.target.value })}
-              className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
-              rows={3}
-              placeholder="• เช่น จำกัด 1 สิทธิ์ ต่อ 1 ท่าน&#10;• เฉพาะวันจันทร์ - ศุกร์ เท่านั้น"
-            />
+          <div className="space-y-3 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
+                {categories.find((item) => item.id === formData.category)?.label || 'ทั่วไป'}
+              </span>
+              <span className="text-xs font-bold text-text-tertiary">{previewStatus}</span>
+            </div>
+            <h3 className="text-lg font-black text-secondary">{formData.title || 'ชื่อดีลของคุณ'}</h3>
+            <p className="text-sm font-black text-primary">{formData.discountText || 'ส่วนลดหรือโปรโมชัน'}</p>
+            <p className="text-sm font-bold text-text-secondary">
+              {formData.shortDescription || formData.description || 'รายละเอียดสั้น ๆ จะช่วยให้ลูกค้าตัดสินใจเร็วขึ้น'}
+            </p>
           </div>
-        </div>
+        </section>
 
-        {/* Actions Button Block */}
-        <div className="flex justify-end gap-3 border-t border-border/20 pt-5">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-xs font-black rounded-xl bg-bg-secondary text-text-secondary border border-border/15 hover:bg-bg-tertiary hover:text-text-primary transition-all duration-200 cursor-pointer"
-          >
-            ยกเลิก
-          </button>
+        <div className="rounded-3xl border border-border/40 bg-card-bg p-4 shadow-sm">
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-primary to-orange-500 text-white shadow-md shadow-primary/10 hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center gap-2"
+            className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-primary px-5 text-sm font-black text-white shadow-lg shadow-primary/20 transition hover:bg-primary-hover disabled:opacity-60"
           >
-            {loading ? (
-              <>
-                <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                <span>กำลังบันทึกดีล...</span>
-              </>
-            ) : (
-              <span>{deal ? 'บันทึกข้อมูลดีล' : 'ยืนยันเพิ่มดีล'}</span>
-            )}
+            {loading ? 'กำลังบันทึก...' : deal ? 'บันทึกการแก้ไข' : 'สร้างดีล'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (onCancel) {
+                onCancel();
+              } else {
+                window.location.href = '/dashboard/deals';
+              }
+            }}
+            className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-border/50 px-5 text-sm font-black text-text-secondary transition hover:bg-bg-secondary"
+          >
+            ยกเลิก
           </button>
         </div>
-      </form>
-
-      {/* Right Panel: Sticky Live Customer Mobile Mockup Preview */}
-      <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4">
-        <div className="text-center">
-          <span className="text-[10px] font-black text-text-tertiary uppercase tracking-widest block mb-1">ตัวอย่างมุมมองลูกค้า (Live Customer View)</span>
-          <p className="text-[9px] text-text-tertiary font-bold">การ์ดจะอัปเดตแบบเรียลไทม์ตามข้อมูลที่คุณกำลังกรอก</p>
-        </div>
-
-        {/* Smartphone Simulator */}
-        <div className="w-full max-w-[310px] mx-auto rounded-[38px] border-[8px] border-slate-800 bg-bg shadow-xl overflow-hidden aspect-[9/18] flex flex-col relative select-none">
-          {/* Speaker / Camera Notch */}
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-800 rounded-full z-20 flex items-center justify-center">
-            <div className="w-8 h-1 bg-slate-700 rounded-full mb-1"></div>
-          </div>
-          
-          {/* Screen Content Wrapper */}
-          <div className="flex-1 overflow-y-auto pt-8 flex flex-col justify-between bg-bg-secondary/40">
-            {/* Dynamic Header Image area */}
-            <div className="relative h-36 w-full bg-gradient-to-br from-primary/10 to-orange-500/10 border-b border-border/10 flex-shrink-0 flex items-center justify-center overflow-hidden">
-              {formData.imageUrl ? (
-                <img src={formData.imageUrl} alt="Preview" className="h-full w-full object-cover" />
-              ) : (
-                <div className="text-center p-4">
-                  <span className="text-3xl filter drop-shadow-md select-none">{getCategoryEmoji(formData.category)}</span>
-                  <div className="text-[9px] text-text-tertiary mt-2 font-black uppercase tracking-widest">ภาพคูปองดีล</div>
-                </div>
-              )}
-              
-              {/* Category Badge overlay */}
-              <div className="absolute top-3 left-3">
-                <span 
-                  className="text-[9px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider shadow-sm"
-                  style={{ 
-                    backgroundColor: `${categoryColor}15`, 
-                    color: categoryColor,
-                    borderColor: `${categoryColor}25`
-                  }}
-                >
-                  {DEAL_CATEGORY_LABELS[formData.category] || formData.category}
-                </span>
-              </div>
-            </div>
-
-            {/* Coupon Content Body */}
-            <div className="p-4 flex-1 flex flex-col justify-between gap-4">
-              <div className="space-y-2.5">
-                {/* Discount text highlighted pill */}
-                <div className="text-center py-2.5 px-3 rounded-2xl bg-gradient-to-r from-primary/5 to-orange-500/5 border border-primary/10">
-                  <span className="text-[9px] font-black text-text-tertiary uppercase tracking-wider block">สิทธิพิเศษที่คุณได้รับ</span>
-                  <span className="text-base font-black bg-gradient-to-r from-primary to-orange-500 bg-clip-text text-transparent block truncate">
-                    {formData.discountText || 'ส่วนลดพิเศษ'}
-                  </span>
-                </div>
-
-                {/* Deal Title */}
-                <h3 className="text-xs font-black text-secondary leading-snug line-clamp-2">
-                  {formData.title || 'ชื่อดีลโปรโมชันร้านค้าของคุณ'}
-                </h3>
-
-                {/* Short Description */}
-                <p className="text-[10px] text-text-tertiary font-bold leading-relaxed line-clamp-3">
-                  {formData.shortDescription || 'สรุปคำอธิบายสั้นกระชับสำหรับแสดงในหน้าการ์ดหลัก'}
-                </p>
-
-                {/* Timeframe Expiry tag */}
-                <div className="text-[9px] font-black text-text-tertiary flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                  <span>ใช้งานได้ถึง: {formData.endDate ? formatDateString(formData.endDate) : 'กำหนดวันหมดอายุ'}</span>
-                </div>
-              </div>
-
-              {/* Action/Claim trigger block */}
-              <div className="space-y-3 pt-2">
-                {formData.claimType === 'copy_code' && (
-                  <div className="rounded-xl border border-dashed border-border/30 bg-bg-secondary p-2.5 text-center">
-                    <span className="text-[8px] font-black text-text-tertiary uppercase tracking-widest block mb-0.5">โค้ดคูปองสำหรับก๊อปปี้</span>
-                    <span className="text-xs font-mono font-black tracking-wider text-secondary">
-                      {formData.couponCode || 'CODE2026'}
-                    </span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary to-orange-500 text-white text-[10px] font-black shadow-md shadow-primary/15 tracking-wide active:scale-95 transition-all cursor-default"
-                >
-                  {formData.claimType === 'copy_code' ? 'คัดลอกโค้ดคูปอง' : 'กดรับสิทธิ์ใช้งาน'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </aside>
+    </form>
   );
 }

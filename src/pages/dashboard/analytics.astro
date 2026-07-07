@@ -2,52 +2,42 @@
 // src/pages/dashboard/analytics.astro
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getMerchantFromUser, getMerchantShop } from '../../lib/auth';
 import StatsOverview from '../../components/dashboard/analytics/StatsOverview.tsx';
 import TopDeals from '../../components/dashboard/analytics/TopDeals.tsx';
 import Icon from '../../components/icons/index.astro';
+import { requireDashboardShop } from '../../lib/dashboard/server';
 
-const user = Astro.locals.user;
-if (!user) {
-  return Astro.redirect('/auth/login');
-}
-
-const merchant = await getMerchantFromUser(user.id);
-const shop = merchant ? await getMerchantShop(merchant.id) : null;
-
-if (!shop) {
+let context;
+try {
+  context = await requireDashboardShop(Astro.locals.user);
+} catch {
   return Astro.redirect('/dashboard');
 }
 ---
 
-<DashboardLayout title="วิเคราะห์ข้อมูล" activeTab="analytics">
+<DashboardLayout title="สถิติร้านค้า" activeTab="analytics">
   <div class="space-y-6">
-    <div class="flex items-center gap-3.5 border-b border-border/30 pb-4">
-      <div class="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-        <Icon name="chart" class="h-5 w-5" />
-      </div>
-      <div>
-        <h2 class="text-base font-bold text-secondary">วิเคราะห์สถิติและการตอบรับ</h2>
-        <p class="text-xs text-text-secondary mt-0.5">ติดตามยอดเข้าชม ความคุ้มค่าของคูปอง และความสนใจของลูกค้า</p>
-      </div>
-    </div>
-
-    <StatsOverview client:load shopId={shop.id} days={30} />
-
-    <TopDeals client:load shopId={shop.id} />
-
-    <div class="rounded-3xl border border-border/40 bg-card-bg/60 backdrop-blur-sm p-5 shadow-md">
+    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
       <div class="flex items-start gap-3">
-        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-info-bg text-info flex-shrink-0">
-          <Icon name="info" class="h-4.5 w-4.5" />
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Icon name="chart" class="h-5 w-5" />
         </div>
         <div>
-          <p class="text-sm font-bold text-secondary">เกี่ยวกับข้อมูลสถิติ</p>
-          <p class="mt-1 text-xs text-text-secondary leading-relaxed">
-            ระบบเก็บสถิติผู้เข้าชมแบบเรียลไทม์ การกดแชร์ และการคัดลอกรหัสโปรโมชัน เพื่อนำไปสรุปเป็นภาพรวมสำหรับร้านค้า
-          </p>
+          <p class="text-xs font-black uppercase tracking-wider text-primary">Analytics</p>
+          <h1 class="text-2xl font-black text-secondary">สถิติของ {context.shop.name}</h1>
+          <p class="mt-1 text-sm font-bold text-text-secondary">วัดผลจากหน้าร้าน ดีล การแชร์ และการคลิกติดต่อ</p>
         </div>
       </div>
-    </div>
+    </section>
+
+    <StatsOverview client:load days={30} />
+    <TopDeals client:load />
+
+    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+      <p class="text-sm font-black text-secondary">หมายเหตุข้อมูล</p>
+      <p class="mt-1 text-sm font-bold leading-6 text-text-secondary">
+        API analytics อ่านข้อมูลของร้านที่ผูกกับบัญชีปัจจุบันเท่านั้น จึงไม่สามารถส่ง shopId จาก browser เพื่อดูข้อมูลร้านอื่นได้
+      </p>
+    </section>
   </div>
 </DashboardLayout>

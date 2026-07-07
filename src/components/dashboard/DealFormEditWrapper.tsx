@@ -1,110 +1,64 @@
-import { useEffect, useState } from 'react';
-import DealForm from './DealForm.tsx';
-import type { Deal } from '../../../db/schema';
+// src/components/dashboard/DealFormEditWrapper.tsx
 
-export default function DealFormEditWrapper({ shopId }: { shopId: string }) {
+import { useEffect, useState } from 'react';
+import type { Deal } from '../../../db/schema';
+import DealForm from './DealForm';
+
+export default function DealFormEditWrapper() {
   const [deal, setDeal] = useState<Deal | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-
-    const loadDeal = async () => {
-      setLoading(true);
-      setError(null);
+    async function loadDeal() {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) {
+        setError('ไม่พบรหัสดีลที่ต้องการแก้ไข');
+        setLoading(false);
+        return;
+      }
 
       try {
-        const dealId = new URLSearchParams(window.location.search).get('id');
-        const cachedDeal = sessionStorage.getItem('editDeal');
-
-        if (cachedDeal) {
-          const parsedDeal = JSON.parse(cachedDeal) as Deal;
-          if (!dealId || parsedDeal.id === dealId) {
-            if (!cancelled) {
-              setDeal(parsedDeal);
-            }
-            return;
-          }
+        const response = await fetch(`/api/deals/${encodeURIComponent(id)}`, { cache: 'no-store' });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error?.message || 'โหลดข้อมูลดีลไม่สำเร็จ');
         }
-
-        if (!dealId) {
-          throw new Error('missing-deal-id');
-        }
-
-        const response = await fetch(`/api/deals/${encodeURIComponent(dealId)}`, {
-          credentials: 'include',
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache' },
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success || !result.data) {
-          throw new Error(result.error?.message || 'deal-not-found');
-        }
-
-        if (result.data.shopId !== shopId) {
-          throw new Error('wrong-shop');
-        }
-
-        if (!cancelled) {
-          setDeal(result.data);
-          sessionStorage.setItem('editDeal', JSON.stringify(result.data));
-        }
-      } catch (err) {
-        console.error('Failed to load deal for editing:', err);
-        if (!cancelled) {
-          setError('ไม่พบข้อมูลโปรโมชันที่ต้องการแก้ไข');
-        }
+        setDeal(payload.data);
+      } catch (err: any) {
+        setError(err.message || 'โหลดข้อมูลดีลไม่สำเร็จ');
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
-    };
+    }
 
     loadDeal();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [shopId]);
+  }, []);
 
   if (loading) {
-    return <p className="text-text-secondary text-sm">กำลังโหลดข้อมูลคูปอง...</p>;
+    return (
+      <div className="rounded-3xl border border-border/40 bg-card-bg p-8 text-center">
+        <p className="text-sm font-black text-secondary">กำลังโหลดข้อมูลดีล...</p>
+      </div>
+    );
   }
 
   if (error || !deal) {
     return (
-      <div className="text-center py-8 max-w-sm mx-auto">
-        <div className="h-12 w-12 rounded-full bg-danger/10 text-danger flex items-center justify-center mx-auto mb-4">
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        </div>
-        <p className="text-secondary font-bold text-sm">{error || 'ไม่พบข้อมูลโปรโมชันที่ต้องการแก้ไข'}</p>
-        <button
-          onClick={() => window.location.href = '/dashboard/deals'}
-          className="btn btn-secondary mt-5 py-2 px-4 rounded-xl text-xs font-bold"
-        >
-          กลับไปหน้าจัดการดีล
-        </button>
+      <div className="rounded-3xl border border-danger/20 bg-danger-bg/15 p-8 text-center">
+        <p className="text-sm font-black text-danger">{error || 'ไม่พบดีล'}</p>
+        <a href="/dashboard/deals" className="mt-4 inline-flex min-h-[44px] items-center rounded-2xl bg-primary px-5 text-sm font-black text-white">
+          กลับไปหน้าดีล
+        </a>
       </div>
     );
   }
 
   return (
     <DealForm
-      shopId={shopId}
       deal={deal}
-      onSuccess={() => {
-        sessionStorage.removeItem('editDeal');
-        window.location.href = '/dashboard/deals';
-      }}
-      onCancel={() => {
-        sessionStorage.removeItem('editDeal');
-        window.location.href = '/dashboard/deals';
-      }}
+      onSuccess={() => { window.location.href = '/dashboard/deals'; }}
+      onCancel={() => { window.location.href = '/dashboard/deals'; }}
     />
   );
 }

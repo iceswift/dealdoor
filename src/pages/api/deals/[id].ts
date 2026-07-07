@@ -4,104 +4,77 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
-import { deals, analyticsEvents } from '../../../../db/schema';
+import { deals } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
-import { handleApiError, notFound } from '../../../lib/errors';
+import { handleApiError, badRequest } from '../../../lib/errors';
+import { dealSchema, validateInput } from '../../../lib/validations';
+import {
+  deleteDealWithDashboardRelations,
+  getOwnedDeal,
+  json,
+  requireDashboardShop,
+} from '../../../lib/dashboard/server';
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, locals }) => {
   try {
-    const deal = await db.select().from(deals).where(eq(deals.id, params.id!)).get();
-
-    if (!deal) {
-      throw notFound('ไม่พบข้อมูลดีล');
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, data: deal }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    const { shop } = await requireDashboardShop(locals.user);
+    const deal = await getOwnedDeal(params.id!, shop.id);
+    return json({ success: true, data: deal });
   } catch (error) {
     return handleApiError(error);
   }
 };
 
-export const PUT: APIRoute = async ({ params, request }) => {
+export const PUT: APIRoute = async ({ params, request, locals }) => {
   try {
-    const data = await request.json();
+    const { shop } = await requireDashboardShop(locals.user);
     const dealId = params.id!;
+    const existing = await getOwnedDeal(dealId, shop.id);
+    const rawData = await request.json();
 
-    // Check if deal exists
-    const existing = await db.select().from(deals).where(eq(deals.id, dealId)).get();
-    if (!existing) {
-      throw notFound('ไม่พบข้อมูลดีล');
+    const validation = validateInput(dealSchema, rawData);
+    if (!validation.success) {
+      throw badRequest('VALIDATION_ERROR', 'ข้อมูลดีลไม่ถูกต้อง', validation.errors);
     }
 
-    // Update deal
+    const data = validation.data!;
+
     await db.update(deals)
       .set({
-        title: data.title || existing.title,
-        category: data.category || existing.category,
-        description: data.description !== undefined ? data.description : existing.description,
-        shortDescription: data.shortDescription !== undefined ? data.shortDescription : existing.shortDescription,
-        discountText: data.discountText !== undefined ? data.discountText : existing.discountText,
-        conditions: data.conditions !== undefined ? data.conditions : existing.conditions,
-        couponCode: data.couponCode !== undefined ? data.couponCode : existing.couponCode,
-        claimType: data.claimType || existing.claimType,
-        imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
-        startDate: data.startDate ? new Date(data.startDate) : existing.startDate,
-        endDate: data.endDate ? new Date(data.endDate) : existing.endDate,
-        isActive: data.isActive !== undefined ? data.isActive : existing.isActive,
+        title: data.title,
+        category: data.category,
+        description: data.description || null,
+        shortDescription: data.shortDescription || null,
+        discountText: data.discountText,
+        conditions: data.conditions || null,
+        couponCode: data.couponCode || null,
+        claimType: data.claimType,
+        imageUrl: data.imageUrl || null,
+        startDate: data.startDate ? new Date(data.startDate) : null,
+        endDate: new Date(data.endDate),
+        isActive: existing.isActive,
         updatedAt: new Date(),
       })
       .where(eq(deals.id, dealId));
 
-    const updatedDeal = await db.select().from(deals).where(eq(deals.id, dealId)).get();
-
-    return new Response(
-      JSON.stringify({ success: true, data: updatedDeal }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    const updatedDeal = await getOwnedDeal(dealId, shop.id);
+    return json({ success: true, data: updatedDeal });
   } catch (error) {
     return handleApiError(error);
   }
 };
 
-export const DELETE: APIRoute = async ({ params }) => {
+export const PATCH: APIRoute = async ({ params, request, locals }) => {
   try {
+    const { shop } = await requireDashboardShop(locals.user);
     const dealId = params.id!;
+    await getOwnedDeal(dealId, shop.id);
 
-    // Check if deal exists
-    const existing = await db.select().from(deals).where(eq(deals.id, dealId)).get();
-    if (!existing) {
-      throw notFound('ไม่พบข้อมูลดีล');
-    }
-
-    // Delete associated analytics events first to avoid FK constraint error
-    await db.delete(analyticsEvents).where(eq(analyticsEvents.dealId, dealId));
-
-    await db.delete(deals).where(eq(deals.id, dealId));
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'ลบดีลสำเร็จ' }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const PATCH: APIRoute = async ({ params, request }) => {
-  try {
     const data = await request.json();
-    const dealId = params.id!;
-
-    // Check if deal exists
-    const existing = await db.select().from(deals).where(eq(deals.id, dealId)).get();
-    if (!existing) {
-      throw notFound('ไม่พบข้อมูลดีล');
+    if (typeof data.isActive !== 'boolean') {
+      throw badRequest('VALIDATION_ERROR', 'สถานะดีลไม่ถูกต้อง');
     }
 
-    // Toggle active status
     await db.update(deals)
       .set({
         isActive: data.isActive,
@@ -109,10 +82,20 @@ export const PATCH: APIRoute = async ({ params, request }) => {
       })
       .where(eq(deals.id, dealId));
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ success: true });
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const DELETE: APIRoute = async ({ params, locals }) => {
+  try {
+    const { shop } = await requireDashboardShop(locals.user);
+    const dealId = params.id!;
+    await getOwnedDeal(dealId, shop.id);
+    await deleteDealWithDashboardRelations(dealId);
+
+    return json({ success: true, message: 'ลบดีลสำเร็จ' });
   } catch (error) {
     return handleApiError(error);
   }

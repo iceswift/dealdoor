@@ -8,37 +8,31 @@ import { shops } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
 import { handleApiError, notFound, badRequest } from '../../../lib/errors';
 import { shopSchema, validateInput } from '../../../lib/validations';
+import { assertShopOwnership, json, requireDashboardContext } from '../../../lib/dashboard/server';
 
 export const GET: APIRoute = async ({ params }) => {
   try {
     const shop = await db.select().from(shops).where(eq(shops.id, params.id!)).get();
-
     if (!shop) {
       throw notFound('ไม่พบข้อมูลร้าน');
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data: shop }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ success: true, data: shop });
   } catch (error) {
     return handleApiError(error);
   }
 };
 
-export const PUT: APIRoute = async ({ params, request }) => {
+export const PUT: APIRoute = async ({ params, request, locals }) => {
   try {
-    const rawData = await request.json();
+    const { merchant } = await requireDashboardContext(locals.user);
     const shopId = params.id!;
+    const existing = await assertShopOwnership(shopId, merchant.id);
+    const rawData = await request.json();
 
-    const existing = await db.select().from(shops).where(eq(shops.id, shopId)).get();
-    if (!existing) {
-      throw notFound('ไม่พบข้อมูลร้าน');
-    }
-
-    const validation = validateInput(shopSchema.partial(), rawData);
+    const validation = validateInput(shopSchema.omit({ merchantId: true }).partial(), rawData);
     if (!validation.success) {
-      throw badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', validation.errors);
+      throw badRequest('VALIDATION_ERROR', 'ข้อมูลร้านค้าไม่ถูกต้อง', validation.errors);
     }
 
     const data = validation.data!;
@@ -94,11 +88,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
       .where(eq(shops.id, shopId));
 
     const updatedShop = await db.select().from(shops).where(eq(shops.id, shopId)).get();
-
-    return new Response(
-      JSON.stringify({ success: true, data: updatedShop }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ success: true, data: updatedShop });
   } catch (error) {
     return handleApiError(error);
   }
