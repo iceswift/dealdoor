@@ -16,11 +16,26 @@ const { user, shop } = context;
 const overview = shop ? await getDashboardOverview(shop) : null;
 
 const statCards = overview ? [
-  { label: 'ยอดเข้าชม', value: overview.totals.pageViews, hint: '60 วันที่ผ่านมา' },
-  { label: 'คลิกดีล', value: overview.totals.dealClicks, hint: 'จากทุกดีล' },
-  { label: 'แชร์', value: overview.totals.shares, hint: 'ลิงก์และดีล' },
-  { label: 'ดีลใช้งาน', value: `${overview.activeDealCount}/${overview.maxDeals}`, hint: overview.tier === 'pro' ? 'Pro' : 'Free' },
+  { label: 'ยอดเข้าชม', value: overview.totals.pageViews, hint: '60 วันที่ผ่านมา', icon: 'eye', color: 'primary' },
+  { label: 'คลิกดีล', value: overview.totals.dealClicks, hint: 'จากทุกดีล', icon: 'tag', color: 'info' },
+  { label: 'แชร์', value: overview.totals.shares, hint: 'ลิงก์และดีล', icon: 'share', color: 'accent' },
+  { label: 'ดีลใช้งาน', value: `${overview.activeDealCount}/${overview.maxDeals}`, hint: overview.tier === 'pro' ? 'Pro' : 'Free', icon: 'chart', color: 'warning' },
 ] : [];
+
+const colorClasses: Record<string, { text: string; bg: string; border: string }> = {
+  primary: { text: 'text-primary', bg: 'bg-primary/10', border: 'border-l-primary' },
+  info: { text: 'text-info', bg: 'bg-info/10', border: 'border-l-info' },
+  accent: { text: 'text-accent', bg: 'bg-accent/10', border: 'border-l-accent' },
+  warning: { text: 'text-warning', bg: 'bg-warning/10', border: 'border-l-warning' },
+};
+
+const readinessCircumference = 2 * Math.PI * 42;
+const readinessOffset = overview ? readinessCircumference * (1 - overview.readiness.score / 100) : readinessCircumference;
+
+function daysUntil(dateStr: string) {
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
 ---
 
 <DashboardLayout title="ภาพรวมร้านค้า" activeTab="overview">
@@ -41,14 +56,27 @@ const statCards = overview ? [
     </section>
   ) : (
     <div class="space-y-6">
-      <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
-        <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+      <section class="relative overflow-hidden rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm sm:p-6">
+        <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl"></div>
+        <div class="pointer-events-none absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl"></div>
+        <div class="relative grid gap-6 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+          <div class="hidden h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-border/40 bg-bg-secondary shadow-sm sm:flex sm:items-center sm:justify-center">
+            {shop.logoImage ? (
+              <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover" />
+            ) : (
+              <Icon name="store" class="h-7 w-7 text-primary" />
+            )}
+          </div>
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
+              <span class:list={[
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black',
+                shop.isOpen ? 'bg-success-bg text-success-text' : 'bg-badge-bg text-badge-text'
+              ]}>
+                <span class:list={['h-1.5 w-1.5 rounded-full', shop.isOpen ? 'bg-success' : 'bg-text-tertiary']}></span>
                 {shop.isOpen ? 'เปิดรับลูกค้า' : 'ปิดชั่วคราว'}
               </span>
-              <span class="rounded-full bg-bg-secondary px-3 py-1 text-xs font-black text-text-secondary">
+              <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
                 {shop.tier === 'pro' ? 'Pro' : 'Free'}
               </span>
             </div>
@@ -58,10 +86,10 @@ const statCards = overview ? [
             </p>
           </div>
           <div class="flex flex-wrap gap-2">
-            <a href={`/${shop.slug}`} class="inline-flex min-h-[44px] items-center rounded-2xl border border-border/50 px-4 text-sm font-black text-secondary hover:bg-bg-secondary">
+            <a href={`/${shop.slug}`} class="inline-flex min-h-[44px] items-center rounded-2xl border border-border/50 px-4 text-sm font-black text-secondary transition-colors hover:bg-bg-secondary">
               ดูหน้าร้าน
             </a>
-            <a href="/dashboard/deals/new" class="inline-flex min-h-[44px] items-center rounded-2xl bg-primary px-4 text-sm font-black text-white">
+            <a href="/dashboard/deals/new" class="inline-flex min-h-[44px] items-center rounded-2xl bg-primary px-4 text-sm font-black text-white shadow-lg shadow-primary/20 transition-transform hover:scale-[1.02]">
               สร้างดีล
             </a>
           </div>
@@ -70,9 +98,17 @@ const statCards = overview ? [
 
       <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => (
-          <div class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
-            <p class="text-xs font-black uppercase tracking-wider text-text-tertiary">{card.label}</p>
-            <p class="mt-2 text-3xl font-black text-secondary">{card.value}</p>
+          <div class:list={[
+            'rounded-3xl border border-l-4 border-border/40 bg-card-bg p-5 shadow-sm transition-shadow hover:shadow-md',
+            colorClasses[card.color].border
+          ]}>
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-xs font-black uppercase tracking-wider text-text-tertiary">{card.label}</p>
+              <div class:list={['flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', colorClasses[card.color].bg]}>
+                <Icon name={card.icon} class:list={['h-4 w-4', colorClasses[card.color].text]} />
+              </div>
+            </div>
+            <p class="mt-3 text-3xl font-black text-secondary">{card.value}</p>
             <p class="mt-1 text-xs font-bold text-text-tertiary">{card.hint}</p>
           </div>
         ))}
@@ -80,25 +116,46 @@ const statCards = overview ? [
 
       <section class="grid gap-6 xl:grid-cols-[1fr_380px]">
         <div class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Icon name="rocket" class="h-5 w-5 text-primary" />
+            </div>
             <div>
               <p class="text-xs font-black uppercase tracking-wider text-primary">Readiness</p>
               <h2 class="text-xl font-black text-secondary">ความพร้อมสำหรับ Explore</h2>
             </div>
-            <span class="text-3xl font-black text-secondary">{overview.readiness.score}%</span>
           </div>
-          <div class="mt-4 h-3 overflow-hidden rounded-full bg-bg-tertiary">
-            <div class="h-full rounded-full bg-primary" style={`width: ${overview.readiness.score}%`}></div>
-          </div>
-          <div class="mt-5 grid gap-3 sm:grid-cols-2">
-            {overview.readiness.checks.map((item) => (
-              <div class:list={[
-                'rounded-2xl border p-4',
-                item.done ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-border/40 bg-bg-secondary text-text-secondary'
-              ]}>
-                <p class="text-sm font-black">{item.done ? 'พร้อม' : 'ยังขาด'}: {item.label}</p>
+          <div class="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div class="relative mx-auto h-28 w-28 shrink-0 sm:mx-0">
+              <svg viewBox="0 0 96 96" class="h-28 w-28 -rotate-90">
+                <circle cx="48" cy="48" r="42" fill="none" stroke="var(--color-bg-tertiary)" stroke-width="8" />
+                <circle
+                  cx="48" cy="48" r="42" fill="none" stroke="var(--color-primary)" stroke-width="8"
+                  stroke-linecap="round"
+                  stroke-dasharray={readinessCircumference}
+                  stroke-dashoffset={readinessOffset}
+                />
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-2xl font-black text-secondary">{overview.readiness.score}%</span>
               </div>
-            ))}
+            </div>
+            <div class="grid flex-1 gap-3 sm:grid-cols-2">
+              {overview.readiness.checks.map((item) => (
+                <div class:list={[
+                  'flex items-center gap-3 rounded-2xl border p-4',
+                  item.done ? 'border-success/20 bg-success-bg text-success-text' : 'border-border/40 bg-bg-secondary text-text-secondary'
+                ]}>
+                  <div class:list={[
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                    item.done ? 'bg-success text-white' : 'bg-bg-tertiary text-text-tertiary'
+                  ]}>
+                    <Icon name={item.done ? 'check' : 'x'} class="h-4 w-4" />
+                  </div>
+                  <p class="text-sm font-black">{item.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -110,9 +167,14 @@ const statCards = overview ? [
 
       <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
         <div class="flex items-center justify-between gap-3">
-          <div>
-            <p class="text-xs font-black uppercase tracking-wider text-primary">Deals</p>
-            <h2 class="text-xl font-black text-secondary">ดีลที่ควรดูแลต่อ</h2>
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-info/10">
+              <Icon name="tag" class="h-5 w-5 text-info" />
+            </div>
+            <div>
+              <p class="text-xs font-black uppercase tracking-wider text-primary">Deals</p>
+              <h2 class="text-xl font-black text-secondary">ดีลที่ควรดูแลต่อ</h2>
+            </div>
           </div>
           <a href="/dashboard/deals" class="text-sm font-black text-primary hover:underline">จัดการทั้งหมด</a>
         </div>
@@ -123,20 +185,37 @@ const statCards = overview ? [
               <a href="/dashboard/deals/new" class="mt-3 inline-flex min-h-[44px] items-center rounded-2xl bg-primary px-5 text-sm font-black text-white">สร้างดีลแรก</a>
             </div>
           ) : (
-            overview.upcomingDeals.map((deal) => (
-              <a href={`/dashboard/deals/edit?id=${deal.id}`} class="grid gap-3 rounded-2xl border border-border/40 bg-bg p-4 transition hover:border-primary/40 sm:grid-cols-[80px_1fr_auto] sm:items-center">
-                <div class="aspect-square overflow-hidden rounded-xl bg-bg-secondary">
-                  {deal.imageUrl ? <img src={deal.imageUrl} alt={deal.title} class="h-full w-full object-cover" /> : null}
-                </div>
-                <div>
-                  <p class="text-sm font-black text-secondary">{deal.title}</p>
-                  <p class="text-sm font-bold text-primary">{deal.discountText}</p>
-                </div>
-                <p class="text-xs font-black text-text-tertiary">
-                  หมดอายุ {new Date(deal.endDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
-                </p>
-              </a>
-            ))
+            overview.upcomingDeals.map((deal) => {
+              const daysLeft = daysUntil(deal.endDate);
+              const isExpiringSoon = daysLeft <= 3;
+              return (
+                <a href={`/dashboard/deals/edit?id=${deal.id}`} class="group grid gap-3 rounded-2xl border border-border/40 bg-bg p-4 transition hover:border-primary/40 hover:shadow-sm sm:grid-cols-[80px_1fr_auto] sm:items-center">
+                  <div class="aspect-square overflow-hidden rounded-xl bg-bg-secondary">
+                    {deal.imageUrl ? (
+                      <img src={deal.imageUrl} alt={deal.title} class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : (
+                      <div class="flex h-full w-full items-center justify-center">
+                        <Icon name="tag" class="h-6 w-6 text-text-tertiary" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p class="text-sm font-black text-secondary">{deal.title}</p>
+                    <p class="text-sm font-bold text-primary">{deal.discountText}</p>
+                  </div>
+                  <div class="flex items-center gap-2 sm:flex-col sm:items-end">
+                    {isExpiringSoon && (
+                      <span class="rounded-full bg-warning-bg px-2.5 py-1 text-[10px] font-black text-warning-text">
+                        ใกล้หมดอายุ
+                      </span>
+                    )}
+                    <p class="text-xs font-black text-text-tertiary">
+                      หมดอายุ {new Date(deal.endDate).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                </a>
+              );
+            })
           )}
         </div>
       </section>
