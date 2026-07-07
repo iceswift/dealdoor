@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react';
 import type { Deal } from '../../../db/schema';
 import DealForm from './DealForm';
 
-export default function DealFormEditWrapper() {
+interface DealFormEditWrapperProps {
+  shopName?: string;
+  shopLogoUrl?: string | null;
+  shopAddress?: string | null;
+}
+
+export default function DealFormEditWrapper({ shopName, shopLogoUrl, shopAddress }: DealFormEditWrapperProps) {
   const [deal, setDeal] = useState<Deal | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -57,6 +63,9 @@ export default function DealFormEditWrapper() {
   return (
     <DealForm
       deal={deal}
+      shopName={shopName}
+      shopLogoUrl={shopLogoUrl}
+      shopAddress={shopAddress}
       onSuccess={() => { window.location.href = '/dashboard/deals'; }}
       onCancel={() => { window.location.href = '/dashboard/deals'; }}
     />

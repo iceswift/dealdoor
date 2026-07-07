@@ -3,13 +3,56 @@
 import { useMemo, useState } from 'react';
 import type { Deal } from '../../../db/schema';
 import { showToast } from '../../lib/toast';
+import { DEAL_CATEGORY_COLORS, type DealCategory } from '../../lib/constants';
+
+interface DealStat {
+  views: number;
+  clicks: number;
+}
 
 interface DealListProps {
   initialDeals: Deal[];
   maxDeals: number;
+  dealStats?: Record<string, DealStat>;
 }
 
 type Filter = 'all' | 'active' | 'scheduled' | 'paused' | 'expired';
+
+const stateMeta: Record<Filter, { label: string; badge: string }> = {
+  all: { label: 'ทั้งหมด', badge: '' },
+  active: { label: 'กำลังใช้งาน', badge: 'bg-emerald-50 text-emerald-700' },
+  scheduled: { label: 'รอเริ่ม', badge: 'bg-blue-50 text-blue-700' },
+  paused: { label: 'พักไว้', badge: 'bg-amber-50 text-amber-700' },
+  expired: { label: 'หมดอายุ', badge: 'bg-bg-secondary text-text-tertiary' },
+};
+
+function lifeRemainingPercent(startDate: Date | string | null, endDate: Date | string) {
+  const start = startDate ? new Date(startDate).getTime() : null;
+  const end = new Date(endDate).getTime();
+  const now = Date.now();
+  const from = start && start < now ? start : now - 1000 * 60 * 60 * 24 * 30;
+  const total = end - from;
+  if (total <= 0) return 0;
+  const remaining = ((end - now) / total) * 100;
+  return Math.max(0, Math.min(100, Math.round(remaining)));
+}
+
+function daysUntil(endDate: Date | string) {
+  const diff = new Date(endDate).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function parseDiscountPercent(discountText: string | null) {
+  if (!discountText) return null;
+  const match = discountText.match(/฿([\d,]+)\s*\(ปกติ\s*฿([\d,]+)\)/);
+  if (!match) return null;
+  const promo = parseInt(match[1].replace(/,/g, ''));
+  const original = parseInt(match[2].replace(/,/g, ''));
+  if (!original) return null;
+  return Math.round(((original - promo) / original) * 100);
+}
+
+const urgencyRingCircumference = 2 * Math.PI * 15;
 
 const categoryLabels: Record<string, string> = {
   birthday: 'วันเกิด',
@@ -59,11 +102,12 @@ async function copyToClipboard(text: string) {
   textarea.remove();
 }
 
-export default function DealList({ initialDeals, maxDeals }: DealListProps) {
+export default function DealList({ initialDeals, maxDeals, dealStats = {} }: DealListProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const activeCount = deals.filter((deal) => getDealState(deal) === 'active').length;
 
@@ -114,6 +158,7 @@ export default function DealList({ initialDeals, maxDeals }: DealListProps) {
   }
 
   async function deleteDeal(deal: Deal) {
+    setMenuOpenId(null);
     if (!window.confirm(`ลบดีล "${deal.title}" ใช่ไหม?`)) return;
 
     setBusyId(deal.id);
@@ -137,6 +182,8 @@ export default function DealList({ initialDeals, maxDeals }: DealListProps) {
       showToast('คัดลอกลิงก์ดีลแล้ว', 'success');
     } catch {
       showToast('คัดลอกลิงก์ไม่สำเร็จ', 'error');
+    } finally {
+      setMenuOpenId(null);
     }
   }
 
@@ -209,61 +256,114 @@ export default function DealList({ initialDeals, maxDeals }: DealListProps) {
           </a>
         </section>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredDeals.map((deal) => {
             const state = getDealState(deal);
             const isBusy = busyId === deal.id;
+            const stats = dealStats[deal.id];
+            const meta = stateMeta[state];
+            const lifePercent = lifeRemainingPercent(deal.startDate, deal.endDate);
+            const menuOpen = menuOpenId === deal.id;
+            const discountPercent = parseDiscountPercent(deal.discountText);
+            const daysLeft = daysUntil(deal.endDate);
+            const showUrgencyRing = state === 'active' && daysLeft <= 7;
+            const urgencyRingPercent = Math.max(0, Math.min(100, (daysLeft / 7) * 100));
+            const urgencyRingOffset = urgencyRingCircumference * (1 - urgencyRingPercent / 100);
+            const categoryColor = DEAL_CATEGORY_COLORS[deal.category as DealCategory] || '#6B7280';
 
             return (
               <article key={deal.id} className="overflow-hidden rounded-3xl border border-border/40 bg-card-bg shadow-sm">
-                <div className="grid gap-4 p-4 md:grid-cols-[160px_1fr_auto] md:items-center">
-                  <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-bg-secondary">
-                    {deal.imageUrl ? (
-                      <img src={deal.imageUrl} alt={deal.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs font-black text-text-tertiary">
-                        ไม่มีรูป
-                      </div>
+                <div className="group relative aspect-[16/9] overflow-hidden bg-bg-secondary">
+                  {deal.imageUrl ? (
+                    <img src={deal.imageUrl} alt={deal.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs font-black text-text-tertiary">
+                      ไม่มีรูป
+                    </div>
+                  )}
+
+                  {discountPercent !== null && discountPercent > 0 && (
+                    <div className="absolute -left-9 top-3 w-32 -rotate-45 bg-gradient-to-r from-danger to-primary py-1 text-center shadow-md z-10">
+                      <span className="text-[10px] font-black tracking-wider text-white">-{discountPercent}%</span>
+                    </div>
+                  )}
+
+                  <span className={`absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-black backdrop-blur-md ${meta.badge}`}>
+                    {meta.label}
+                  </span>
+
+                  {showUrgencyRing && (
+                    <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-black/50 py-1 pl-1 pr-2 backdrop-blur-md">
+                      <svg viewBox="0 0 36 36" className="h-6 w-6 -rotate-90">
+                        <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={3} />
+                        <circle
+                          cx="18" cy="18" r="15" fill="none" stroke="#EF4444" strokeWidth={3}
+                          strokeLinecap="round"
+                          strokeDasharray={urgencyRingCircumference}
+                          strokeDashoffset={urgencyRingOffset}
+                        />
+                      </svg>
+                      <span className="text-[9px] font-black text-white">เหลือ {daysLeft} วัน</span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="rounded-full px-2.5 py-1 text-[11px] font-black"
+                      style={{ backgroundColor: `${categoryColor}26`, color: categoryColor }}
+                    >
+                      {categoryLabels[deal.category] || deal.category}
+                    </span>
+                    {stats && (
+                      <span className="flex items-center gap-2 text-[11px] font-black text-text-tertiary">
+                        <span>👁 {stats.views}</span>
+                        <span>🔗 {stats.clicks}</span>
+                      </span>
                     )}
                   </div>
-
-                  <div className="min-w-0 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
-                        state === 'active' ? 'bg-emerald-50 text-emerald-700' :
-                        state === 'scheduled' ? 'bg-blue-50 text-blue-700' :
-                        state === 'paused' ? 'bg-amber-50 text-amber-700' :
-                        'bg-bg-secondary text-text-tertiary'
-                      }`}>
-                        {state === 'active' ? 'กำลังใช้งาน' : state === 'scheduled' ? 'รอเริ่ม' : state === 'paused' ? 'พักไว้' : 'หมดอายุ'}
-                      </span>
-                      <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-black text-primary">
-                        {categoryLabels[deal.category] || deal.category}
-                      </span>
+                  <h3 className="truncate text-base font-black text-secondary">{deal.title}</h3>
+                  <p className="text-sm font-bold text-primary">{deal.discountText}</p>
+                  <div className="space-y-1">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
+                      <div
+                        className={`h-full rounded-full ${state === 'expired' ? 'bg-text-tertiary' : lifePercent <= 15 ? 'bg-warning' : 'bg-primary'}`}
+                        style={{ width: `${lifePercent}%` }}
+                      />
                     </div>
-                    <h3 className="truncate text-base font-black text-secondary">{deal.title}</h3>
-                    <p className="text-sm font-bold text-primary">{deal.discountText}</p>
-                    <p className="line-clamp-2 text-sm font-bold text-text-secondary">
-                      {deal.shortDescription || deal.description || 'ยังไม่มีรายละเอียดสั้น'}
-                    </p>
-                    <p className="text-xs font-bold text-text-tertiary">
-                      หมดอายุ {formatDate(deal.endDate)}
-                    </p>
+                    <p className="text-xs font-bold text-text-tertiary">หมดอายุ {formatDate(deal.endDate)}</p>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 md:w-40 md:grid-cols-1">
-                    <a href={`/dashboard/deals/edit?id=${encodeURIComponent(deal.id)}`} className="flex min-h-[40px] items-center justify-center rounded-xl bg-bg-secondary px-3 text-xs font-black text-secondary transition-colors hover:bg-bg-tertiary">
+                  <div className="flex items-center gap-2 pt-1">
+                    <a href={`/dashboard/deals/edit?id=${encodeURIComponent(deal.id)}`} className="flex min-h-[38px] flex-1 items-center justify-center rounded-xl bg-bg-secondary text-xs font-black text-secondary transition-colors hover:bg-bg-tertiary">
                       แก้ไข
                     </a>
-                    <button type="button" onClick={() => toggleDeal(deal)} disabled={isBusy} className="min-h-[40px] rounded-xl bg-primary px-3 text-xs font-black text-white disabled:opacity-50">
+                    <button type="button" onClick={() => toggleDeal(deal)} disabled={isBusy} className="min-h-[38px] flex-1 rounded-xl bg-primary text-xs font-black text-white disabled:opacity-50">
                       {deal.isActive ? 'พักดีล' : 'เปิดดีล'}
                     </button>
-                    <button type="button" onClick={() => copyPublicLink(deal)} className="min-h-[40px] rounded-xl border border-border/50 px-3 text-xs font-black text-text-secondary">
-                      คัดลอกลิงก์
-                    </button>
-                    <button type="button" onClick={() => deleteDeal(deal)} disabled={isBusy} className="min-h-[40px] rounded-xl border border-danger/20 px-3 text-xs font-black text-danger disabled:opacity-50">
-                      ลบ
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setMenuOpenId(menuOpen ? null : deal.id)}
+                        aria-label="ตัวเลือกเพิ่มเติม"
+                        className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-border/50 text-text-secondary hover:bg-bg-secondary"
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                          <circle cx="12" cy="5" r="1.8" />
+                          <circle cx="12" cy="12" r="1.8" />
+                          <circle cx="12" cy="19" r="1.8" />
+                        </svg>
+                      </button>
+                      {menuOpen && (
+                        <div className="absolute right-0 bottom-full z-20 mb-1 w-40 overflow-hidden rounded-xl border border-border/40 bg-card-bg shadow-lg">
+                          <button type="button" onClick={() => copyPublicLink(deal)} className="block w-full px-4 py-2.5 text-left text-xs font-black text-text-secondary hover:bg-bg-secondary">
+                            คัดลอกลิงก์
+                          </button>
+                          <button type="button" onClick={() => deleteDeal(deal)} disabled={isBusy} className="block w-full px-4 py-2.5 text-left text-xs font-black text-danger hover:bg-danger-bg disabled:opacity-50">
+                            ลบ
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </article>

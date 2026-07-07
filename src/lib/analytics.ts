@@ -110,6 +110,18 @@ export async function getTopDeals(shopId: string, limit: number = 5) {
   return result;
 }
 
+// ─── Get Single Deal View Count ──────────────────────────
+
+export async function getDealViewCount(dealId: string): Promise<number> {
+  const result = await db
+    .select({ views: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(and(eq(analyticsEvents.dealId, dealId), eq(analyticsEvents.type, 'deal_view')))
+    .get();
+
+  return result?.views || 0;
+}
+
 // ─── Aggregate Daily Stats ───────────────────────────────
 
 export async function aggregateDailyStats(shopId: string, date: string): Promise<void> {

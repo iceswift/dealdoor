@@ -561,6 +561,11 @@ html {
   100% { background-position: 200% 0; }
 }
 
+@keyframes pulseDanger {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -575,6 +580,10 @@ html {
 
 .animate-glow {
   animation: glow 3s ease-in-out infinite;
+}
+
+.animate-pulse-danger {
+  animation: pulseDanger 2s ease-in-out infinite;
 }
 
 /* Skeleton Loading Shimmer */

@@ -166,14 +166,14 @@ const categories = [
           <div class="home-section-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {expiringSoon.slice(0, 6).map(({ deal, shop }, index) => (
               <div
-                class="home-filter-item animate-fade-in"
+                class:list={['home-filter-item animate-fade-in', index === 0 && 'sm:col-span-2']}
                 data-section="expiring"
                 data-shop-category={shop?.category || ''}
                 data-title={deal.title.toLowerCase()}
                 data-shop-name={shop?.name.toLowerCase() || ''}
                 style={`animation-delay: ${index * 0.08}s`}
               >
-                {shop && <ExploreDealCard deal={deal} shop={shop} />}
+                {shop && <ExploreDealCard deal={deal} shop={shop} featured={index === 0} />}
               </div>
             ))}
           </div>

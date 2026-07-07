@@ -8,11 +8,20 @@ import Icon from '../icons/index.astro';
 interface Props {
   deal: Deal;
   shop: Shop;
+  featured?: boolean;
 }
 
-const { deal, shop } = Astro.props;
+const { deal, shop, featured = false } = Astro.props;
 const view = getDealViewModel(deal, shop);
 const isExpired = view.urgency === 'expired';
+const isCriticalSoon = view.urgency === 'soon' && view.daysLeft <= 1;
+
+const ringWindowDays = 7;
+const ringPercent = view.urgency === 'soon'
+  ? Math.max(0, Math.min(100, (view.daysLeft / ringWindowDays) * 100))
+  : 0;
+const ringCircumference = 2 * Math.PI * 15;
+const ringOffset = ringCircumference * (1 - ringPercent / 100);
 
 // Map categories to fallback gradient backgrounds
 let fallbackBg = 'from-primary/10 to-orange-100/50';
@@ -51,6 +60,7 @@ if (priceMatchResult) {
     promo: promoStr,
     original: originalStr,
     saving: saving.toLocaleString(),
+    percent: original > 0 ? Math.round((saving / original) * 100) : 0,
   };
 }
 ---
@@ -58,13 +68,14 @@ if (priceMatchResult) {
 <a
   href={view.urls.deal || `/${shop.slug}?deal=${deal.id}`}
   class:list={[
-    'group block overflow-hidden bg-card-bg/65 backdrop-blur-md border border-border/15 rounded-[24px] hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1.5 hover:border-primary/25 transition-all duration-300 relative cursor-pointer flex flex-col justify-between h-full shadow-sm',
+    'group block overflow-hidden bg-card-bg/65 backdrop-blur-md border border-border/15 rounded-[24px] hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1.5 hover:border-primary/25 transition-all duration-300 relative cursor-pointer flex h-full flex-col justify-between shadow-sm',
     isExpired && 'opacity-65 grayscale-[20%]',
+    isCriticalSoon && !isExpired && 'animate-pulse-danger border-danger/30',
   ]}
   aria-label={`ดูดีล ${view.title} จาก ${shop.name}`}
 >
-  {/* Visual Cover Photo (4:3 Ratio) */}
-  <div class="relative overflow-hidden aspect-[4/3] bg-bg-secondary flex items-center justify-center shrink-0">
+  {/* Visual Cover Photo (4:3 Ratio, or 16:9 for featured) */}
+  <div class:list={['relative overflow-hidden bg-bg-secondary flex items-center justify-center shrink-0', featured ? 'aspect-[16/9]' : 'aspect-[4/3]']}>
     {view.imageUrl ? (
       <img
         src={view.imageUrl}
@@ -78,18 +89,39 @@ if (priceMatchResult) {
       </div>
     )}
 
-    {/* Category Pill Tag Overlay - Glassmorphic look */}
+    {/* Discount Sticker Ribbon - diagonal corner banner */}
+    {priceMatch && priceMatch.percent > 0 && (
+      <div class="absolute -left-10 top-4 w-36 rotate-[-45deg] bg-gradient-to-r from-danger to-primary py-1.5 text-center shadow-md z-10">
+        <span class="text-sm font-black tracking-wider text-white">-{priceMatch.percent}%</span>
+      </div>
+    )}
+
+    {/* Category Pill Tag Overlay - color-coded by deal category */}
     <span
-      class="absolute top-3 left-3 text-[9px] font-black px-2.5 py-1 rounded-full border border-white/10 text-white backdrop-blur-md shadow-sm bg-black/45 tracking-wider uppercase"
+      class="absolute bottom-3 left-3 text-[9px] font-black px-2.5 py-1 rounded-full shadow-sm tracking-wider uppercase text-white"
+      style={`background-color:${view.categoryColor};`}
     >
       {view.categoryLabel}
     </span>
 
-    {/* Expiry Urgency badge overlay bottom-right */}
-    {view.expiryLabel && (
+    {/* Urgency countdown ring (soon) or plain badge (expired / normal) */}
+    {view.urgency === 'soon' ? (
+      <div class="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/50 py-1 pl-1 pr-2 backdrop-blur-md shadow-sm">
+        <svg viewBox="0 0 36 36" class="h-6 w-6 -rotate-90">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="3" />
+          <circle
+            cx="18" cy="18" r="15" fill="none" stroke="#EF4444" stroke-width="3"
+            stroke-linecap="round"
+            stroke-dasharray={ringCircumference}
+            stroke-dashoffset={ringOffset}
+          />
+        </svg>
+        <span class="text-[9px] font-black text-white">{view.expiryLabel}</span>
+      </div>
+    ) : view.expiryLabel && (
       <span class:list={[
         'absolute bottom-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-md border border-white/10 backdrop-blur-md shadow-sm text-white',
-        view.urgency === 'soon' ? 'bg-red-500/80' : isExpired ? 'bg-rose-600/80' : 'bg-black/50'
+        isExpired ? 'bg-rose-600/80' : 'bg-black/50'
       ]}>
         {view.expiryLabel}
       </span>
@@ -98,6 +130,18 @@ if (priceMatchResult) {
     {/* Save Button (Heart Badge) Overlay top-right */}
     <div class="absolute top-3 right-3 h-7.5 w-7.5 rounded-full bg-white/90 dark:bg-black/60 border border-white/20 backdrop-blur-sm flex items-center justify-center text-secondary dark:text-white shadow-sm hover:scale-110 active:scale-95 transition-all hover:bg-white hover:text-rose-500 duration-300 cursor-pointer z-20">
       <Icon name="heart" class="h-3.5 w-3.5" />
+    </div>
+
+    {/* Hover Reveal Quick Actions */}
+    <div class="absolute inset-x-0 bottom-0 flex translate-y-full items-center justify-center gap-2 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+      <span class="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-black text-secondary shadow-sm">
+        <Icon name="heart" class="h-3 w-3" />
+        บันทึก
+      </span>
+      <span class="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[10px] font-black text-white shadow-sm">
+        ดูดีล
+        <Icon name="arrow-right" class="h-3 w-3" />
+      </span>
     </div>
   </div>
 

@@ -4,10 +4,12 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../lib/db';
 import { deals, shops } from '../../../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, ne, gte } from 'drizzle-orm';
 import { getDealViewModel } from '../../lib/deals/view-model';
+import { getDealViewCount } from '../../lib/analytics';
 
 import Icon from '../../components/icons/index.astro';
+import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
 
 const { id } = Astro.params;
 
@@ -51,11 +53,81 @@ if (priceMatchResult) {
     promo: promoStr,
     original: originalStr,
     saving: saving.toLocaleString(),
+    percent: original > 0 ? Math.round((saving / original) * 100) : 0,
   };
 }
+
+// Urgency countdown ring (matches homepage/dashboard card treatment)
+const ringCircumference = 2 * Math.PI * 15;
+const ringPercent = vm.urgency === 'soon' ? Math.max(0, Math.min(100, (vm.daysLeft / 7) * 100)) : 0;
+const ringOffset = ringCircumference * (1 - ringPercent / 100);
+
+// Life-remaining bar for the sticky ticket card
+const lifeFrom = deal.startDate ? new Date(deal.startDate).getTime() : new Date(deal.createdAt).getTime();
+const lifeTotal = new Date(deal.endDate).getTime() - lifeFrom;
+const lifePercent = lifeTotal > 0
+  ? Math.max(0, Math.min(100, Math.round(((new Date(deal.endDate).getTime() - Date.now()) / lifeTotal) * 100)))
+  : 0;
+
+// Social proof
+const viewCount = await getDealViewCount(deal.id);
+
+// Related deals from the same shop
+const relatedRows = await db
+  .select({ deal: deals, shop: shops })
+  .from(deals)
+  .leftJoin(shops, eq(deals.shopId, shops.id))
+  .where(and(eq(deals.shopId, shop.id), ne(deals.id, deal.id), eq(deals.isActive, true), gte(deals.endDate, new Date())))
+  .limit(4);
+const relatedDeals = relatedRows.filter((row) => row.shop);
+
+// Share links
+const shareUrl = vm.urls.absoluteDeal || Astro.url.href;
+const shareText = vm.shareText || vm.title;
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription} image={pageImage} url={Astro.url.href} type="article">
+  {/* Sticky compact header - appears on desktop once the hero image scrolls out of view */}
+  <div
+    id="deal-sticky-header"
+    class="fixed inset-x-0 top-0 z-40 hidden items-center justify-between gap-4 border-b border-border/20 bg-card-bg/95 px-6 py-3 shadow-md backdrop-blur-md transition-transform duration-300 lg:flex"
+    style="transform: translateY(-100%);"
+  >
+    <div class="flex min-w-0 items-center gap-3">
+      {shop.logoImage ? (
+        <img src={shop.logoImage} alt={shop.name} class="h-9 w-9 rounded-xl object-cover border border-border/20 shrink-0" />
+      ) : (
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-black text-primary">
+          {shop.name.charAt(0)}
+        </div>
+      )}
+      <div class="min-w-0">
+        <p class="truncate text-xs font-black text-secondary">{vm.title}</p>
+        <p class="truncate text-[10px] font-bold text-text-tertiary">{shop.name}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0">
+      {priceMatch ? (
+        <span class="text-lg font-black text-primary">฿{priceMatch.promo}</span>
+      ) : (
+        <span class="text-sm font-black text-primary">{vm.discountLabel}</span>
+      )}
+      <button
+        id="sticky-claim-action"
+        data-claim-type={vm.claimType}
+        data-coupon={vm.couponCode || ''}
+        data-line-url={vm.shop.lineUrl || ''}
+        disabled={isClaimDisabled}
+        class:list={[
+          'h-9 px-5 rounded-xl text-xs font-black text-white shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5',
+          isClaimDisabled ? 'cursor-not-allowed bg-text-tertiary opacity-70' : 'bg-primary hover:bg-primary-hover'
+        ]}
+      >
+        {isClaimDisabled ? 'หมดอายุแล้ว' : vm.claimLabel}
+      </button>
+    </div>
+  </div>
+
   <section
     id="deal-page"
     data-shop-id={shop.id}
@@ -78,7 +150,7 @@ if (priceMatchResult) {
       <div class="lg:col-span-8 space-y-8">
         
         {/* Cover Photo card */}
-        <div class="relative overflow-hidden aspect-[16/10] bg-bg-secondary rounded-[32px] border border-border/15 shadow-sm group">
+        <div id="deal-hero" class="relative overflow-hidden aspect-[16/10] bg-bg-secondary rounded-[32px] border border-border/15 shadow-sm group">
           {vm.imageUrl ? (
             <img src={vm.imageUrl} alt={vm.imageAlt} class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
           ) : (
@@ -90,24 +162,51 @@ if (priceMatchResult) {
             </div>
           )}
 
-          {/* Floating overlays on image */}
-          <div class="absolute left-4 top-4 flex flex-wrap gap-2">
-            <span
-              class="rounded-full border px-3.5 py-1 text-[10px] font-black text-white backdrop-blur-md shadow-sm bg-black/45 border-white/10 tracking-wider uppercase"
-            >
-              {vm.categoryLabel}
-            </span>
+          {/* Discount Sticker Ribbon */}
+          {priceMatch && priceMatch.percent > 0 && (
+            <div class="absolute -left-10 top-4 w-36 -rotate-45 bg-gradient-to-r from-danger to-primary py-1.5 text-center shadow-md z-10">
+              <span class="text-sm font-black tracking-wider text-white">-{priceMatch.percent}%</span>
+            </div>
+          )}
+
+          {/* Category badge - color-coded by deal category */}
+          <span
+            class="absolute left-4 bottom-4 rounded-full px-3.5 py-1 text-[10px] font-black shadow-sm tracking-wider uppercase text-white"
+            style={`background-color:${vm.categoryColor};`}
+          >
+            {vm.categoryLabel}
+          </span>
+
+          {/* Urgency countdown ring (soon) or plain badge */}
+          {vm.urgency === 'soon' ? (
+            <div class="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-black/50 py-1 pl-1 pr-2.5 backdrop-blur-md shadow-sm">
+              <svg viewBox="0 0 36 36" class="h-6 w-6 -rotate-90">
+                <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="3" />
+                <circle
+                  cx="18" cy="18" r="15" fill="none" stroke="#EF4444" stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-dasharray={ringCircumference}
+                  stroke-dashoffset={ringOffset}
+                />
+              </svg>
+              <span class="text-[10px] font-black text-white">{vm.expiryLabel}</span>
+            </div>
+          ) : (
             <span class:list={[
-              'rounded-full border px-3.5 py-1 text-[10px] font-black backdrop-blur-md shadow-sm border-white/10 text-white',
-              vm.urgency === 'expired'
-                ? 'bg-rose-600/80'
-                : vm.urgency === 'soon'
-                  ? 'bg-red-500/80'
-                  : 'bg-black/50'
+              'absolute bottom-4 right-4 rounded-full border px-3.5 py-1 text-[10px] font-black backdrop-blur-md shadow-sm border-white/10 text-white',
+              vm.urgency === 'expired' ? 'bg-rose-600/80' : 'bg-black/50'
             ]}>
               {vm.expiryLabel}
             </span>
-          </div>
+          )}
+
+          {/* Social proof stat */}
+          {viewCount > 0 && (
+            <div class="absolute top-4 right-4 flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1 text-[10px] font-black text-white backdrop-blur-md shadow-sm">
+              <Icon name="eye" class="h-3 w-3" />
+              <span>{viewCount.toLocaleString()} คนดูดีลนี้</span>
+            </div>
+          )}
         </div>
 
         {/* Title Block */}
@@ -129,6 +228,18 @@ if (priceMatchResult) {
           <div class="rounded-[24px] border border-border/20 bg-bg-secondary/40 p-5 shadow-sm space-y-2">
             <h2 class="text-xs font-black uppercase tracking-widest text-secondary">เงื่อนไขและข้อตกลง</h2>
             <p class="whitespace-pre-line text-sm leading-7 text-text-secondary font-bold">{vm.conditions}</p>
+          </div>
+        )}
+
+        {/* Related deals from the same shop */}
+        {relatedDeals.length > 0 && (
+          <div class="space-y-4">
+            <h2 class="text-xs font-black uppercase tracking-widest text-text-tertiary">ดีลอื่นๆ จาก {shop.name}</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-2 gap-4">
+              {relatedDeals.map((row) => (
+                row.shop && <ExploreDealCard deal={row.deal} shop={row.shop} />
+              ))}
+            </div>
           </div>
         )}
 
@@ -175,6 +286,14 @@ if (priceMatchResult) {
               <span>⏰</span>
               <span>{vm.expiryLabel}</span>
             </p>
+            {vm.status === 'active' && (
+              <div class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
+                <div
+                  class:list={['h-full rounded-full', lifePercent <= 15 ? 'bg-warning' : 'bg-primary']}
+                  style={`width: ${lifePercent}%`}
+                ></div>
+              </div>
+            )}
           </div>
 
           {/* Ticket Tear-off dotted separator */}
@@ -231,6 +350,31 @@ if (priceMatchResult) {
               </a>
             </div>
 
+            {/* Social share row */}
+            <div class="grid grid-cols-3 gap-2">
+              <a
+                href={`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`}
+                target="_blank" rel="noopener noreferrer" data-contact-channel="share_line"
+                class="deal-contact-link py-2 px-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[9px] font-black text-center transition-all flex items-center justify-center gap-1"
+              >
+                <Icon name="line" class="h-3.5 w-3.5" />
+              </a>
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                target="_blank" rel="noopener noreferrer" data-contact-channel="share_facebook"
+                class="deal-contact-link py-2 px-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 text-[9px] font-black text-center transition-all flex items-center justify-center gap-1"
+              >
+                <Icon name="facebook" class="h-3.5 w-3.5" />
+              </a>
+              <a
+                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`}
+                target="_blank" rel="noopener noreferrer" data-contact-channel="share_x"
+                class="deal-contact-link py-2 px-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-400 text-[9px] font-black text-center transition-all flex items-center justify-center gap-1"
+              >
+                <span class="text-[10px] font-black">X</span>
+              </a>
+            </div>
+
             {/* Shop Profile panel inside ticket */}
             <div class="rounded-xl border border-border/15 bg-bg-secondary/40 p-3.5 flex items-center gap-3">
               {shop.logoImage ? (
@@ -241,7 +385,10 @@ if (priceMatchResult) {
                 </div>
               )}
               <div class="min-w-0">
-                <a href={`/${shop.slug}`} class="block truncate text-xs font-black text-secondary hover:text-primary">{shop.name}</a>
+                <a href={`/${shop.slug}`} class="flex items-center gap-1 truncate text-xs font-black text-secondary hover:text-primary">
+                  <span class="truncate">{shop.name}</span>
+                  <span class="text-primary text-[9px] select-none shrink-0">✓</span>
+                </a>
                 {vm.shop.addressShort && <p class="mt-0.5 truncate text-[9px] text-text-tertiary font-bold">{vm.shop.addressShort}</p>}
               </div>
             </div>
@@ -281,7 +428,10 @@ if (priceMatchResult) {
             </div>
           )}
           <div class="min-w-0">
-            <a href={`/${shop.slug}`} class="block truncate text-sm font-black text-secondary hover:text-primary">{shop.name}</a>
+            <a href={`/${shop.slug}`} class="flex items-center gap-1 truncate text-sm font-black text-secondary hover:text-primary">
+              <span class="truncate">{shop.name}</span>
+              <span class="text-primary text-[10px] select-none shrink-0">✓</span>
+            </a>
             {vm.shop.addressShort && <p class="mt-0.5 truncate text-[10px] text-text-tertiary font-bold">{vm.shop.addressShort}</p>}
           </div>
         </div>
@@ -291,6 +441,32 @@ if (priceMatchResult) {
           {vm.shop.lineUrl && <a href={vm.shop.lineUrl} data-contact-channel="line" class="deal-contact-link py-2.5 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1.5">LINE</a>}
           {vm.shop.phoneUrl && <a href={vm.shop.phoneUrl} data-contact-channel="phone" class="deal-contact-link py-2.5 px-1 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1.5">โทร</a>}
           {vm.shop.mapUrl && <a href={vm.shop.mapUrl} data-contact-channel="map" class="deal-contact-link py-2.5 px-1 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1.5">แผนที่</a>}
+        </div>
+
+        {/* Social share row */}
+        <div class="grid grid-cols-3 gap-2">
+          <a
+            href={`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`}
+            target="_blank" rel="noopener noreferrer" data-contact-channel="share_line"
+            class="deal-contact-link py-2 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1"
+          >
+            <Icon name="line" class="h-3.5 w-3.5" />
+            แชร์ LINE
+          </a>
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+            target="_blank" rel="noopener noreferrer" data-contact-channel="share_facebook"
+            class="deal-contact-link py-2 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1"
+          >
+            <Icon name="facebook" class="h-3.5 w-3.5" />
+          </a>
+          <a
+            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`}
+            target="_blank" rel="noopener noreferrer" data-contact-channel="share_x"
+            class="deal-contact-link py-2 px-1 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1"
+          >
+            X
+          </a>
         </div>
 
         <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border/10">
@@ -357,10 +533,23 @@ if (priceMatchResult) {
     const dealPage = document.getElementById('deal-page');
     const claimButton = document.getElementById('primary-claim-action');
     const mobileClaimButton = document.getElementById('mobile-claim-action');
+    const stickyClaimButton = document.getElementById('sticky-claim-action');
     const copyLinkButton = document.getElementById('copy-deal-link');
     const mobileCopyLink = document.querySelector('.mobile-copy-link');
     const shopId = dealPage?.dataset.shopId;
     const dealId = dealPage?.dataset.dealId;
+
+    // Sticky compact header: reveal once the hero image scrolls out of view
+    const dealHero = document.getElementById('deal-hero');
+    const stickyHeader = document.getElementById('deal-sticky-header');
+    if (dealHero && stickyHeader) {
+      const toggleStickyHeader = () => {
+        const heroBottom = dealHero.getBoundingClientRect().bottom;
+        stickyHeader.style.transform = heroBottom <= 0 ? 'translateY(0)' : 'translateY(-100%)';
+      };
+      toggleStickyHeader();
+      window.addEventListener('scroll', toggleStickyHeader, { passive: true });
+    }
 
     async function trackDealEvent(type, metadata = {}) {
       if (!shopId || !dealId) return;
@@ -396,13 +585,11 @@ if (priceMatchResult) {
       if (claimType === 'copy_code' && coupon) {
         await navigator.clipboard.writeText(coupon);
         button.innerHTML = '✓ คัดลอกโค้ดแล้ว';
-        
-        // Sync button text between desktop and mobile triggers
-        if (button === claimButton && mobileClaimButton) {
-          mobileClaimButton.innerHTML = '✓ คัดลอกโค้ดแล้ว';
-        } else if (button === mobileClaimButton && claimButton) {
-          claimButton.innerHTML = '✓ คัดลอกโค้ดแล้ว';
-        }
+
+        // Sync button text across desktop, mobile, and sticky header triggers
+        [claimButton, mobileClaimButton, stickyClaimButton].forEach((other) => {
+          if (other && other !== button) other.innerHTML = '✓ คัดลอกโค้ดแล้ว';
+        });
         return;
       }
 
@@ -413,6 +600,7 @@ if (priceMatchResult) {
 
     claimButton?.addEventListener('click', () => handleClaim(claimButton));
     mobileClaimButton?.addEventListener('click', () => handleClaim(mobileClaimButton));
+    stickyClaimButton?.addEventListener('click', () => handleClaim(stickyClaimButton));
 
     async function handleCopyLink(button) {
       if (!button) return;

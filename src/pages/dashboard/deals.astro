@@ -5,6 +5,7 @@ import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import DealList from '../../components/dashboard/DealList.tsx';
 import Icon from '../../components/icons/index.astro';
 import { listDashboardDeals, requireDashboardShop } from '../../lib/dashboard/server';
+import { getTopDeals } from '../../lib/analytics';
 
 let context;
 try {
@@ -16,6 +17,10 @@ try {
 const { shop } = context;
 const dealRows = await listDashboardDeals(shop.id);
 const maxDeals = shop.maxActiveDeals ?? 6;
+const dealStatsRows = await getTopDeals(shop.id, Math.max(dealRows.length, 1));
+const dealStats = Object.fromEntries(
+  dealStatsRows.filter((row) => row.dealId).map((row) => [row.dealId as string, { views: row.views, clicks: row.clicks }])
+);
 ---
 
 <DashboardLayout title="จัดการดีล" activeTab="deals">
@@ -38,6 +43,6 @@ const maxDeals = shop.maxActiveDeals ?? 6;
       </div>
     </section>
 
-    <DealList client:load initialDeals={dealRows} maxDeals={maxDeals} />
+    <DealList client:load initialDeals={dealRows} maxDeals={maxDeals} dealStats={dealStats} />
   </div>
 </DashboardLayout>

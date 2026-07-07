@@ -5,8 +5,9 @@ import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import DealForm from '../../../components/dashboard/DealForm.tsx';
 import { requireDashboardShop } from '../../../lib/dashboard/server';
 
+let shop;
 try {
-  await requireDashboardShop(Astro.locals.user);
+  ({ shop } = await requireDashboardShop(Astro.locals.user));
 } catch {
   return Astro.redirect('/dashboard');
 }
@@ -20,6 +21,6 @@ try {
       <p class="mt-1 text-sm font-bold text-text-secondary">ออกแบบดีลให้มีรูป ข้อเสนอ วิธีรับสิทธิ์ และวันหมดอายุครบถ้วน</p>
     </section>
 
-    <DealForm client:load />
+    <DealForm client:load shopName={shop.name} shopLogoUrl={shop.logoImage} shopAddress={shop.address} />
   </div>
 </DashboardLayout>
