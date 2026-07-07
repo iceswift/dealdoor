@@ -7,7 +7,7 @@ import { shops, deals } from '../../../db/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
 import { getLangFromUrl, t } from '../../i18n';
-import { SHOP_CATEGORY_LABELS } from '../../lib/constants';
+import { SHOP_CATEGORY_LABELS, SHOP_CATEGORY_COLORS } from '../../lib/constants';
 import type { ShopCategory } from '../../lib/constants';
 import {
   getBestDeal,
@@ -57,7 +57,32 @@ const categories = getExploreCategories();
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 
   <main class="min-h-screen bg-bg">
-    <section class="border-b border-border/30 bg-card-bg/70 backdrop-blur-xl">
+    {/* Sticky compact filter bar - appears once the main filter header scrolls out of view */}
+    <div
+      id="explore-sticky-filter"
+      class="fixed inset-x-0 top-0 z-40 hidden items-center gap-3 border-b border-border/20 bg-card-bg/95 px-4 py-2.5 shadow-md backdrop-blur-md transition-transform duration-300 lg:flex"
+      style="transform: translateY(-100%);"
+    >
+      <label class="relative block flex-1 max-w-md">
+        <Icon name="search" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+        <input
+          id="explore-sticky-search"
+          type="search"
+          placeholder="ค้นหาชื่อร้าน ดีล หรือย่าน..."
+          class="h-9 w-full rounded-xl border border-border/40 bg-bg pl-9 pr-3 text-xs font-bold text-secondary outline-none transition focus:border-primary"
+        />
+      </label>
+      <span id="explore-sticky-filter-count" class="hidden shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-black text-primary"></span>
+      <button
+        id="explore-sticky-reset"
+        type="button"
+        class="hidden shrink-0 text-[10px] font-black text-text-tertiary hover:text-primary"
+      >
+        ล้างตัวกรอง
+      </button>
+    </div>
+
+    <section id="explore-filter-hero" class="border-b border-border/30 bg-card-bg/70 backdrop-blur-xl">
       <div class="mx-auto max-w-7xl px-4 py-6">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div class="max-w-2xl">
@@ -214,8 +239,11 @@ const categories = getExploreCategories();
             const bestDeal = getBestDeal(shopDeals);
             const urgentDealCount = shopDeals.filter((deal) => new Date(deal.endDate) <= in7Days).length;
             const category = shop.category as ShopCategory;
+            const categoryColor = SHOP_CATEGORY_COLORS[category] || '#6B7280';
             const hasCouponCode = shopDeals.some((deal) => !!deal.couponCode);
             const bestDealEndTime = bestDeal ? new Date(bestDeal.endDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const bestDealDaysLeft = bestDeal ? Math.ceil((bestDealEndTime - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+            const bestDealLifePercent = bestDealDaysLeft !== null ? Math.max(0, Math.min(100, (bestDealDaysLeft / 7) * 100)) : 0;
             const displayOpeningHours = formatOpeningHours(shop.openingHours);
             return (
               <button
@@ -243,10 +271,15 @@ const categories = getExploreCategories();
                       <div class="min-w-0">
                         <h3 class="truncate text-sm font-black text-secondary group-hover:text-primary">{shop.name}</h3>
                         <p class="mt-0.5 truncate text-[11px] font-bold text-text-tertiary">
-                          {SHOP_CATEGORY_LABELS[category] || shop.category}
-                          {shop.address ? ` • ${shop.address}` : ''}
+                          {shop.address || ''}
                         </p>
                         <div class="mt-2 flex flex-wrap gap-1.5">
+                          <span
+                            class="rounded-full px-2 py-1 text-[9px] font-black text-white"
+                            style={`background-color:${categoryColor};`}
+                          >
+                            {SHOP_CATEGORY_LABELS[category] || shop.category}
+                          </span>
                           <span class:list={[
                             'rounded-full px-2 py-1 text-[9px] font-black',
                             (shop.isOpen ?? true)
@@ -275,11 +308,17 @@ const categories = getExploreCategories();
                           <span class="truncate text-[10px] font-bold text-primary">{bestDeal.discountText || 'ดูรายละเอียดดีล'}</span>
                           <span class="flex-shrink-0 text-[10px] font-bold text-text-tertiary">{getExpiryLabel(new Date(bestDeal.endDate))}</span>
                         </div>
+                        <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-bg-tertiary">
+                          <div
+                            class:list={['h-full rounded-full', bestDealLifePercent <= 15 ? 'bg-warning' : 'bg-primary']}
+                            style={`width: ${bestDealLifePercent}%`}
+                          ></div>
+                        </div>
                       </div>
                     )}
                     <div class="mt-3 flex items-center justify-between gap-2">
                       <span class="text-[10px] font-black text-text-tertiary">{shopDeals.length} ดีลที่ใช้ได้</span>
-                      <span class="map-distance-label hidden text-[10px] font-black text-primary" data-distance-for={shop.id}></span>
+                      <span class="map-distance-label text-[10px] font-bold text-text-tertiary" data-distance-for={shop.id}>กดใกล้ฉันเพื่อดูระยะทาง</span>
                       <span class="text-[10px] font-black text-primary">ดูบนแผนที่</span>
                     </div>
                   </div>
@@ -321,10 +360,18 @@ const categories = getExploreCategories();
               role="application"
               aria-label="แผนที่หมุดโปรโมชันและร้านค้า"
             ></div>
-            <div id="map-loading-overlay" class="absolute inset-0 z-[500] flex items-center justify-center bg-card-bg/80 backdrop-blur-sm">
-              <div class="rounded-2xl border border-border/35 bg-card-bg px-5 py-4 text-center shadow-lg">
-                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
-                <p class="mt-3 text-xs font-black text-secondary">กำลังเตรียมแผนที่...</p>
+            <div id="map-loading-overlay" class="absolute inset-0 z-[500] overflow-hidden bg-bg-secondary">
+              <div class="skeleton absolute inset-0 rounded-none"></div>
+              <div class="pointer-events-none absolute inset-0 grid grid-cols-5 grid-rows-4 gap-6 p-8 opacity-40">
+                {Array.from({ length: 12 }).map(() => (
+                  <div class="h-3 w-3 self-center justify-self-center rounded-full bg-primary/40"></div>
+                ))}
+              </div>
+              <div class="absolute inset-x-0 bottom-6 flex justify-center">
+                <div class="flex items-center gap-2 rounded-full border border-border/35 bg-card-bg px-4 py-2 shadow-lg">
+                  <div class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"></div>
+                  <p class="text-xs font-black text-secondary">กำลังเตรียมแผนที่...</p>
+                </div>
               </div>
             </div>
             <div class="pointer-events-none absolute left-4 top-4 rounded-2xl border border-border/35 bg-card-bg/90 px-4 py-3 shadow-lg backdrop-blur-md">
@@ -430,6 +477,11 @@ const categories = getExploreCategories();
       const mobileSheet = document.getElementById('mobile-pin-sheet');
       const mobileSheetContent = document.getElementById('mobile-pin-sheet-content');
       const mobileSheetClose = document.getElementById('mobile-pin-sheet-close');
+      const filterHero = document.getElementById('explore-filter-hero');
+      const stickyFilterBar = document.getElementById('explore-sticky-filter');
+      const stickySearchInput = document.getElementById('explore-sticky-search');
+      const stickyFilterCount = document.getElementById('explore-sticky-filter-count');
+      const stickyResetBtn = document.getElementById('explore-sticky-reset');
 
       let map = null;
       let userMarker = null;
@@ -549,8 +601,9 @@ const categories = getExploreCategories();
         document.querySelectorAll('.map-distance-label').forEach((label) => {
           const pin = pins.find((item) => item.shopId === label.getAttribute('data-distance-for'));
           const text = pin ? formatDistance(getDistanceKm(pin)) : '';
-          label.textContent = text;
-          label.classList.toggle('hidden', !text);
+          label.textContent = text || 'กดใกล้ฉันเพื่อดูระยะทาง';
+          label.classList.toggle('text-primary', Boolean(text));
+          label.classList.toggle('text-text-tertiary', !text);
         });
       };
 
@@ -572,7 +625,8 @@ const categories = getExploreCategories();
       const makeMarkerHtml = (pin) => {
         const urgentClass = pin.urgentDealCount > 0 ? ' is-urgent' : '';
         const label = escapeHtml((pin.shopName || '?').charAt(0).toUpperCase());
-        return `<div class="dealdoor-map-marker${urgentClass}"><span>${label}</span><small>${pin.activeDealCount}</small></div>`;
+        const color = escapeHtml(pin.categoryColor || '#F97316');
+        return `<div class="dealdoor-map-marker${urgentClass}" style="background:${color};"><span>${label}</span><small>${pin.activeDealCount}</small></div>`;
       };
 
       const makeClusterHtml = (group) => {
@@ -773,6 +827,28 @@ const categories = getExploreCategories();
         }
       };
 
+      const updateStickyFilterBar = () => {
+        if (stickySearchInput && stickySearchInput !== document.activeElement) {
+          stickySearchInput.value = searchQuery;
+        }
+        const activeCount = [
+          activeCategory !== 'all',
+          urgentOnly,
+          openOnly,
+          couponOnly,
+          radiusKm !== 'all',
+        ].filter(Boolean).length;
+        if (stickyFilterCount) {
+          if (activeCount > 0) {
+            stickyFilterCount.textContent = `${activeCount} ตัวกรอง`;
+            stickyFilterCount.classList.remove('hidden');
+          } else {
+            stickyFilterCount.classList.add('hidden');
+          }
+        }
+        stickyResetBtn?.classList.toggle('hidden', activeCount === 0 && !searchQuery);
+      };
+
       const applyFilters = () => {
         const visiblePins = getVisiblePins();
         const visibleIds = new Set(visiblePins.map((pin) => pin.shopId));
@@ -798,6 +874,7 @@ const categories = getExploreCategories();
         if (emptyState) emptyState.classList.toggle('hidden', visibleCards !== 0);
         updateDistanceLabels();
         updateChipStyles();
+        updateStickyFilterBar();
         syncUrl();
 
         if (canUseMapViewport() && visiblePins.length > 0) {
@@ -853,6 +930,13 @@ const categories = getExploreCategories();
 
         applyFilters();
         mapLoadingOverlay?.classList.add('hidden');
+
+        // Guard against a race where the map container isn't measurable yet
+        // on the very first paint, which would skip marker rendering.
+        requestAnimationFrame(() => {
+          map?.invalidateSize();
+          renderVisibleMarkers(getVisiblePins());
+        });
       };
 
       searchInput?.addEventListener('input', (event) => {
@@ -940,6 +1024,22 @@ const categories = getExploreCategories();
 
       resetBtn?.addEventListener('click', resetFilters);
       emptyResetBtn?.addEventListener('click', resetFilters);
+      stickyResetBtn?.addEventListener('click', resetFilters);
+
+      stickySearchInput?.addEventListener('input', (event) => {
+        searchQuery = event.target.value.toLowerCase().trim();
+        if (searchInput) searchInput.value = event.target.value;
+        applyFilters();
+      });
+
+      if (filterHero && stickyFilterBar) {
+        const toggleStickyFilterBar = () => {
+          const heroBottom = filterHero.getBoundingClientRect().bottom;
+          stickyFilterBar.style.transform = heroBottom <= 0 ? 'translateY(0)' : 'translateY(-100%)';
+        };
+        toggleStickyFilterBar();
+        window.addEventListener('scroll', toggleStickyFilterBar, { passive: true });
+      }
 
       shopCards.forEach((card) => {
         card.addEventListener('click', () => {
@@ -961,6 +1061,20 @@ const categories = getExploreCategories();
           }
           focusPin(shopId);
           trackMapEvent('map_pin_click', pin, { source: 'list' });
+        });
+
+        // Hover-sync: highlight the matching pin on the map while hovering the card
+        card.addEventListener('mouseenter', () => {
+          const shopId = card.getAttribute('data-shop-id');
+          const marker = shopId ? markers.get(shopId) : null;
+          const el = marker?.getElement?.();
+          el?.querySelector('.dealdoor-map-marker')?.classList.add('is-hover-highlighted');
+        });
+        card.addEventListener('mouseleave', () => {
+          const shopId = card.getAttribute('data-shop-id');
+          const marker = shopId ? markers.get(shopId) : null;
+          const el = marker?.getElement?.();
+          el?.querySelector('.dealdoor-map-marker')?.classList.remove('is-hover-highlighted');
         });
       });
 
@@ -1050,8 +1164,15 @@ const categories = getExploreCategories();
   }
 
   :global(.dealdoor-map-marker.is-urgent) {
-    background: linear-gradient(135deg, #f59e0b, #dc2626);
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.35), 0 10px 24px rgba(15, 23, 42, 0.28);
     animation: dealdoorPulse 1.8s ease-in-out infinite;
+  }
+
+  :global(.dealdoor-map-marker.is-hover-highlighted) {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.9), 0 14px 28px rgba(15, 23, 42, 0.35);
+    z-index: 1000;
   }
 
   :global(.dealdoor-map-marker small) {

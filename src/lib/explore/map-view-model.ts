@@ -1,6 +1,7 @@
 import type { deals, shops } from '../../../db/schema';
 import {
   SHOP_CATEGORIES,
+  SHOP_CATEGORY_COLORS,
   SHOP_CATEGORY_ICONS,
   SHOP_CATEGORY_LABELS,
 } from '../constants';
@@ -40,6 +41,7 @@ export type ExploreMapPin = {
   category: string;
   categoryLabel: string;
   categoryIcon: string;
+  categoryColor: string;
   logoImage: string | null;
   address: string;
   openingHours: string;
@@ -182,6 +184,7 @@ export function getExploreMapData(activeDeals: DealWithShop[], now = new Date())
       category: shop.category,
       categoryLabel: SHOP_CATEGORY_LABELS[category] || shop.category,
       categoryIcon: SHOP_CATEGORY_ICONS[category] || '📍',
+      categoryColor: SHOP_CATEGORY_COLORS[category] || '#6B7280',
       logoImage: shop.logoImage,
       address: shop.address || '',
       openingHours,

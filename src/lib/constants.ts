@@ -37,6 +37,17 @@ export const SHOP_CATEGORY_ICONS: Record<ShopCategory, string> = {
   other: '📦',
 };
 
+export const SHOP_CATEGORY_COLORS: Record<ShopCategory, string> = {
+  restaurant: '#F97316',
+  cafe: '#D97706',
+  dessert: '#EC4899',
+  beauty: '#A855F7',
+  clinic: '#3B82F6',
+  retail: '#14B8A6',
+  service: '#6366F1',
+  other: '#6B7280',
+};
+
 // ─── Deal Categories ─────────────────────────────────────
 
 export const DEAL_CATEGORIES = [

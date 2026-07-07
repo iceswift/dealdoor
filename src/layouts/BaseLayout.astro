@@ -29,6 +29,8 @@ const {
   hideFooter = false,
 } = Astro.props;
 
+const isProd = import.meta.env.PROD;
+
 const lang = getLangFromUrl(Astro.url);
 const common = (key: string, params?: Record<string, string | number>) => 
   t(lang, 'common', key, params);
@@ -568,17 +570,30 @@ const user = Astro.locals.user;
   <InstallPrompt client:idle />
   
   <!-- Service Worker Registration -->
-  <script is:inline>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then((registration) => {
-            console.log('SW registered:', registration.scope);
-          })
-          .catch((error) => {
-            console.log('SW registration failed:', error);
-          });
-      });
+  <script is:inline define:vars={{ isProd }}>
+    if (isProd) {
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered:', registration.scope);
+            })
+            .catch((error) => {
+              console.log('SW registration failed:', error);
+            });
+        });
+      }
+    } else {
+      // Dev mode: unregister any service worker and clear caches left over
+      // from earlier testing so local changes show up without a hard refresh.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => registration.unregister());
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+      }
     }
   </script>
   
