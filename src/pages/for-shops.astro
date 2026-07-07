@@ -1,0 +1,354 @@
+---
+// src/pages/for-shops.astro
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/icons/index.astro';
+import { getLangFromUrl, t } from '../i18n';
+
+const lang = getLangFromUrl(Astro.url);
+const common = (key: string) => t(lang, 'common', key);
+---
+
+<BaseLayout title={lang === 'th' ? 'สร้างหน้าโปรโมชันและลิงก์ร้านค้าฟรี | DealDoor' : 'For Shops | DealDoor'}>
+  
+  {/* SECTION 1: Hero Block (Soft Primary Gradient Background) */}
+  <section class="relative overflow-hidden mt-[-110px] pt-36 pb-24 md:pt-40 md:pb-32 bg-gradient-to-b from-primary-light/45 via-bg to-bg text-secondary">
+    {/* Subtle Background Glows */}
+    <div class="absolute top-0 right-0 bg-mesh bg-mesh-coral h-96 w-96 opacity-10 animate-drift-1 pointer-events-none"></div>
+    <div class="absolute bottom-0 left-0 bg-mesh bg-mesh-teal h-96 w-96 opacity-5 animate-drift-3 pointer-events-none"></div>
+
+    <div class="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
+      
+      {/* Hero Left Column */}
+      <div class="space-y-6 text-center md:text-left">
+        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-wider shadow-sm">
+          🎁 ฟรี 100% ไม่ต้องกรอกบัตรเครดิต
+        </span>
+        <h1 class="text-4xl md:text-6xl font-extrabold leading-[1.08] tracking-tighter text-secondary">
+          สร้างหน้าลิงก์รวมดีล <br />และเมนูใน 2 นาที
+        </h1>
+        <p class="text-xs md:text-sm font-bold text-text-secondary leading-relaxed max-w-md mx-auto md:mx-0">
+          รวบรวมดีลคูปอง เมนูอาหารแนะนำ ช่องทางโซเชียล และแผนที่นำทางไว้ในลิงก์เดียวเหมือน Linktree แชร์ลงโซเชียลง่ายๆ
+        </p>
+
+        {/* Claim Slug Input Box (Linktree style, optimized for DealDoor) */}
+        <div class="pt-4 max-w-md mx-auto md:mx-0">
+          <form action="/auth/register" method="GET" class="bg-card-bg p-2 rounded-2xl md:rounded-full border border-border/40 shadow-md flex flex-col sm:flex-row items-center gap-2">
+            <div class="flex-1 flex items-center pl-4 w-full gap-1">
+              <span class="text-xs font-black text-text-tertiary select-none">dealdoor.app/</span>
+              <input 
+                type="text" 
+                name="claimedSlug"
+                placeholder="ชื่อร้านของคุณ" 
+                required
+                class="w-full bg-transparent border-none text-xs focus:outline-none focus:ring-0 text-secondary font-black placeholder:text-text-tertiary/50 pl-0 py-0.5"
+              />
+            </div>
+            <button type="submit" class="w-full sm:w-auto h-10 px-6 bg-primary hover:bg-primary-hover text-white rounded-xl sm:rounded-full text-xs font-black shadow-md cursor-pointer transition-transform hover:scale-[1.02] active:scale-95">
+              สร้างลิงก์ร้านฟรี
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Hero Right Column (Mock Smartphone Container) */}
+      <div class="flex justify-center relative">
+        <div class="relative w-[280px] h-[560px] bg-secondary rounded-[42px] border-[8px] border-secondary shadow-2xl overflow-hidden flex flex-col">
+          {/* Speaker Notch */}
+          <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-5 bg-secondary rounded-b-xl z-20 flex items-center justify-center">
+            <div class="w-12 h-1 bg-white/20 rounded-full"></div>
+          </div>
+          
+          {/* Embedded Mock App Header */}
+          <div class="bg-gradient-to-b from-primary/10 to-orange-100/50 pt-8 pb-4 px-4 text-center border-b border-border/20 flex-shrink-0">
+            <div class="h-14 w-14 rounded-full bg-primary text-white flex items-center justify-center font-black mx-auto text-xl shadow-md border-2 border-white/80">
+              🍜
+            </div>
+            <h3 class="text-xs font-black text-secondary mt-2 flex items-center justify-center gap-0.5">
+              <span>อร่อยดี บะหมี่เกี๊ยว</span>
+              <span class="text-primary text-[8px]">✓</span>
+            </h3>
+            <p class="text-[9px] text-text-secondary font-bold">ร้านอาหาร • หมวดอาหารจีน</p>
+          </div>
+
+          {/* Embedded Mock App Links List */}
+          <div class="p-4 space-y-3 overflow-y-auto no-scrollbar flex-1 bg-white">
+            
+            {/* Mock Item 1: Coupon */}
+            <div class="border border-primary/20 bg-primary/5 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+              <div class="min-w-0">
+                <span class="text-[8px] font-black px-1.5 py-0.5 rounded bg-primary text-white">ดีลยอดฮิต</span>
+                <p class="text-[10px] font-black text-secondary mt-1 truncate">ซื้อ 1 แถม 1 เกี๊ยวกุ้งจักรพรรดิ</p>
+              </div>
+              <button class="h-6 px-2.5 bg-primary text-white text-[8px] font-black rounded-lg shrink-0">เก็บคูปอง</button>
+            </div>
+
+            {/* Mock Item 2: Menu */}
+            <div class="border border-border/30 bg-bg-secondary/40 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+              <div class="min-w-0">
+                <span class="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-500 text-white">เมนูเด็ด</span>
+                <p class="text-[10px] font-black text-secondary mt-1 truncate">บะหมี่หมูแดงพิเศษ ฿79</p>
+              </div>
+              <span class="text-[10px] font-black text-primary">ดูเมนู</span>
+            </div>
+
+            {/* Mock Item 3: Map */}
+            <div class="border border-border/30 rounded-2xl p-2.5 flex items-center gap-2.5 shadow-sm">
+              <span class="text-sm">📍</span>
+              <div class="min-w-0 flex-1">
+                <p class="text-[9px] font-black text-secondary">นำทางไปยังสาขาหลัก</p>
+                <p class="text-[8px] text-text-tertiary truncate">สามย่านมิตรทาวน์ ชั้น B1</p>
+              </div>
+            </div>
+
+            {/* Mock Item 4: Line */}
+            <div class="border border-emerald-500/30 bg-emerald-50/50 rounded-2xl p-2.5 flex items-center gap-2.5 shadow-sm">
+              <span class="text-sm">💬</span>
+              <div class="min-w-0 flex-1">
+                <p class="text-[9px] font-black text-[#1E3A1E]">แอดไลน์ร้านสอบถามข้อมูล</p>
+                <p class="text-[8px] text-emerald-700 truncate">LINE OA: @aroydee</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        {/* Subtle decorative items around the phone */}
+        <div class="absolute -left-6 bottom-16 h-12 w-12 rounded-full bg-primary/20 blur-lg animate-pulse-slow"></div>
+        <div class="absolute -right-6 top-16 h-16 w-16 rounded-full bg-accent/25 blur-lg"></div>
+      </div>
+
+    </div>
+  </section>
+
+  {/* SECTION 2: Customization Details (Clean White Background) */}
+  <section class="bg-bg text-secondary py-20 md:py-28 overflow-hidden relative">
+    <div class="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
+      
+      {/* Customization Left Column (Visual floating cards) */}
+      <div class="flex flex-col gap-4 max-w-sm mx-auto w-full order-last md:order-first">
+        <div class="bg-card-bg/60 backdrop-blur-md border border-border/20 p-4.5 rounded-2xl flex items-center gap-4.5 hover:scale-[1.02] transition-transform shadow-md duration-300">
+          <div class="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">🏷️</div>
+          <div>
+            <h4 class="text-xs font-black">ดีลคูปองลด 10%</h4>
+            <p class="text-[10px] text-text-secondary font-bold mt-0.5">หมดอายุดีลอัตโนมัติ ไม่ต้องคอยไล่ลบโพสต์</p>
+          </div>
+        </div>
+        <div class="bg-card-bg/60 backdrop-blur-md border border-border/20 p-4.5 rounded-2xl flex items-center gap-4.5 hover:scale-[1.02] transition-transform shadow-md duration-300 translate-x-4">
+          <div class="h-10 w-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center text-lg">🍜</div>
+          <div>
+            <h4 class="text-xs font-black">รายการเมนูเด็ดแนะนำ</h4>
+            <p class="text-[10px] text-text-secondary font-bold mt-0.5">ใส่รายละเอียดและรูปภาพของกินให้ชวนหิว</p>
+          </div>
+        </div>
+        <div class="bg-card-bg/60 backdrop-blur-md border border-border/20 p-4.5 rounded-2xl flex items-center gap-4.5 hover:scale-[1.02] transition-transform shadow-md duration-300">
+          <div class="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">📞</div>
+          <div>
+            <h4 class="text-xs font-black">ปุ่มโทรติดต่อด่วน</h4>
+            <p class="text-[10px] text-text-secondary font-bold mt-0.5">คลิกเดียวโทรออกโทรจองโต๊ะของลูกค้าหน้าร้าน</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Customization Right Column */}
+      <div class="space-y-5 text-center md:text-left">
+        <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+          ปรับแต่งหน้าร้านค้า <br />ในแบบที่คุณรัก
+        </h2>
+        <p class="text-xs md:text-sm font-bold text-text-secondary leading-relaxed max-w-md mx-auto md:mx-0">
+          ไม่เพียงแต่สร้างดีลคูปอง คุณยังสามารถเพิ่มเมนูเด่นประจำร้าน ปุ่มนำทางพิกัด Google Maps และลิงก์ติดต่อช่องทางโซเชียลต่างๆ ครบจบจบโดยไม่ต้องเขียนโค้ด!
+        </p>
+        <div class="pt-2">
+          <a href="/auth/register" class="btn btn-primary rounded-xl px-6 py-3 text-xs font-black shadow-md hover:scale-[1.02] transition-transform active:scale-95">
+            <span>คัสตอมร้านเลย</span>
+            <Icon name="chevron-right" class="h-4 w-4" />
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  {/* SECTION 3: Share Everywhere (Light Slate Background) */}
+  <section class="bg-bg-secondary/40 text-secondary py-20 md:py-28 overflow-hidden relative border-y border-border/30">
+    <div class="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
+      
+      {/* Share Left Column */}
+      <div class="space-y-5 text-center md:text-left">
+        <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+          แชร์ลิงก์เดียว <br />ได้ยอดขายทุกช่องทาง!
+        </h2>
+        <p class="text-xs md:text-sm font-bold text-text-secondary leading-relaxed max-w-md mx-auto md:mx-0">
+          นำลิงก์ร้านค้าของคุณไปแปะไว้ที่ Bio ของ Instagram, TikTok, Line OA หรือปรินต์สติกเกอร์รหัส QR Code ตั้งที่โต๊ะอาหารให้สแกนรับคูปองส่วนลดเพื่อกระตุ้นหน้าร้านได้ทันที
+        </p>
+        <div class="pt-2">
+          <a href="/auth/register" class="btn btn-primary rounded-xl px-6 py-3 text-xs font-black shadow-md hover:scale-[1.02] transition-transform active:scale-95">
+            <span>สมัครฟรีเลยตอนนี้</span>
+          </a>
+        </div>
+      </div>
+
+      {/* Share Right Column (QR Code mockup card stack) */}
+      <div class="flex justify-center relative">
+        <div class="relative w-72 h-48 bg-card-bg/70 border border-border/20 backdrop-blur-md rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:scale-105 duration-500">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black">
+              ✓
+            </div>
+            <div>
+              <h4 class="text-xs font-black text-secondary">พิมพ์ QR Code ของหน้าร้าน</h4>
+              <p class="text-[9px] text-text-secondary font-bold">แชร์ใส่โต๊ะอาหาร หรือหน้าร้านหลัก</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-center p-2 bg-bg-secondary rounded-2xl border border-border/30 h-20 w-20 mx-auto">
+            <Icon name="qrcode" class="h-14 w-14 text-secondary" />
+          </div>
+          <p class="text-[8px] text-center text-text-tertiary font-bold leading-none mt-2">สแกนเพื่อเข้าถึงดีลและสะสมคูปองฟรี</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  {/* SECTION 4: Analytics (Clean White Background) */}
+  <section class="bg-bg text-secondary py-20 md:py-28 overflow-hidden relative">
+    <div class="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
+      
+      {/* Analytics Left Column (3D glass statistic panels) */}
+      <div class="flex flex-col gap-4 max-w-sm mx-auto w-full order-last md:order-first">
+        <div class="bg-card-bg/70 border border-border/20 p-4.5 rounded-2xl flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-3">
+            <Icon name="eye" class="h-5 w-5 text-accent" />
+            <span class="text-xs font-black text-secondary">ยอดคนดูหน้าร้านสะสม</span>
+          </div>
+          <span class="text-xs font-black text-secondary">12,800 ครั้ง</span>
+        </div>
+        <div class="bg-card-bg/70 border border-border/20 p-4.5 rounded-2xl flex items-center justify-between shadow-sm translate-x-4">
+          <div class="flex items-center gap-3">
+            <Icon name="chart" class="h-5 w-5 text-emerald-600" />
+            <span class="text-xs font-black text-secondary">อัตราการกดปุ่มลิงก์</span>
+          </div>
+          <span class="text-xs font-black text-secondary">28.5%</span>
+        </div>
+        <div class="bg-card-bg/70 border border-border/20 p-4.5 rounded-2xl flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-3">
+            <Icon name="users" class="h-5 w-5 text-primary" />
+            <span class="text-xs font-black text-secondary">จำนวนผู้ใช้เก็บดีลสะสม</span>
+          </div>
+          <span class="text-xs font-black text-secondary">1,420 คน</span>
+        </div>
+      </div>
+
+      {/* Analytics Right Column */}
+      <div class="space-y-5 text-center md:text-left">
+        <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+          วิเคราะห์กลุ่มลูกค้า <br />วัดผลสถิติได้ทันที
+        </h2>
+        <p class="text-xs md:text-sm font-bold text-text-secondary leading-relaxed max-w-md mx-auto md:mx-0">
+          ระบบหลังบ้านแสดงจำนวนยอดคนดู ยอดการแชร์ลิงก์ และจำนวนผู้ใช้เก็บคูปองแบบเรียลไทม์ ช่วยให้คุณประเมินแคมเปญส่งเสริมการขายเพื่อสร้างแคมเปญที่แม่นยำได้มากขึ้น!
+        </p>
+        <div class="pt-2">
+          <a href="/dashboard" class="btn btn-secondary rounded-xl px-6 py-3 text-xs font-black shadow-md hover:scale-[1.02] transition-transform active:scale-95">
+            <span>เข้าดูระบบแดชบอร์ด</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  {/* SECTION 5: FAQs (Light Slate Background) */}
+  <section class="bg-bg-secondary/40 border-t border-border/30 text-secondary py-20 md:py-28 relative">
+    <div class="max-w-3xl mx-auto px-4 z-10 relative space-y-12">
+      
+      {/* FAQ Title */}
+      <div class="text-center max-w-xl mx-auto">
+        <h2 class="text-3xl font-extrabold tracking-tight md:text-4xl">
+          คำถามที่พบบ่อย (FAQs) ❓
+        </h2>
+        <p class="mt-4 text-xs font-bold text-text-secondary leading-relaxed">
+          มีข้อสงสัยเกี่ยวกับบริการใช่ไหม? เราได้รวบรวมคำถามที่ร้านค้าสอบถามบ่อยเพื่อความกระจ่างไว้ตรงนี้
+        </p>
+      </div>
+
+      {/* Interactive Accordion List */}
+      <div class="space-y-4">
+        {/* Q1 */}
+        <details class="group bg-card-bg/60 border border-border/25 rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-all duration-300">
+          <summary class="flex items-center justify-between p-5 cursor-pointer select-none">
+            <h3 class="text-xs md:text-sm font-black pr-4 text-secondary">DealDoor ใช้งานฟรีจริงไหม?</h3>
+            <span class="transition-transform duration-300 group-open:rotate-180">
+              <Icon name="chevron-down" class="h-4.5 w-4.5 text-text-tertiary" />
+            </span>
+          </summary>
+          <div class="p-5 border-t border-border/10 bg-bg-secondary/40 text-[11px] md:text-xs leading-relaxed text-text-secondary font-bold">
+            ฟรีจริง 100%! สำหรับแพ็กเกจเริ่มต้น คุณสามารถสร้างร้านค้า ปล่อยดีลคูปอง และแชร์เมนูแนะนำได้ทันทีโดยไม่มีค่าใช้จ่ายแอบแฝงใดๆ ทั้งสิ้น
+          </div>
+        </details>
+
+        {/* Q2 */}
+        <details class="group bg-card-bg/60 border border-border/25 rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-all duration-300">
+          <summary class="flex items-center justify-between p-5 cursor-pointer select-none">
+            <h3 class="text-xs md:text-sm font-black pr-4 text-secondary">ต้องมีความรู้เรื่องทำเว็บไซต์และโค้ดดิงไหม?</h3>
+            <span class="transition-transform duration-300 group-open:rotate-180">
+              <Icon name="chevron-down" class="h-4.5 w-4.5 text-text-tertiary" />
+            </span>
+          </summary>
+          <div class="p-5 border-t border-border/10 bg-bg-secondary/40 text-[11px] md:text-xs leading-relaxed text-text-secondary font-bold">
+            ไม่ต้องเลย! ระบบของ DealDoor ถูกออกแบบมาให้กรอกข้อมูลร้านค้าสไตล์ฟอร์มออนไลน์ที่คุ้นเคย ใช้เวลาไม่ถึง 2 นาทีก็สร้างลิงก์เสร็จสิ้นพร้อมใช้งาน
+          </div>
+        </details>
+
+        {/* Q3 */}
+        <details class="group bg-card-bg/60 border border-border/25 rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-all duration-300">
+          <summary class="flex items-center justify-between p-5 cursor-pointer select-none">
+            <h3 class="text-xs md:text-sm font-black pr-4 text-secondary">สามารถนำรหัส QR Code ไปพิมพ์ตั้งโต๊ะอาหารได้ไหม?</h3>
+            <span class="transition-transform duration-300 group-open:rotate-180">
+              <Icon name="chevron-down" class="h-4.5 w-4.5 text-text-tertiary" />
+            </span>
+          </summary>
+          <div class="p-5 border-t border-border/10 bg-bg-secondary/40 text-[11px] md:text-xs leading-relaxed text-text-secondary font-bold">
+            ได้แน่นอน! เมื่อคุณสร้างร้านค้าเสร็จเรียบร้อย ระบบจะมีฟังก์ชันดาวน์โหลดรูปภาพ QR Code หน้าร้านหลังบ้านทันที เพื่อนำไปพิมพ์ตั้งบอร์ด แปะโต๊ะ หรือแจกจ่ายให้ลูกค้าหน้าร้านจริงสแกนรับดีลได้ทันที
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </section>
+
+  {/* SECTION 6: Claim Store Footer Banner (Vibrant Orange Gradient Banner) */}
+  <section class="bg-gradient-to-r from-primary to-orange-500 text-white py-16 text-center shadow-lg relative overflow-hidden">
+    {/* Floating Aura Spheres */}
+    <div class="absolute -right-12 -bottom-12 h-32 w-32 rounded-full bg-white/10 blur-xl"></div>
+    <div class="absolute -left-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-xl"></div>
+    
+    <div class="max-w-2xl mx-auto px-4 space-y-6 relative z-10">
+      <h2 class="text-2xl md:text-4xl font-extrabold tracking-tight">เริ่มขยายหน้าร้านของคุณวันนี้</h2>
+      <p class="text-xs font-bold text-white/90">สมัครสิทธิ์เปิดใช้งานหน้ารวมคูปองโปรโมชันฟรีในเวลาไม่ถึง 2 นาที</p>
+      <div class="pt-2">
+        <a href="/auth/register" class="inline-flex items-center gap-1.5 px-8 py-3.5 bg-white text-primary hover:bg-white/95 rounded-full text-xs font-black shadow-lg hover:scale-105 active:scale-95 transition-transform cursor-pointer">
+          <Icon name="rocket" class="h-4.5 w-4.5" />
+          <span>เคลมสิทธิ์สมัครร้านค้าฟรี</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</BaseLayout>
+
+<style>
+  /* Custom utility to hide scrollbars */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .animate-pulse-slow {
+    animation: pulseSlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes pulseSlow {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.6; }
+  }
+</style>

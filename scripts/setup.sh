@@ -6,21 +6,16 @@ set -e
 echo "🚀 Setting up DealDoor..."
 echo ""
 
-# Check Node.js
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed. Please install Node.js 20+"
+# Check Bun
+if ! command -v bun &> /dev/null; then
+    echo "❌ Bun is not installed. Please install Bun 1.1+"
+    echo "   Install: curl -fsSL https://bun.sh/install | bash"
     exit 1
-fi
-
-# Check pnpm
-if ! command -v pnpm &> /dev/null; then
-    echo "📦 Installing pnpm..."
-    npm install -g pnpm
 fi
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-pnpm install
+bun install
 
 # Copy env file
 if [ ! -f .env ]; then
@@ -30,11 +25,11 @@ fi
 
 # Setup database
 echo "🗄️ Setting up database..."
-pnpm db:push
+bun run db:push
 
 # Seed database
 echo "🌱 Seeding database..."
-pnpm db:seed
+bun run db:seed
 
 # Create upload directories
 echo "📁 Creating upload directories..."
@@ -50,7 +45,7 @@ echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
-echo "  1. Run 'pnpm dev' to start development server"
+echo "  1. Run 'bun dev' to start development server"
 echo "  2. Open http://localhost:4321"
 echo ""
 echo "Test account:"

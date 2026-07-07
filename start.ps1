@@ -36,4 +36,4 @@ Write-Host "  Press Ctrl+C to stop" -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 
-node dist/server/entry.mjs
+bun dist/server/entry.mjs

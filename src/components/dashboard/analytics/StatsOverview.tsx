@@ -94,7 +94,10 @@ export default function StatsOverview({ shopId, days = 30 }: StatsOverviewProps)
 
   const fetchStats = async () => {
     try {
-      const res = await fetch(`/api/analytics/stats?shopId=${shopId}&days=${days}`);
+      const res = await fetch(`/api/analytics/stats?shopId=${shopId}&days=${days}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       const data = await res.json();
       if (data.success) {
         const totals = data.data.totals;

@@ -1,114 +1,17 @@
 ---
 // src/pages/explore/[category].astro
 
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import { db } from '../../lib/db';
-import { shops, deals } from '../../../db/schema';
-import { eq, and, gte, desc } from 'drizzle-orm';
-import CategoryChips from '../../components/explore/CategoryChips.astro';
-import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
-import { SHOP_CATEGORIES, SHOP_CATEGORY_LABELS } from '../../lib/constants';
+import { SHOP_CATEGORIES } from '../../lib/constants';
 import type { ShopCategory } from '../../lib/constants';
-import Icon from '../../components/icons/index.astro';
 
 export const prerender = false;
 
 const { category } = Astro.params;
-
-// ─── BACKEND WORKFLOW: FETCH CATEGORY FILTERED DEALS ───
 const validCategory = SHOP_CATEGORIES.includes(category as ShopCategory) ? category : null;
 
 if (!validCategory) {
   return Astro.redirect('/explore');
 }
 
-const categoryLabel = SHOP_CATEGORY_LABELS[validCategory as ShopCategory] || validCategory;
-const now = new Date();
-let categoryDeals: Array<{ deal: typeof deals.$inferSelect; shop: typeof shops.$inferSelect }> = [];
-
-try {
-  categoryDeals = await db
-    .select({
-      deal: deals,
-      shop: shops,
-    })
-    .from(deals)
-    .leftJoin(shops, eq(deals.shopId, shops.id))
-    .where(
-      and(
-        eq(deals.isActive, true),
-        gte(deals.endDate, now),
-        eq(shops.category, validCategory)
-      )
-    )
-    .orderBy(desc(deals.createdAt))
-    .limit(50);
-} catch (error) {
-  console.error('Error fetching category deals:', error);
-}
-// ────────────────────────────────────────────────────────
+return Astro.redirect(`/explore?category=${validCategory}`);
 ---
-
-<BaseLayout title={`${categoryLabel} | Explore`}>
-  {/* Ambient Background decoration */}
-  <div class="relative min-h-screen">
-    <div class="absolute top-0 right-0 bg-mesh bg-mesh-coral h-72 w-72 opacity-10"></div>
-    <div class="absolute bottom-20 left-0 bg-mesh bg-mesh-teal h-72 w-72 opacity-5"></div>
-    
-    <div class="mx-auto max-w-4xl px-4 py-12 relative z-10">
-      {/* Back navigation & Header */}
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-6">
-        <div class="flex items-center gap-4.5">
-          <a href="/explore" class="btn btn-secondary py-2.5 px-4 rounded-xl text-xs font-bold hover:bg-bg-tertiary">
-            <Icon name="chevron-left" class="h-4.5 w-4.5 text-primary" />
-            <span>กลับ</span>
-          </a>
-          <div>
-            <h1 class="text-2xl font-extrabold text-secondary tracking-tight">
-              หมวดหมู่: {categoryLabel}
-            </h1>
-            <p class="text-xs text-text-secondary mt-1">
-              ดีลโปรโมชันพิเศษจากกลุ่มร้าน{categoryLabel}
-            </p>
-          </div>
-        </div>
-        <span class="badge border-none bg-primary/10 text-primary font-extrabold sm:self-center self-start">
-          {categoryDeals.length} ดีล
-        </span>
-      </div>
-
-      {/* Category Selection Chips */}
-      <div class="mt-6 overflow-hidden max-w-full">
-        <CategoryChips active={validCategory} />
-      </div>
-
-      {/* Deals Grid */}
-      <section class="mt-10">
-        {categoryDeals.length > 0 ? (
-          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {categoryDeals.map(({ deal, shop }, index) => (
-              <div class="animate-fade-in" style={`animation-delay: ${index * 0.04}s`}>
-                {shop && <ExploreDealCard deal={deal} shop={shop} />}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div class="border border-dashed border-border/80 p-12 text-center rounded-2xl bg-bg-secondary/40 max-w-md mx-auto mt-8">
-            <div class="h-14 w-14 rounded-full bg-border/20 flex items-center justify-center mx-auto text-text-tertiary">
-              <Icon name="store" class="h-7 w-7" />
-            </div>
-            <h3 class="mt-4 text-base font-bold text-secondary">
-              ยังไม่มีดีลจากร้าน {categoryLabel} ในขณะนี้
-            </h3>
-            <p class="mt-1.5 text-xs text-text-secondary leading-relaxed">
-              ไม่มีคูปองโปรโมชันที่กำลังออนไลน์อยู่ ลองกลับมาเช็คความเคลื่อนไหวอีกครั้งภายหลัง
-            </p>
-            <a href="/explore" class="btn btn-primary mt-6 py-2.5 px-6 rounded-xl text-xs font-bold shadow-md">
-              สำรวจดีลอื่นๆ ทั้งหมด
-            </a>
-          </div>
-        )}
-      </section>
-    </div>
-  </div>
-</BaseLayout>

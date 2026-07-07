@@ -1,0 +1,439 @@
+---
+// src/pages/deal/[id].astro
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { db } from '../../lib/db';
+import { deals, shops } from '../../../db/schema';
+import { eq } from 'drizzle-orm';
+import { getDealViewModel } from '../../lib/deals/view-model';
+
+import Icon from '../../components/icons/index.astro';
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/explore');
+}
+
+const result = await db
+  .select({
+    deal: deals,
+    shop: shops,
+  })
+  .from(deals)
+  .leftJoin(shops, eq(deals.shopId, shops.id))
+  .where(eq(deals.id, id))
+  .get();
+
+if (!result?.deal || !result.shop) {
+  return Astro.redirect('/explore');
+}
+
+const { deal, shop } = result;
+const vm = getDealViewModel(deal, shop, Astro.url.origin);
+
+const isClaimDisabled = vm.status === 'expired' || vm.status === 'inactive';
+const pageTitle = `${vm.title} | ${shop.name}`;
+const pageDescription = [vm.discountLabel, vm.summary].filter(Boolean).join(' - ');
+const pageImage = vm.imageUrl || shop.coverImage || shop.logoImage || '/og-default.png';
+
+// Parse original vs promo prices
+const discountLabel = vm.discountLabel || '';
+const priceMatchResult = discountLabel.match(/฿([\d,]+)\s*\(ปกติ\s*฿([\d,]+)\)/);
+let priceMatch = null;
+if (priceMatchResult) {
+  const promoStr = priceMatchResult[1];
+  const originalStr = priceMatchResult[2];
+  const promo = parseInt(promoStr.replace(/,/g, ''));
+  const original = parseInt(originalStr.replace(/,/g, ''));
+  const saving = original - promo;
+  priceMatch = {
+    promo: promoStr,
+    original: originalStr,
+    saving: saving.toLocaleString(),
+  };
+}
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} image={pageImage} url={Astro.url.href} type="article">
+  <section
+    id="deal-page"
+    data-shop-id={shop.id}
+    data-deal-id={deal.id}
+    class="mx-auto max-w-4xl px-4 pt-8 pb-24 lg:pb-12"
+  >
+    {/* Breadcrumbs */}
+    <div class="mb-6 flex flex-wrap items-center gap-1.5 text-[10px] md:text-xs font-bold text-text-secondary">
+      <a href="/explore" class="hover:text-primary transition-colors">สำรวจดีล</a>
+      <span class="text-text-tertiary select-none">/</span>
+      <a href={`/${shop.slug}`} class="hover:text-primary transition-colors">{shop.name}</a>
+      <span class="text-text-tertiary select-none">/</span>
+      <span class="text-text-tertiary truncate max-w-[150px] md:max-w-none">{vm.title}</span>
+    </div>
+
+    {/* Two-Column Responsive Layout */}
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      {/* LEFT COLUMN: Media Cover, Title, Descriptions, Conditions */}
+      <div class="lg:col-span-8 space-y-8">
+        
+        {/* Cover Photo card */}
+        <div class="relative overflow-hidden aspect-[16/10] bg-bg-secondary rounded-[32px] border border-border/15 shadow-sm group">
+          {vm.imageUrl ? (
+            <img src={vm.imageUrl} alt={vm.imageAlt} class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+          ) : (
+            <div class="flex h-full items-center justify-center px-8 text-center bg-gradient-to-tr from-primary/5 to-orange-100/30">
+              <div>
+                <p class="text-xs font-black uppercase tracking-widest text-primary">{vm.categoryLabel}</p>
+                <p class="mt-2 text-2xl font-black text-secondary">{vm.discountLabel || vm.title}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Floating overlays on image */}
+          <div class="absolute left-4 top-4 flex flex-wrap gap-2">
+            <span
+              class="rounded-full border px-3.5 py-1 text-[10px] font-black text-white backdrop-blur-md shadow-sm bg-black/45 border-white/10 tracking-wider uppercase"
+            >
+              {vm.categoryLabel}
+            </span>
+            <span class:list={[
+              'rounded-full border px-3.5 py-1 text-[10px] font-black backdrop-blur-md shadow-sm border-white/10 text-white',
+              vm.urgency === 'expired'
+                ? 'bg-rose-600/80'
+                : vm.urgency === 'soon'
+                  ? 'bg-red-500/80'
+                  : 'bg-black/50'
+            ]}>
+              {vm.expiryLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Title Block */}
+        <div class="space-y-3.5">
+          <h1 class="text-2xl md:text-4xl font-extrabold leading-tight text-secondary tracking-tight">{vm.title}</h1>
+          <p class="text-sm font-semibold leading-relaxed text-text-secondary">{vm.summary}</p>
+        </div>
+
+        {/* Description section */}
+        {vm.description && (
+          <div class="space-y-2.5">
+            <h2 class="text-xs font-black uppercase tracking-widest text-text-tertiary">รายละเอียดดีล</h2>
+            <p class="whitespace-pre-line text-sm leading-7 text-text-secondary font-bold">{vm.description}</p>
+          </div>
+        )}
+
+        {/* Conditions section */}
+        {vm.conditions && (
+          <div class="rounded-[24px] border border-border/20 bg-bg-secondary/40 p-5 shadow-sm space-y-2">
+            <h2 class="text-xs font-black uppercase tracking-widest text-secondary">เงื่อนไขและข้อตกลง</h2>
+            <p class="whitespace-pre-line text-sm leading-7 text-text-secondary font-bold">{vm.conditions}</p>
+          </div>
+        )}
+
+      </div>
+
+      {/* RIGHT COLUMN: Desktop Sticky Voucher/Ticket Card (Hidden on Mobile) */}
+      <div class="lg:col-span-4 sticky top-24 hidden lg:block">
+        
+        {/* Ticket Container */}
+        <div class="rounded-[28px] border border-border/20 bg-card-bg/60 backdrop-blur-md p-6 shadow-xl relative overflow-hidden flex flex-col gap-6">
+          
+          {/* Top Section: Price & Title */}
+          <div>
+            {priceMatch ? (
+              <div class="space-y-1">
+                <div class="flex items-baseline gap-2">
+                  <span class="text-4xl font-black text-primary tracking-tight">฿{priceMatch.promo}</span>
+                  <span class="text-sm line-through text-text-tertiary font-bold">ปกติ ฿{priceMatch.original}</span>
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                  <span class="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-md">
+                    ประหยัด ฿{priceMatch.saving}
+                  </span>
+                  <span class="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-0.5 rounded-md">
+                    {vm.categoryLabel}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div class="space-y-1">
+                <div class="text-2xl font-black text-primary tracking-tight leading-none">
+                  {vm.discountLabel}
+                </div>
+                <div class="pt-1.5">
+                  <span class="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-0.5 rounded-md">
+                    {vm.categoryLabel}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <h2 class="text-sm font-extrabold text-secondary tracking-tight mt-4.5">{vm.title}</h2>
+            <p class="text-[11px] font-bold text-text-tertiary flex items-center gap-1 mt-1.5">
+              <span>⏰</span>
+              <span>{vm.expiryLabel}</span>
+            </p>
+          </div>
+
+          {/* Ticket Tear-off dotted separator */}
+          <div class="border-t-2 border-dashed border-border/35 my-1 relative">
+            <div class="absolute -left-9 -top-2.5 h-5 w-5 rounded-full bg-[#FAF9F6] dark:bg-[#0B0F19] border-r border-border/25"></div>
+            <div class="absolute -right-9 -top-2.5 h-5 w-5 rounded-full bg-[#FAF9F6] dark:bg-[#0B0F19] border-l border-border/25"></div>
+          </div>
+
+          {/* Bottom Section: Code Copy, Primary Button, Shop info */}
+          <div class="space-y-4">
+            
+            {/* Coupon copy block (if available) */}
+            {vm.couponCode && (
+              <div class="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 text-center">
+                <p class="text-[10px] font-black uppercase tracking-widest text-text-tertiary">Coupon Code</p>
+                <p id="coupon-code" class="mt-1.5 break-all font-mono text-lg font-black tracking-wider text-secondary">{vm.couponCode}</p>
+              </div>
+            )}
+
+            {/* Primary Action Button */}
+            <button
+              id="primary-claim-action"
+              data-claim-type={vm.claimType}
+              data-coupon={vm.couponCode || ''}
+              data-line-url={vm.shop.lineUrl || ''}
+              disabled={isClaimDisabled}
+              class:list={[
+                'w-full py-3.5 px-4 rounded-xl text-xs font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5',
+                isClaimDisabled ? 'cursor-not-allowed bg-text-tertiary opacity-70' : 'bg-primary hover:bg-primary-hover shadow-primary/20 hover:shadow-primary/35'
+              ]}
+            >
+              {isClaimDisabled ? 'ดีลนี้หมดอายุแล้ว' : (
+                <>
+                  <Icon name="rocket" class="h-4.5 w-4.5" />
+                  <span>{vm.claimLabel}</span>
+                </>
+              )}
+            </button>
+
+            {/* Secondary actions */}
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                id="copy-deal-link"
+                class="py-2.5 px-3 rounded-lg border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center justify-center gap-1 cursor-pointer"
+              >
+                คัดลอกลิงก์
+              </button>
+              <a
+                href={vm.urls.shop || '#'}
+                data-contact-channel="shop_page"
+                class="py-2.5 px-3 rounded-lg border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center justify-center gap-1"
+              >
+                ดูในหน้าร้าน
+              </a>
+            </div>
+
+            {/* Shop Profile panel inside ticket */}
+            <div class="rounded-xl border border-border/15 bg-bg-secondary/40 p-3.5 flex items-center gap-3">
+              {shop.logoImage ? (
+                <img src={shop.logoImage} alt={shop.name} class="h-9 w-9 rounded-xl object-cover border border-border/20" />
+              ) : (
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-xs font-black text-primary">
+                  {shop.name.charAt(0)}
+                </div>
+              )}
+              <div class="min-w-0">
+                <a href={`/${shop.slug}`} class="block truncate text-xs font-black text-secondary hover:text-primary">{shop.name}</a>
+                {vm.shop.addressShort && <p class="mt-0.5 truncate text-[9px] text-text-tertiary font-bold">{vm.shop.addressShort}</p>}
+              </div>
+            </div>
+
+            {/* Shop Contact actions */}
+            <div class="grid grid-cols-3 gap-2">
+              {vm.shop.lineUrl && <a href={vm.shop.lineUrl} data-contact-channel="line" class="deal-contact-link py-2 px-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[9px] font-black text-center transition-all flex items-center justify-center gap-1">LINE</a>}
+              {vm.shop.phoneUrl && <a href={vm.shop.phoneUrl} data-contact-channel="phone" class="deal-contact-link py-2 px-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-400 text-[9px] font-black text-center transition-all flex items-center justify-center gap-1">โทร</a>}
+              {vm.shop.mapUrl && <a href={vm.shop.mapUrl} data-contact-channel="map" class="deal-contact-link py-2 px-1 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 text-[9px] font-black text-center transition-all flex items-center justify-center gap-1">แผนที่</a>}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {/* MOBILE TICKET SECTION: Stacks below left column on mobile, hidden on desktop */}
+    <div class="mt-8 space-y-6 lg:hidden">
+      
+      {/* Coupon Code Block (if available) */}
+      {vm.couponCode && (
+        <div class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 text-center">
+          <p class="text-[10px] font-black uppercase tracking-widest text-text-tertiary">Coupon Code</p>
+          <p class="mt-1.5 break-all font-mono text-lg font-black tracking-wider text-secondary">{vm.couponCode}</p>
+        </div>
+      )}
+
+      {/* Shop Profile Box */}
+      <div class="rounded-2xl border border-border/20 bg-card-bg/60 backdrop-blur-md p-4.5 shadow-sm space-y-3.5">
+        <div class="flex items-center gap-3">
+          {shop.logoImage ? (
+            <img src={shop.logoImage} alt={shop.name} class="h-10 w-10 rounded-xl object-cover border border-border/25" />
+          ) : (
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-xs font-black text-primary">
+              {shop.name.charAt(0)}
+            </div>
+          )}
+          <div class="min-w-0">
+            <a href={`/${shop.slug}`} class="block truncate text-sm font-black text-secondary hover:text-primary">{shop.name}</a>
+            {vm.shop.addressShort && <p class="mt-0.5 truncate text-[10px] text-text-tertiary font-bold">{vm.shop.addressShort}</p>}
+          </div>
+        </div>
+
+        {/* Buttons for quick communication on mobile */}
+        <div class="grid grid-cols-3 gap-2">
+          {vm.shop.lineUrl && <a href={vm.shop.lineUrl} data-contact-channel="line" class="deal-contact-link py-2.5 px-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1.5">LINE</a>}
+          {vm.shop.phoneUrl && <a href={vm.shop.phoneUrl} data-contact-channel="phone" class="deal-contact-link py-2.5 px-1 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1.5">โทร</a>}
+          {vm.shop.mapUrl && <a href={vm.shop.mapUrl} data-contact-channel="map" class="deal-contact-link py-2.5 px-1 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400 text-[10px] font-black text-center transition-all flex items-center justify-center gap-1.5">แผนที่</a>}
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border/10">
+          <a
+            href={vm.urls.shop || '#'}
+            data-contact-channel="shop_page"
+            class="py-2.5 px-3 rounded-xl border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all text-center"
+          >
+            ดูหน้าร้านหลัก
+          </a>
+          <button
+            class="mobile-copy-link py-2.5 px-3 rounded-xl border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center justify-center gap-1"
+          >
+            คัดลอกลิงก์ดีล
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+  {/* MOBILE STICKY BOTTOM ACTION BAR (Floating viewport overlay, hidden on Desktop) */}
+  <div class="fixed bottom-0 left-0 right-0 z-40 bg-card-bg/95 backdrop-blur-md border-t border-border/20 px-4 py-3.5 flex items-center justify-between gap-4 shadow-lg lg:hidden">
+    <div class="min-w-0">
+      {priceMatch ? (
+        <div class="flex flex-col">
+          <div class="flex items-baseline gap-1">
+            <span class="text-xl font-black text-primary">฿{priceMatch.promo}</span>
+            <span class="text-[10px] line-through text-text-tertiary font-bold">฿{priceMatch.original}</span>
+          </div>
+          <span class="text-[8px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md mt-0.5 self-start">
+            ประหยัด ฿{priceMatch.saving}
+          </span>
+        </div>
+      ) : (
+        <div class="text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg truncate max-w-[150px]">
+          {vm.discountLabel}
+        </div>
+      )}
+    </div>
+
+    <button
+      id="mobile-claim-action"
+      data-claim-type={vm.claimType}
+      data-coupon={vm.couponCode || ''}
+      data-line-url={vm.shop.lineUrl || ''}
+      disabled={isClaimDisabled}
+      class:list={[
+        'h-10 px-5 text-xs font-black text-white rounded-xl shadow-md flex items-center justify-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer',
+        isClaimDisabled ? 'cursor-not-allowed bg-text-tertiary opacity-70' : 'bg-primary hover:bg-primary-hover shadow-primary/25'
+      ]}
+    >
+      {isClaimDisabled ? 'หมดอายุแล้ว' : (
+        <>
+          <Icon name="rocket" class="h-4 w-4" />
+          <span>{vm.claimLabel}</span>
+        </>
+      )}
+    </button>
+  </div>
+
+  <script>
+    const dealPage = document.getElementById('deal-page');
+    const claimButton = document.getElementById('primary-claim-action');
+    const mobileClaimButton = document.getElementById('mobile-claim-action');
+    const copyLinkButton = document.getElementById('copy-deal-link');
+    const mobileCopyLink = document.querySelector('.mobile-copy-link');
+    const shopId = dealPage?.dataset.shopId;
+    const dealId = dealPage?.dataset.dealId;
+
+    async function trackDealEvent(type, metadata = {}) {
+      if (!shopId || !dealId) return;
+
+      try {
+        await fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, shopId, dealId, metadata }),
+          keepalive: true,
+        });
+      } catch (err) {
+        console.debug('Deal analytics skipped', err);
+      }
+    }
+
+    trackDealEvent('deal_view', {
+      source: 'direct_deal_page',
+      path: window.location.pathname,
+    });
+
+    async function handleClaim(button) {
+      if (!button) return;
+      const claimType = button.dataset.claimType;
+      const coupon = button.dataset.coupon;
+      const lineUrl = button.dataset.lineUrl;
+
+      trackDealEvent('deal_click', {
+        action: claimType || 'claim',
+        source: 'direct_deal_page',
+      });
+
+      if (claimType === 'copy_code' && coupon) {
+        await navigator.clipboard.writeText(coupon);
+        button.innerHTML = '✓ คัดลอกโค้ดแล้ว';
+        
+        // Sync button text between desktop and mobile triggers
+        if (button === claimButton && mobileClaimButton) {
+          mobileClaimButton.innerHTML = '✓ คัดลอกโค้ดแล้ว';
+        } else if (button === mobileClaimButton && claimButton) {
+          claimButton.innerHTML = '✓ คัดลอกโค้ดแล้ว';
+        }
+        return;
+      }
+
+      if (claimType === 'open_line' && lineUrl) {
+        window.location.href = lineUrl;
+      }
+    }
+
+    claimButton?.addEventListener('click', () => handleClaim(claimButton));
+    mobileClaimButton?.addEventListener('click', () => handleClaim(mobileClaimButton));
+
+    async function handleCopyLink(button) {
+      if (!button) return;
+      await navigator.clipboard.writeText(window.location.href);
+      button.textContent = 'คัดลอกแล้ว';
+      trackDealEvent('deal_share', {
+        channel: 'copy_link',
+        source: 'direct_deal_page',
+      });
+    }
+
+    copyLinkButton?.addEventListener('click', () => handleCopyLink(copyLinkButton));
+    mobileCopyLink?.addEventListener('click', () => handleCopyLink(mobileCopyLink));
+
+    document.querySelectorAll('.deal-contact-link').forEach((link) => {
+      link.addEventListener('click', () => {
+        trackDealEvent('contact_click', {
+          channel: link.dataset.contactChannel || 'unknown',
+          source: 'direct_deal_page',
+        });
+      });
+    });
+  </script>
+</BaseLayout>

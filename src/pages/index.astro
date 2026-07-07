@@ -4,421 +4,453 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { db } from '../lib/db';
 import { shops, deals } from '../../db/schema';
-import { eq, and, gte } from 'drizzle-orm';
+import { eq, and, gte, desc } from 'drizzle-orm';
 import { getLangFromUrl, t } from '../i18n';
-import { DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS, SHOP_CATEGORY_LABELS } from '../lib/constants';
+import { SHOP_CATEGORIES, SHOP_CATEGORY_ICONS, SHOP_CATEGORY_LABELS } from '../lib/constants';
+import type { ShopCategory } from '../lib/constants';
+import ExploreDealCard from '../components/explore/ExploreDealCard.astro';
 import Icon from '../components/icons/index.astro';
 
 const lang = getLangFromUrl(Astro.url);
 const common = (key: string) => t(lang, 'common', key);
 
-// ─── BACKEND WORKFLOW: DATA FETCHING FOR LANDING PAGE ───
-// This block reads shop accounts and active deals from the SQLite database to showcase examples.
-const sampleShops = await db.select().from(shops).limit(3);
-
-const sampleShopsWithDeals = await Promise.all(
-  sampleShops.map(async (shop) => {
-    const shopDeals = await db
-      .select()
-      .from(deals)
-      .where(and(eq(deals.shopId, shop.id), eq(deals.isActive, true), gte(deals.endDate, new Date())))
-      .limit(2);
-    return { ...shop, deals: shopDeals };
+// ─── BACKEND WORKFLOW: FETCH ALL ACTIVE DEALS FOR CONSUMER FEED ───
+const now = new Date();
+const activeDeals = await db
+  .select({
+    deal: deals,
+    shop: shops,
   })
-);
-// ────────────────────────────────────────────────────────
+  .from(deals)
+  .leftJoin(shops, eq(deals.shopId, shops.id))
+  .where(and(eq(deals.isActive, true), gte(deals.endDate, now)))
+  .orderBy(desc(deals.createdAt))
+  .all();
+
+const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+const expiringSoon = activeDeals.filter(({ deal }) => {
+  const endDate = new Date(deal.endDate);
+  return endDate <= in7Days;
+});
+
+const dealsByShop = new Map<string, { shop: typeof shops.$inferSelect; deals: typeof deals.$inferSelect[] }>();
+activeDeals.forEach(({ deal, shop }) => {
+  if (!shop) return;
+  if (!dealsByShop.has(shop.id)) {
+    dealsByShop.set(shop.id, { shop, deals: [] });
+  }
+  dealsByShop.get(shop.id)!.deals.push(deal);
+});
+
+// Categories match the Explore page shop-category filter.
+const categories = [
+  { id: 'all', label: 'ทั้งหมด', emoji: '✨' },
+  ...SHOP_CATEGORIES.map((cat) => ({
+    id: cat,
+    label: SHOP_CATEGORY_LABELS[cat],
+    emoji: SHOP_CATEGORY_ICONS[cat],
+  })),
+];
+// ──────────────────────────────────────────────────────────────────
 ---
 
-<BaseLayout title={common('brand.tagline')}>
-  {/* Hero Section */}
-  <section class="relative overflow-hidden mt-[-120px] pt-40 pb-24 md:pt-48 md:pb-32 bg-gradient-to-b from-primary-subtle to-bg">
-    {/* Dynamic Background Mesh Blobs */}
-    <div class="absolute top-0 right-0 bg-mesh bg-mesh-coral h-96 w-96 opacity-10 animate-drift-1"></div>
-    <div class="absolute bottom-0 left-0 bg-mesh bg-mesh-teal h-96 w-96 opacity-5 animate-drift-3"></div>
-    
-    <div class="relative mx-auto max-w-4xl px-4 text-center z-10">
-      {/* Dynamic Animated Badge */}
-      <div class="animate-fade-in mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-bg px-4.5 py-2 shadow-sm">
-        <span class="relative flex h-2.5 w-2.5">
-          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-          <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary"></span>
-        </span>
-        <span class="text-xs font-bold uppercase tracking-wider text-primary">ฟรี ไม่ต้องผูกบัตรเครดิต</span>
-      </div>
-      
-      {/* Title */}
-      <h1 class="animate-slide-up text-4xl font-extrabold leading-tight text-secondary md:text-5xl lg:text-6xl tracking-tight">
-        {lang === 'th' ? (
-          <>
-            สร้างหน้า<span class="text-gradient">โปรโมชัน</span>
-            <br />ร้านของคุณในไม่กี่นาที
-          </>
+<BaseLayout title={lang === 'th' ? 'ค้นหาโปรโมชันและดีลคูปองใกล้ตัวคุณ' : 'Explore Promo Coupons & Deals'}>
+  <div class="relative min-h-screen pb-20">
+    <div class="space-y-8 relative z-10">
+      {/* Hero Header & Airbnb-Style Multi-Input Search Capsule */}
+      <section class="text-center pt-16 max-w-3xl mx-auto space-y-5 px-4">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-wider animate-fade-in shadow-sm">
+          <span>✨ พอร์ทัลรวมดีลโปรโมชันที่ใหญ่ที่สุด</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-secondary tracking-tight md:text-5xl leading-tight">
+          ค้นหาดีลและคูปองสุดพิเศษ <span class="text-gradient">รอบตัวคุณ</span> <span class="animate-tag-swing">🏷️</span>
+        </h1>
+        <p class="text-xs sm:text-sm text-text-secondary font-bold max-w-xl mx-auto leading-relaxed">
+          แจกโค้ดส่วนลด โปรโมชัน คาเฟ่ ร้านอาหาร บริการยอดฮิต รวบรวมหน้าร้านของคุณฟรี
+        </p>
+
+        {/* Floating Airbnb Search capsule */}
+        <div class="pt-6 max-w-2xl mx-auto animate-slide-up stagger-1">
+          <div class="glass rounded-3xl sm:rounded-full border border-border/40 shadow-lg flex flex-col sm:flex-row items-center bg-card-bg/75 backdrop-blur-md p-2 divide-y sm:divide-y-0 sm:divide-x divide-border/30">
+            
+            {/* Location field */}
+            <div class="flex-1 w-full flex items-center px-4 py-2.5 gap-2.5 text-left min-w-0">
+              <Icon name="map-pin" class="h-4.5 w-4.5 text-primary flex-shrink-0" />
+              <div class="min-w-0">
+                <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider leading-none">พิกัดร้าน</p>
+                <p class="text-xs font-bold text-secondary truncate mt-0.5 select-none">กรุงเทพฯ และปริมณฑล</p>
+              </div>
+            </div>
+
+            {/* Category indicator field */}
+            <div class="flex-1 w-full flex items-center px-4 py-2.5 gap-2.5 text-left min-w-0">
+              <Icon name="tag" class="h-4.5 w-4.5 text-primary flex-shrink-0" />
+              <div class="min-w-0">
+                <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider leading-none">ประเภทดีล</p>
+                <p class="text-xs font-bold text-secondary truncate mt-0.5 select-none" id="search-cat-label">ทุกประเภท</p>
+              </div>
+            </div>
+
+            {/* Search keyword input field */}
+            <div class="flex-[1.5] w-full flex items-center pl-4 pr-2 py-2 gap-2.5 text-left min-w-0">
+              <Icon name="search" class="h-4.5 w-4.5 text-text-tertiary flex-shrink-0" />
+              <input 
+                type="text" 
+                id="search-input" 
+                placeholder="พิมพ์ชื่อดีล หรือชื่อร้าน..." 
+                class="w-full bg-transparent border-none text-xs focus:ring-0 focus:outline-none text-secondary font-bold placeholder:text-text-tertiary/70 pl-0 py-0 leading-none"
+              />
+              <button class="h-9 px-6 bg-gradient-to-r from-primary to-orange-500 hover:from-primary/95 hover:to-orange-500/95 text-white rounded-full text-xs font-black shadow-md shadow-primary/20 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0">
+                <span>ค้นหา</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* Airbnb-Style Categories Slider */}
+      <section class="max-w-4xl mx-auto px-4">
+        <div class="flex items-center gap-3 overflow-x-auto no-scrollbar py-3 border-b border-border/30">
+          {categories.map((cat) => (
+            <button 
+              data-cat-id={cat.id} 
+              class={`category-chip flex items-center gap-2 px-4.5 py-2.5 rounded-2xl text-xs font-black border transition-all duration-300 whitespace-nowrap cursor-pointer hover:-translate-y-0.5 hover:shadow-sm ${
+                cat.id === 'all' 
+                  ? 'bg-gradient-to-r from-primary to-orange-500 text-white border-none shadow-md shadow-primary/10' 
+                  : 'bg-card-bg/60 text-text-secondary border-border/30 hover:border-primary/20'
+              }`}
+            >
+              <span class="text-sm">{cat.emoji}</span>
+              <span>{cat.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Merchant Linktree Promo Banner */}
+      <section class="max-w-4xl mx-auto px-4">
+        <div class="rounded-3xl border border-border/20 bg-card-bg/50 backdrop-blur-md p-6 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 hover:border-primary/25 transition-colors duration-300">
+          <div class="absolute -right-12 -bottom-12 h-32 w-32 rounded-full bg-primary/5 blur-xl"></div>
+          <div class="space-y-1.5 z-10 text-center md:text-left">
+            <h3 class="text-sm font-black text-secondary flex items-center justify-center md:justify-start gap-2">
+              <span class="text-base select-none">👑</span>
+              <span>คุณคือเจ้าของร้านค้าใช่ไหม?</span>
+            </h3>
+            <p class="text-[11px] text-text-secondary font-bold">
+              สร้างหน้าโปรโมชันและดีลคูปองแบบรวมลิงก์เดียวเหมือน Linktree ฟรีใน 2 นาที แชร์ลงโซเชียลปังๆ ได้ทันที!
+            </p>
+          </div>
+          <a href="/for-shops" class="btn btn-primary py-2.5 px-6 rounded-xl text-xs font-black shadow-md hover:scale-[1.02] active:scale-95 transition-all shrink-0 z-10">
+            <Icon name="rocket" class="h-4.5 w-4.5" />
+            <span>สร้างหน้าลิงก์ร้านฟรี</span>
+          </a>
+        </div>
+      </section>
+
+      {/* Expiring Soon Section */}
+      {expiringSoon.length > 0 && (
+        <section class="home-section max-w-4xl mx-auto px-4" data-section="expiring">
+          <div class="flex items-center justify-between border-b border-border/30 pb-3 mb-6">
+            <div class="flex items-center gap-2.5">
+              <div class="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Icon name="clock" class="h-5 w-5" />
+              </div>
+              <h2 class="text-lg font-bold text-secondary">ดีลที่ใกล้หมดอายุ (ภายใน 7 วัน)</h2>
+            </div>
+            <span class="badge border-none bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold" id="expiring-count">
+              {expiringSoon.length} คูปอง
+            </span>
+          </div>
+
+          <div class="home-section-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {expiringSoon.slice(0, 6).map(({ deal, shop }, index) => (
+              <div
+                class="home-filter-item animate-fade-in"
+                data-section="expiring"
+                data-shop-category={shop?.category || ''}
+                data-title={deal.title.toLowerCase()}
+                data-shop-name={shop?.name.toLowerCase() || ''}
+                style={`animation-delay: ${index * 0.08}s`}
+              >
+                {shop && <ExploreDealCard deal={deal} shop={shop} />}
+              </div>
+            ))}
+          </div>
+
+          <div class="home-empty-state hidden border border-dashed border-border/80 p-8 text-center rounded-2xl bg-bg-secondary/40">
+            <p class="text-sm font-bold text-secondary">ไม่มีดีลใกล้หมดอายุในประเภทนี้</p>
+          </div>
+        </section>
+      )}
+
+      {/* Active Deals List Section */}
+      <section class="home-section max-w-4xl mx-auto px-4" data-section="all">
+        <div class="flex items-center justify-between border-b border-border/30 pb-3 mb-6">
+          <div class="flex items-center gap-2.5">
+            <div class="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Icon name="fire" class="h-5 w-5" />
+            </div>
+            <h2 class="text-lg font-bold text-secondary">ดีลและคูปองทั้งหมด</h2>
+          </div>
+          <span class="badge border-none bg-primary/10 text-primary font-extrabold" id="all-count">
+            {activeDeals.length} ดีล
+          </span>
+        </div>
+
+        {activeDeals.length > 0 ? (
+          <div class="home-section-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {activeDeals.map(({ deal, shop }, index) => (
+              <div
+                class="home-filter-item animate-fade-in"
+                data-section="all"
+                data-shop-category={shop?.category || ''}
+                data-title={deal.title.toLowerCase()}
+                data-shop-name={shop?.name.toLowerCase() || ''}
+                style={`animation-delay: ${index * 0.04}s`}
+              >
+                {shop && <ExploreDealCard deal={deal} shop={shop} />}
+              </div>
+            ))}
+          </div>
         ) : (
-          <>
-            Create Your Shop
-            <br /><span class="text-gradient">Deal Page</span> in Minutes
-          </>
+          <div class="border border-dashed border-border/80 p-12 text-center rounded-2xl bg-bg-secondary/40">
+            <Icon name="search" class="h-10 w-10 mx-auto text-text-tertiary" />
+            <h3 class="mt-4 text-base font-bold text-secondary">ไม่มีคูปองที่ใช้งานได้ในขณะนี้</h3>
+            <p class="mt-1 text-xs text-text-secondary">ร้านค้ายังไม่ได้ปล่อยโปรโมชันในระบบ</p>
+          </div>
         )}
-      </h1>
-      
-      {/* Subtitle */}
-      <p class="animate-slide-up stagger-1 mx-auto mt-6 max-w-2xl text-base md:text-lg text-text-secondary leading-relaxed">
-        {lang === 'th' 
-          ? 'แชร์ลิงก์เดียวให้ลูกค้าเห็นทุกดีล พร้อมแผนที่และปุ่มติดต่อ ดึงดูดลูกค้าและหมดอายุดีลแบบอัตโนมัติ'
-          : 'Share one link containing all deals. Includes Map, contact buttons, and auto-expiring coupons.'}
-      </p>
-      
-      {/* Action CTA Buttons */}
-      <div class="animate-slide-up stagger-2 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-        <a href="/onboarding" class="btn btn-primary py-3.5 px-8 rounded-2xl shadow-lg hover:shadow-primary/30 w-full sm:w-auto">
-          <Icon name="rocket" class="h-5 w-5" />
-          <span>{lang === 'th' ? 'เริ่มสร้างหน้าร้านฟรี' : 'Create Shop Page'}</span>
-        </a>
-        <a href="/explore" class="btn btn-secondary py-3.5 px-8 rounded-2xl w-full sm:w-auto">
-          <Icon name="search" class="h-5 w-5 text-primary" />
-          <span>{lang === 'th' ? 'ค้นหาดีลรอบตัว' : 'Explore Deals'}</span>
-        </a>
-      </div>
-      
-      {/* Values Grid */}
-      <div class="animate-fade-in stagger-3 mt-16 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
-        <div class="glass p-4.5 rounded-2xl border border-border/40 flex items-center gap-3">
-          <div class="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-            <Icon name="check" class="h-5 w-5" />
-          </div>
-          <span class="text-sm font-bold text-secondary">กรอกข้อมูลง่ายใน 2 นาที</span>
-        </div>
-        <div class="glass p-4.5 rounded-2xl border border-border/40 flex items-center gap-3">
-          <div class="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-            <Icon name="check" class="h-5 w-5" />
-          </div>
-          <span class="text-sm font-bold text-secondary">แชร์ลงโซเชียลได้ทันที</span>
-        </div>
-        <div class="glass p-4.5 rounded-2xl border border-border/40 flex items-center gap-3">
-          <div class="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-            <Icon name="check" class="h-5 w-5" />
-          </div>
-          <span class="text-sm font-bold text-secondary">หมดอายุดีลอัตโนมัติ</span>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  {/* Features Section */}
-  <section class="bg-bg py-20 md:py-28 border-t border-border/30 relative overflow-hidden">
-    {/* Background Glow */}
-    <div class="absolute -right-24 top-0 bg-mesh bg-mesh-teal h-96 w-96 opacity-5 pointer-events-none"></div>
+        <div class="home-empty-state hidden border border-dashed border-border/80 p-8 text-center rounded-2xl bg-bg-secondary/40">
+          <p class="text-sm font-bold text-secondary">ไม่พบดีลในประเภทนี้</p>
+        </div>
+      </section>
 
-    <div class="mx-auto max-w-4xl px-4 z-10 relative">
-      <div class="text-center max-w-xl mx-auto">
-        <h2 class="text-3xl font-extrabold tracking-tight text-secondary sm:text-4xl">
-          {lang === 'th' ? (
-            <>
-              ทำไมต้อง <span class="text-gradient">DealDoor</span>?
-            </>
-          ) : (
-            <>
-              Why <span class="text-gradient">DealDoor</span>?
-            </>
-          )}
-        </h2>
-        <p class="mt-4 text-sm text-text-secondary leading-relaxed">
-          {lang === 'th' ? 'เครื่องมือการตลาดแชร์โปรโมชันที่ออกแบบมาเพื่อร้านค้าออฟไลน์และร้านค้าท้องถิ่นโดยเฉพาะ' : 'Marketing tools designed specifically for local and offline shops'}
-        </p>
-      </div>
-
-      <div class="mt-16 grid gap-6 md:grid-cols-3">
-        {/* Feature 1 */}
-        <div class="animate-fade-in glass-card p-8 rounded-3xl border border-border/40 hover:border-info/40 hover:shadow-lg hover:shadow-info/10 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between h-full group">
-          <div>
-            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-info-bg/70 dark:bg-info-bg/10 text-info mb-6 border border-info/10 group-hover:scale-110 group-hover:bg-info group-hover:text-white transition-all duration-300 shadow-sm">
-              <Icon name="link" class="h-6 w-6" />
+      {/* Active Shop Partners Section */}
+      <section class="home-section max-w-4xl mx-auto px-4" data-section="partners">
+        <div class="flex items-center justify-between border-b border-border/30 pb-3 mb-6">
+          <div class="flex items-center gap-2.5">
+            <div class="h-8 w-8 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+              <Icon name="store" class="h-5 w-5" />
             </div>
-            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
-              {lang === 'th' ? 'ลิงก์เดียวแชร์ได้หมด' : 'One Link For All'}
-            </h3>
-            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
-              {lang === 'th' 
-                ? 'ไม่ต้องคอยส่งรูปหรือข้อความดีลแยกกันหลายครั้ง ส่งลิงก์หน้าร้านของคุณครั้งเดียว ลูกค้าเห็นหมดครบถ้วน'
-                : 'Send your shop link once, and customers see all of your active promo cards.'}
-            </p>
+            <h2 class="text-lg font-bold text-secondary">ร้านค้าพาร์ทเนอร์ยอดนิยม</h2>
           </div>
+          <span class="badge border-none bg-accent/10 text-accent font-extrabold" id="partners-count">
+            {dealsByShop.size} ร้านค้า
+          </span>
         </div>
 
-        {/* Feature 2 */}
-        <div class="animate-fade-in stagger-1 glass-card p-8 rounded-3xl border border-border/40 hover:border-success/40 hover:shadow-lg hover:shadow-success/10 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between h-full group">
-          <div>
-            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-success-bg/70 dark:bg-success-bg/10 text-success mb-6 border border-success/10 group-hover:scale-110 group-hover:bg-success group-hover:text-white transition-all duration-300 shadow-sm">
-              <Icon name="clock" class="h-6 w-6" />
-            </div>
-            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
-              {lang === 'th' ? 'ระบบปิดดีลอัตโนมัติ' : 'Auto-Expiring'}
-            </h3>
-            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
-              {lang === 'th' 
-                ? 'กำหนดวันหมดอายุของคูปองโปรโมชัน เมื่อถึงเวลาระบบจะนำดีลนั้นออกเอง ไม่ต้องย้อนกลับมาไล่ลบโพสต์เก่า'
-                : 'Set dates and deals hide automatically when they expire. No manual cleanup needed.'}
-            </p>
-          </div>
-        </div>
-
-        {/* Feature 3 */}
-        <div class="animate-fade-in stagger-2 glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between h-full group">
-          <div>
-            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-light/70 dark:bg-primary-light/10 text-primary mb-6 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
-              <Icon name="map-pin" class="h-6 w-6" />
-            </div>
-            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
-              {lang === 'th' ? 'ปุ่มนำทาง & ติดต่อกลับ' : 'Map & Contacts'}
-            </h3>
-            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
-              {lang === 'th' 
-                ? 'ฝังแผนที่สำหรับกดนำทาง แอด LINE ทันที หรือกดโทรออกผ่านมือถือ ช่วยกระตุ้นลูกค้าเดินทางมาหน้าร้านจริง'
-                : 'Map directions, LINE add, and phone call actions optimized to bring visitors directly to your shop.'}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {/* How it works Section */}
-  <section class="bg-bg-secondary py-20 md:py-28 border-y border-border/40 relative overflow-hidden">
-    {/* Subtle Background Mesh for visual depth */}
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-mesh bg-mesh-coral h-96 w-96 opacity-5 pointer-events-none"></div>
-
-    <div class="mx-auto max-w-4xl px-4 relative z-10">
-      <div class="text-center max-w-xl mx-auto">
-        <h2 class="text-3xl font-extrabold tracking-tight text-secondary sm:text-4xl">
-          {lang === 'th' ? 'เริ่มต้นสร้างหน้าร้านใน 3 ขั้นตอน' : 'Get Started in 3 Steps'}
-        </h2>
-        <p class="mt-4 text-sm text-text-secondary leading-relaxed">
-          {lang === 'th' ? 'เริ่มต้นได้ง่ายๆ ด้วยตัวคุณเองโดยไม่ต้องใช้โค้ดหรือทักษะพิเศษ' : 'Launch your promotional shop page in minutes without coding.'}
-        </p>
-      </div>
-
-      <div class="mt-16 grid gap-8 md:grid-cols-3">
-        {/* Step 1 */}
-        <div class="relative animate-fade-in group">
-          <div class="glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/30 transition-all duration-300 flex flex-col items-center text-center shadow-md hover:shadow-primary/10 hover:-translate-y-2 h-full">
-            {/* Step Number Badge */}
-            <div class="absolute -top-5 left-1/2 -translate-x-1/2 h-10 w-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-orange-400 text-white font-extrabold text-sm shadow-md shadow-primary/25">
-              <span>1</span>
-            </div>
-            
-            {/* Step Icon */}
-            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-light to-orange-50/50 dark:from-primary-light/10 dark:to-primary-subtle/5 text-primary mb-5 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
-              <Icon name="building" class="h-8 w-8" />
-            </div>
-
-            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
-              {lang === 'th' ? 'กรอกรายละเอียดร้าน' : 'Create Shop Page'}
-            </h3>
-            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
-              {lang === 'th' ? 'ระบุชื่อร้าน หมวดหมู่ ช่องทางการติดต่อ และที่ตั้งแผนที่' : 'Fill in coordinates, contacts, and metadata.'}
-            </p>
-          </div>
-
-        </div>
-
-        {/* Step 2 */}
-        <div class="relative animate-fade-in stagger-1 group">
-          <div class="glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/30 transition-all duration-300 flex flex-col items-center text-center shadow-md hover:shadow-primary/10 hover:-translate-y-2 h-full">
-            {/* Step Number Badge */}
-            <div class="absolute -top-5 left-1/2 -translate-x-1/2 h-10 w-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-orange-400 text-white font-extrabold text-sm shadow-md shadow-primary/25">
-              <span>2</span>
-            </div>
-            
-            {/* Step Icon */}
-            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-light to-orange-50/50 dark:from-primary-light/10 dark:to-primary-subtle/5 text-primary mb-5 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
-              <Icon name="tag" class="h-8 w-8" />
-            </div>
-
-            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
-              {lang === 'th' ? 'เพิ่มข้อเสนอ / ดีลดีๆ' : 'Add Promo Deals'}
-            </h3>
-            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
-              {lang === 'th' ? 'ใส่โปรโมชัน ลด แลก แจก แถม พร้อมตั้งวันหมดอายุและเงื่อนไข' : 'Create coupons, discount descriptions, and timers.'}
-            </p>
-          </div>
-
-        </div>
-
-        {/* Step 3 */}
-        <div class="relative animate-fade-in stagger-2 group">
-          <div class="glass-card p-8 rounded-3xl border border-border/40 hover:border-primary/30 transition-all duration-300 flex flex-col items-center text-center shadow-md hover:shadow-primary/10 hover:-translate-y-2 h-full">
-            {/* Step Number Badge */}
-            <div class="absolute -top-5 left-1/2 -translate-x-1/2 h-10 w-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-orange-400 text-white font-extrabold text-sm shadow-md shadow-primary/25">
-              <span>3</span>
-            </div>
-            
-            {/* Step Icon */}
-            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-light to-orange-50/50 dark:from-primary-light/10 dark:to-primary-subtle/5 text-primary mb-5 border border-primary/10 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
-              <Icon name="share" class="h-8 w-8" />
-            </div>
-
-            <h3 class="text-lg font-bold text-secondary group-hover:text-primary transition-colors duration-300">
-              {lang === 'th' ? 'แชร์ลิงก์ดึงลูกค้า' : 'Share & Drive traffic'}
-            </h3>
-            <p class="mt-3 text-sm text-text-secondary leading-relaxed">
-              {lang === 'th' ? 'แชร์ลิงก์ร้านค้าหรือ QR Code ลงโซเชียลเพื่อรับลูกค้าเข้าหน้าร้านจริง' : 'Distribute links or QR to bring customers to your location.'}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {/* Sample Shops Section */}
-  <section class="py-20 md:py-28 bg-bg">
-    <div class="mx-auto max-w-4xl px-4">
-      <div class="text-center max-w-xl mx-auto">
-        <h2 class="text-3xl font-extrabold tracking-tight text-secondary sm:text-4xl">
-          {lang === 'th' ? (
-            <>
-              ตัวอย่างร้านค้าบน <span class="text-gradient">DealDoor</span>
-            </>
-          ) : (
-            <>
-              Sample Shops on <span class="text-gradient">DealDoor</span>
-            </>
-          )}
-        </h2>
-        <p class="mt-4 text-sm text-text-secondary">
-          {lang === 'th' ? 'ตัวอย่างหน้ารวมคูปองโปรโมชันที่สร้างขึ้นโดยร้านค้าพาร์ทเนอร์ของเรา' : 'Explore beautifully designed custom storefront deal cards.'}
-        </p>
-      </div>
-
-      <div class="mt-12 grid gap-6 md:grid-cols-3">
-        {sampleShopsWithDeals.map((shop, index) => (
-          <a 
-            href={`/${shop.slug}`} 
-            class="glass-card group animate-fade-in block overflow-hidden bg-card-bg border border-border/40 hover:border-primary/45 rounded-3xl hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-2 transition-all duration-300 h-full"
-            style={`animation-delay: ${index * 0.08}s`}
-          >
-            <div class="p-6">
-              <div class="flex items-center gap-4">
-                <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-orange-100/50 text-xl font-extrabold text-primary transition-transform group-hover:scale-105">
+        <div class="home-section-grid grid gap-4.5 sm:grid-cols-2 md:grid-cols-3">
+          {Array.from(dealsByShop.values()).map(({ shop, deals: shopDeals }, index) => (
+            <a
+              href={`/${shop.slug}`}
+              class="home-filter-item card animate-fade-in group flex flex-col justify-between overflow-hidden bg-card-bg/60 backdrop-blur-sm border border-border/40 hover:border-primary/45 rounded-2xl p-5 hover:shadow-md transition-all duration-300"
+              data-section="partners"
+              data-shop-category={shop.category}
+              data-title={shop.name.toLowerCase()}
+              data-shop-name={shop.name.toLowerCase()}
+              style={`animation-delay: ${index * 0.08}s`}
+            >
+              <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-orange-100/50 text-base font-extrabold text-primary transition-transform group-hover:scale-105">
                   {shop.logoImage ? (
-                    <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover rounded-2xl" />
+                    <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover rounded-xl" />
                   ) : (
                     shop.name.charAt(0)
                   )}
                 </div>
                 <div class="min-w-0">
-                  <h3 class="text-base font-bold text-secondary truncate group-hover:text-primary transition-colors">
+                  <h3 class="font-bold text-sm text-secondary truncate group-hover:text-primary transition-colors">
                     {shop.name}
                   </h3>
                   <p class="text-xs text-text-tertiary mt-0.5">
-                    {SHOP_CATEGORY_LABELS[shop.category as keyof typeof SHOP_CATEGORY_LABELS] || shop.category}
+                    {SHOP_CATEGORY_LABELS[shop.category as ShopCategory] || shop.category}
                   </p>
                 </div>
               </div>
-              
-              {shop.deals.length > 0 && (
-                <div class="mt-5 flex flex-wrap gap-2 pt-4 border-t border-border/20">
-                  {shop.deals.slice(0, 2).map((deal) => (
-                    <span
-                      class="badge border-none"
-                      style={`background-color: ${DEAL_CATEGORY_COLORS[deal.category as keyof typeof DEAL_CATEGORY_COLORS] || '#6B7280'}12; color: ${DEAL_CATEGORY_COLORS[deal.category as keyof typeof DEAL_CATEGORY_COLORS] || '#6B7280'}`}
-                    >
-                      {DEAL_CATEGORY_LABELS[deal.category as keyof typeof DEAL_CATEGORY_LABELS] || deal.category}
-                    </span>
-                  ))}
-                </div>
-              )}
-              
-              <div class="mt-5 flex items-center gap-1.5 text-xs font-bold text-primary opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                <span>เข้าชมหน้าร้าน</span>
-                <Icon name="arrow-right" class="h-3.5 w-3.5" />
+              <div class="mt-4 pt-3.5 border-t border-border/30 flex items-center justify-between">
+                <span class="badge border-none bg-primary/10 text-primary font-bold text-[10px]">
+                  {shopDeals.length} ดีลที่ใช้ได้
+                </span>
+                <span class="text-xs font-bold text-text-tertiary group-hover:text-primary transition-colors flex items-center gap-1">
+                  <span>เข้าชมร้าน</span>
+                  <Icon name="chevron-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </span>
               </div>
-            </div>
-          </a>
-        ))}
-      </div>
+            </a>
+          ))}
+        </div>
 
-      <div class="mt-12 text-center">
-        <a href="/explore" class="btn btn-outline-gradient py-3 px-6 rounded-2xl text-xs font-bold">
-          <span>ดูร้านค้าทั้งหมด</span>
-          <Icon name="arrow-right" class="h-4 w-4 text-primary" />
-        </a>
-      </div>
+        <div class="home-empty-state hidden border border-dashed border-border/80 p-8 text-center rounded-2xl bg-bg-secondary/40">
+          <p class="text-sm font-bold text-secondary">ไม่พบร้านค้าพาร์ทเนอร์ในประเภทนี้</p>
+        </div>
+      </section>
     </div>
-  </section>
-
-  {/* CTA Section */}
-  <section class="relative py-24 md:py-32 overflow-hidden bg-secondary border-t border-border/10">
-    {/* Floating Aura Spheres (Animated Shifting Mesh) */}
-    <div class="absolute top-[10%] left-[15%] w-[400px] h-[400px] rounded-full bg-primary/20 blur-[110px] animate-drift-1 pointer-events-none"></div>
-    <div class="absolute bottom-[10%] right-[10%] w-[450px] h-[450px] rounded-full bg-orange-500/15 blur-[120px] animate-drift-2 pointer-events-none"></div>
-    <div class="absolute top-[35%] right-[25%] w-[350px] h-[350px] rounded-full bg-accent/15 blur-[100px] animate-drift-3 pointer-events-none"></div>
-    
-    <div class="relative mx-auto max-w-4xl px-4 text-center z-10">
-      <h2 class="text-3xl font-extrabold text-white md:text-5xl tracking-tight leading-tight max-w-2xl mx-auto">
-        {lang === 'th' ? 'เริ่มสร้างหน้าโปรโมชันร้านของคุณได้แล้ววันนี้' : 'Drive Real Customers to Your Shop'}
-      </h2>
-      <p class="mt-6 text-base md:text-lg text-text-secondary dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-        {lang === 'th' 
-          ? 'ลงทะเบียนฟรี! ใช้เวลาเพียง 2 นาที หน้าร้านก็พร้อมแชร์ดีลสุดปัง ดึงลูกค้าหน้าร้านจริงให้ยอดขายพุ่งกระฉูด'
-          : 'Sign up for free. It takes less than 2 minutes to publish coupons.'}
-      </p>
-      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-        <a href="/onboarding" class="btn btn-primary py-4 px-8 rounded-2xl font-bold shadow-lg hover:shadow-primary/30 w-full sm:w-auto hover:scale-105 transition-transform duration-300">
-          <Icon name="rocket" class="h-5 w-5" />
-          <span>{lang === 'th' ? 'สร้างหน้าร้านคูปองฟรี' : 'Get Started For Free'}</span>
-        </a>
-        <a href="/explore" class="btn btn-secondary bg-white/5 border-white/10 hover:bg-white/10 text-white py-4 px-8 rounded-2xl font-bold w-full sm:w-auto">
-          <span>{lang === 'th' ? 'ดูตัวอย่างดีลรอบตัว' : 'Explore Sample Deals'}</span>
-        </a>
-      </div>
-    </div>
-  </section>
+  </div>
 </BaseLayout>
 
 <style>
-  .animate-drift-1 {
-    animation: drift1 22s ease-in-out infinite alternate;
+  /* Custom styling to hide scrollbars */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
-  .animate-drift-2 {
-    animation: drift2 26s ease-in-out infinite alternate;
-  }
-  .animate-drift-3 {
-    animation: drift3 18s ease-in-out infinite alternate;
-  }
-
-  @keyframes drift1 {
-    0% {
-      transform: translate(0, 0) scale(1);
-    }
-    50% {
-      transform: translate(60px, -40px) scale(1.15);
-    }
-    100% {
-      transform: translate(-30px, 50px) scale(0.9);
-    }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  @keyframes drift2 {
-    0% {
-      transform: translate(0, 0) scale(1.05);
-    }
-    50% {
-      transform: translate(-80px, 30px) scale(0.85);
-    }
-    100% {
-      transform: translate(40px, -60px) scale(1.2);
-    }
+  /* Custom price tag swinging animation */
+  .animate-tag-swing {
+    display: inline-block;
+    transform-origin: 50% 10%;
+    animation: tagSwing 3.5s ease-in-out infinite;
   }
 
-  @keyframes drift3 {
-    0% {
-      transform: translate(0, 0) scale(0.95);
-    }
-    50% {
-      transform: translate(30px, 50px) scale(1.1);
-    }
-    100% {
-      transform: translate(-50px, -30px) scale(0.85);
-    }
+  @keyframes tagSwing {
+    0% { transform: rotate(0deg); }
+    15% { transform: rotate(12deg); }
+    30% { transform: rotate(-10deg); }
+    45% { transform: rotate(8deg); }
+    60% { transform: rotate(-6deg); }
+    75% { transform: rotate(3deg); }
+    90% { transform: rotate(-1deg); }
+    100% { transform: rotate(0deg); }
   }
 </style>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('search-input');
+    const categoryChips = document.querySelectorAll('.category-chip');
+    const filterItems = document.querySelectorAll('.home-filter-item');
+    const sections = document.querySelectorAll('.home-section');
+    const countEls = {
+      expiring: document.getElementById('expiring-count'),
+      all: document.getElementById('all-count'),
+      partners: document.getElementById('partners-count'),
+    };
+    const searchCatLabel = document.getElementById('search-cat-label');
+
+    let activeCategory = 'all';
+    let searchQuery = '';
+
+    const categoryLabels = Object.fromEntries(
+      Array.from(categoryChips).map((chip) => [
+        chip.getAttribute('data-cat-id') || 'all',
+        chip.textContent.trim(),
+      ])
+    );
+
+    function filterDeals() {
+      const counts = { expiring: 0, all: 0, partners: 0 };
+
+      filterItems.forEach((item) => {
+        const itemCategory = item.getAttribute('data-shop-category');
+        const itemTitle = item.getAttribute('data-title') || '';
+        const itemShop = item.getAttribute('data-shop-name') || '';
+        const section = item.getAttribute('data-section');
+
+        const categoryMatches = activeCategory === 'all' || itemCategory === activeCategory;
+        const searchMatches = !searchQuery || itemTitle.includes(searchQuery) || itemShop.includes(searchQuery);
+        const visible = categoryMatches && searchMatches;
+
+        item.classList.toggle('hidden', !visible);
+
+        if (visible && section && counts[section] !== undefined) {
+          counts[section] += 1;
+        }
+      });
+
+      sections.forEach((section) => {
+        const sectionName = section.getAttribute('data-section');
+        const count = counts[sectionName] || 0;
+        const grid = section.querySelector('.home-section-grid');
+        const empty = section.querySelector('.home-empty-state');
+
+        if (grid) {
+          grid.classList.toggle('hidden', count === 0);
+        }
+
+        if (empty) {
+          empty.classList.toggle('hidden', count !== 0);
+        }
+      });
+
+      if (countEls.expiring) {
+        countEls.expiring.textContent = `${counts.expiring} คูปอง`;
+      }
+
+      if (countEls.all) {
+        countEls.all.textContent = `${counts.all} ดีล`;
+      }
+
+      if (countEls.partners) {
+        countEls.partners.textContent = `${counts.partners} ร้านค้า`;
+      }
+
+      if (searchCatLabel) {
+        searchCatLabel.textContent = categoryLabels[activeCategory] || 'ทุกประเภท';
+      }
+    }
+
+    function setActiveCategoryChip(activeChip) {
+      categoryChips.forEach((chip) => {
+        const isActive = chip === activeChip;
+        chip.className = isActive
+          ? 'category-chip flex items-center gap-2 px-4.5 py-2.5 rounded-2xl text-xs font-black border transition-all duration-300 whitespace-nowrap cursor-pointer hover:-translate-y-0.5 hover:shadow-sm bg-gradient-to-r from-primary to-orange-500 text-white border-none shadow-md shadow-primary/10'
+          : 'category-chip flex items-center gap-2 px-4.5 py-2.5 rounded-2xl text-xs font-black border transition-all duration-300 whitespace-nowrap cursor-pointer hover:-translate-y-0.5 hover:shadow-sm bg-card-bg/60 text-text-secondary border-border/30 hover:border-primary/20';
+      });
+    }
+
+    // Search bar filter listener
+    searchInput?.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      filterDeals();
+    });
+
+    // Category chips filter listeners
+    categoryChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        activeCategory = chip.getAttribute('data-cat-id') || 'all';
+        setActiveCategoryChip(chip);
+        filterDeals();
+      });
+    });
+
+    filterDeals();
+  });
+</script>
+<!-- Legacy single-section filter script removed after homepage adopted Explore-style multi-section filtering.
+
+      if (resultsCountEl) {
+        resultsCountEl.textContent = `${visibleCount} ดีล`;
+      }
+
+      if (searchCatLabel) {
+        searchCatLabel.textContent = categoryLabels[activeCategory] || 'ทุกประเภท';
+      }
+    }
+
+    // Search bar filter listener
+    searchInput?.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      filterDeals();
+    });
+
+    // Category chips filter listeners
+    categoryChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        // Toggle active states
+        categoryChips.forEach((c) => {
+          c.className = 'category-chip flex items-center gap-2 px-4.5 py-2.5 rounded-2xl text-xs font-black border transition-all duration-300 whitespace-nowrap cursor-pointer hover:-translate-y-0.5 hover:shadow-sm bg-card-bg/60 text-text-secondary border-border/30 hover:border-primary/20';
+        });
+
+        chip.className = 'category-chip flex items-center gap-2 px-4.5 py-2.5 rounded-2xl text-xs font-black border transition-all duration-300 whitespace-nowrap cursor-pointer hover:-translate-y-0.5 hover:shadow-sm bg-gradient-to-r from-primary to-orange-500 text-white border-none shadow-md shadow-primary/10';
+
+        activeCategory = chip.getAttribute('data-cat-id') || 'all';
+        filterDeals();
+      });
+    });
+  });
+</script>
+-->

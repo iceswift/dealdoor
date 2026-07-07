@@ -24,7 +24,10 @@ export default function DealList({ shopId, maxDeals }: DealListProps) {
 
   const fetchDeals = async () => {
     try {
-      const res = await fetch(`/api/deals?shopId=${shopId}`);
+      const res = await fetch(`/api/deals?shopId=${shopId}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       const data = await res.json();
       setDeals(data.data || []);
     } catch (err) {
@@ -64,7 +67,19 @@ export default function DealList({ shopId, maxDeals }: DealListProps) {
 
   const handleEdit = (deal: Deal) => {
     sessionStorage.setItem('editDeal', JSON.stringify(deal));
-    window.location.href = '/dashboard/deals/edit';
+    window.location.href = `/dashboard/deals/edit?id=${encodeURIComponent(deal.id)}`;
+  };
+
+  const getPublicDealPath = (dealId: string) => `/deal/${dealId}`;
+
+  const handleCopyPublicLink = async (dealId: string) => {
+    const url = `${window.location.origin}${getPublicDealPath(dealId)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('คัดลอกลิงก์ดีลแล้ว', 'success');
+    } catch {
+      showToast('ไม่สามารถคัดลอกลิงก์ได้', 'error');
+    }
   };
 
   const getCategoryEmoji = (cat: string) => {
@@ -296,6 +311,32 @@ export default function DealList({ shopId, maxDeals }: DealListProps) {
                   </button>
 
                   <div className="flex items-center gap-2">
+                    {/* Public preview link */}
+                    <a
+                      href={getPublicDealPath(deal.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-bg border border-border/25 text-text-secondary hover:text-primary hover:border-primary/30 transition-all duration-200 cursor-pointer shadow-sm"
+                      aria-label="เปิดหน้าดีลสาธารณะ"
+                      title="เปิดหน้าดีลสาธารณะ"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H18m0 0v4.5M18 6l-7.5 7.5M6 8.25A2.25 2.25 0 018.25 6h2.25m7.5 7.5v2.25A2.25 2.25 0 0115.75 18h-7.5A2.25 2.25 0 016 15.75v-7.5" />
+                      </svg>
+                    </a>
+
+                    {/* Copy public link */}
+                    <button
+                      onClick={() => handleCopyPublicLink(deal.id)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-bg border border-border/25 text-text-secondary hover:text-primary hover:border-primary/30 transition-all duration-200 cursor-pointer shadow-sm"
+                      aria-label="คัดลอกลิงก์ดีล"
+                      title="คัดลอกลิงก์ดีล"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6.75A2.75 2.75 0 014 13.25v-6.5A2.75 2.75 0 016.75 4h6.5A2.75 2.75 0 0116 6.75V8m-5.25 0h6.5A2.75 2.75 0 0120 10.75v6.5A2.75 2.75 0 0117.25 20h-6.5A2.75 2.75 0 018 17.25v-6.5A2.75 2.75 0 0110.75 8z" />
+                      </svg>
+                    </button>
+
                     {/* Edit button */}
                     <button
                       onClick={() => handleEdit(deal)}

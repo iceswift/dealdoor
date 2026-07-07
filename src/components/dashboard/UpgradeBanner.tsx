@@ -18,53 +18,62 @@ export default function UpgradeBanner({ currentTier }: UpgradeBannerProps) {
 
   return (
     <>
-      <div className="rounded-3xl border border-border/20 bg-card-bg/60 backdrop-blur-md p-6 shadow-md relative overflow-hidden group">
-        <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-primary/5 blur-lg group-hover:bg-primary/8 transition-colors"></div>
-        
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 z-10">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-lg filter drop-shadow-sm select-none">👑</span>
-              <h3 className="text-sm font-black text-secondary uppercase tracking-wide">
-                อัปเกรดเป็น DealDoor Pro
-              </h3>
+      <div className="rounded-3xl relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary via-orange-500 to-primary bg-[length:200%_100%] animate-gradient-x opacity-90"></div>
+        <div className="absolute inset-[1px] bg-gradient-to-br from-primary/95 via-orange-500/95 to-primary/95 rounded-3xl"></div>
+        <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl pointer-events-none"></div>
+        <div className="absolute -left-8 -bottom-8 h-24 w-24 rounded-full bg-white/5 blur-xl pointer-events-none"></div>
+
+        <div className="relative p-5 sm:p-6 z-10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg shadow-inner">
+                  👑
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white tracking-wide">
+                    อัปเกรดเป็น DealDoor Pro
+                  </h3>
+                  <p className="text-xs text-white/70 font-bold">ปลดล็อกฟีเจอร์ทั้งหมด</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-xs font-black px-3 py-1.5 rounded-lg bg-white/15 text-white/90 backdrop-blur-sm border border-white/10">
+                  {limits.maxActiveDeals} ดีล
+                </span>
+                <span className="text-xs font-black px-3 py-1.5 rounded-lg bg-white/15 text-white/90 backdrop-blur-sm border border-white/10">
+                  Analytics
+                </span>
+                <span className="text-xs font-black px-3 py-1.5 rounded-lg bg-white/15 text-white/90 backdrop-blur-sm border border-white/10">
+                  แบรนด์เอง
+                </span>
+                <span className="text-xs font-black px-3 py-1.5 rounded-lg bg-white/15 text-white/90 backdrop-blur-sm border border-white/10">
+                  ตั้งเวลาดีล
+                </span>
+              </div>
             </div>
-            <p className="text-xs text-text-secondary font-bold leading-relaxed">
-              ดีลไม่จำกัด + QR Code พิเศษ + ระบบ Analytics วิเคราะห์สถิติเชิงลึก + ปรับแต่งภาพแบรนด์ร้านค้า
-            </p>
-            <div className="pt-1 flex flex-wrap gap-2">
-              <span className="text-[9px] font-black px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
-                สูงสุด {limits.maxActiveDeals} ดีล
-              </span>
-              <span className="text-[9px] font-black px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
-                สูงสุด {limits.maxMenuItems} เมนู
-              </span>
-              <span className="text-[9px] font-black px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
-                Analytics Pro
-              </span>
-              <span className="text-[9px] font-black px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
-                QR Code Store
-              </span>
+
+            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 border-t border-white/15 pt-4 sm:border-t-0 sm:pt-0">
+              <div className="text-center sm:text-right">
+                <p className="text-2xl font-black text-white">
+                  ฿{proPlan?.priceMonthly}
+                  <span className="text-sm font-bold text-white/60">/เดือน</span>
+                </p>
+                <p className="text-xs text-white/50 font-bold">ยกเลิกได้ตลอดเวลา</p>
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-5 py-2.5 text-sm font-black rounded-xl bg-white text-primary hover:bg-white/95 shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+              >
+                อัปเกรดทันที
+              </button>
             </div>
-          </div>
-          <div className="text-center sm:text-right flex-shrink-0 flex flex-row sm:flex-col items-center justify-between sm:justify-center gap-4 border-t sm:border-t-0 border-border/20 pt-4 sm:pt-0">
-            <div>
-              <p className="text-2xl font-black text-primary">
-                ฿{proPlan?.priceMonthly}
-              </p>
-              <p className="text-[9px] text-text-tertiary font-bold mt-0.5">ต่อเดือน (ยกเลิกได้ตลอดเวลา)</p>
-            </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-5 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white shadow-md shadow-primary/15 hover:shadow-lg transition-all duration-200 cursor-pointer"
-            >
-              อัปเกรดทันที
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Upgrade Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
           <div className="w-full max-w-md rounded-2xl bg-bg shadow-xl border border-border" onClick={e => e.stopPropagation()}>

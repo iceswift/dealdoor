@@ -7,104 +7,486 @@ import Icon from '../components/icons/index.astro';
 ---
 
 <BaseLayout title="ราคา">
-  <div class="mx-auto max-w-5xl px-4 py-16">
-    {/* Header */}
-    <div class="text-center">
-      <h1 class="text-3xl font-bold text-secondary md:text-4xl">
-        เลือกแพลนที่เหมาะกับร้านคุณ
-      </h1>
-      <p class="mt-4 text-lg text-text-secondary">
-        เริ่มต้นฟรี อัปเกรดเมื่อพร้อม
-      </p>
-    </div>
+  {/* Outer Page Wrapper (Pulled up under Top Tabbar with brand gradient) */}
+  <div class="relative w-full overflow-hidden mt-[-110px] pt-36 pb-20 bg-gradient-to-b from-primary-light/45 via-bg to-bg">
+    {/* Global Background Mesh Effects (Full Screen Width, No Clipping) */}
+    <div class="bg-mesh bg-mesh-coral absolute -top-40 left-1/4 opacity-15 dark:opacity-10 pointer-events-none"></div>
+    <div class="bg-mesh bg-mesh-teal absolute bottom-10 right-1/4 opacity-15 dark:opacity-10 pointer-events-none"></div>
 
-    {/* Pricing Cards */}
-    <div class="mt-12 grid gap-8 md:grid-cols-2 lg:max-w-3xl lg:mx-auto">
-      {PRICING_PLANS.map((plan) => (
-        <div
-          class:list={[
-            'relative rounded-2xl border-2 p-8 transition-all',
-            plan.isPopular
-              ? 'border-primary bg-bg shadow-lg scale-105'
-              : 'border-border bg-bg',
-          ]}
-        >
-          {/* Popular Badge */}
-          {plan.isPopular && (
-            <div class="absolute -top-4 left-1/2 -translate-x-1/2">
-              <span class="rounded-full bg-primary px-4 py-1 text-sm font-medium text-white">
-                แนะนำ
-              </span>
+    <div class="mx-auto max-w-5xl px-4 relative z-10">
+      
+      {/* Header Section */}
+      <div class="text-center animate-slide-up relative z-10 mt-6">
+        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-wider shadow-sm mb-3">
+          แผนราคาที่คุ้มค่า
+        </span>
+        <h1 class="text-4xl font-extrabold tracking-tight text-secondary md:text-5xl lg:text-6xl">
+          เลือกแพลนที่เหมาะกับ <span class="text-gradient">ร้านค้าของคุณ</span>
+        </h1>
+        <p class="mt-4 text-sm font-semibold text-text-secondary max-w-2xl mx-auto">
+          เริ่มต้นฟรี อัปเกรดเมื่อพร้อม พร้อมฟีเจอร์พรีเมียมที่จะช่วยดันยอดขายของร้านคุณให้พุ่งทะยาน
+        </p>
+
+        {/* Billing Toggle Component */}
+        <div class="mt-10 flex items-center justify-center gap-4 relative z-10">
+          <span id="billing-monthly-label" class="text-xs font-black text-secondary transition-colors duration-200">รายเดือน</span>
+          <button id="billing-toggle-btn" class="relative inline-flex h-7 w-14 items-center rounded-full bg-border dark:bg-bg-tertiary transition-colors duration-200 focus:outline-none p-0.5 cursor-pointer" role="switch" aria-checked="false" aria-label="สลับประเภทการเรียกเก็บเงิน">
+            <span id="toggle-indicator" class="pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out translate-x-0"></span>
+          </button>
+          <span id="billing-yearly-label" class="text-xs font-bold text-text-secondary transition-colors duration-200 flex items-center gap-1.5">
+            รายปี
+            <span class="inline-flex items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 animate-pulse text-[9px] font-black">เซฟ 30%</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Interactive Deal Calculator (Redesigned as SaaS Split-Pane Card) */}
+      <div class="mt-12 max-w-3xl mx-auto rounded-[28px] bg-card-bg/60 border border-border/15 backdrop-blur-md overflow-hidden shadow-xl animate-slide-up stagger-1 relative z-10">
+        <div class="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-border/15">
+          
+          {/* LEFT SIDE: Inputs / Slider Controls (md:col-span-7) */}
+          <div class="p-6 md:p-8 space-y-6 flex flex-col justify-between md:col-span-7">
+            <div class="space-y-2 text-left">
+              <div class="flex items-center select-none">
+                <span class="text-[9px] font-black uppercase tracking-wider text-text-tertiary">Smart Calculator</span>
+              </div>
+              <h3 class="text-lg font-extrabold text-secondary tracking-tight">คำนวณจำนวนดีลของร้านคุณ</h3>
+              <p class="text-xs font-bold text-text-secondary leading-relaxed">เลื่อนแถบประเมินจำนวนดีลที่ทางร้านต้องการเปิดใช้งานพร้อมกันในช่วงเวลาปกติ เพื่อหาแผนบริการที่ประหยัดที่สุด</p>
             </div>
-          )}
 
-          {/* Plan Header */}
-          <div class="text-center">
-            <h2 class="text-2xl font-bold text-secondary">{plan.nameTh}</h2>
-            <p class="mt-1 text-sm text-text-secondary">{plan.name}</p>
+            {/* The Slider and Current Value display */}
+            <div class="space-y-6 pt-4">
+              <div class="flex items-baseline justify-between">
+                <span class="text-xs font-black text-text-tertiary">จำนวนดีลที่ต้องการจัด</span>
+                <div class="flex items-baseline gap-1">
+                  <span id="slider-value-display" class="text-4xl font-black text-secondary tracking-tight">6</span>
+                  <span class="text-xs font-black text-text-secondary">ดีลพร้อมกัน</span>
+                </div>
+              </div>
+
+              <div class="relative w-full h-8 flex items-center">
+                {/* Track */}
+                <div class="absolute left-0 right-0 h-1.5 bg-bg-tertiary dark:bg-bg-tertiary/40 rounded-lg"></div>
+                {/* Fill */}
+                <div id="slider-track-fill" class="absolute left-0 h-1.5 bg-primary rounded-lg pointer-events-none" style="width: 5%;"></div>
+                {/* Input */}
+                <input 
+                  type="range" 
+                  id="deal-slider" 
+                  min="1" 
+                  max="100" 
+                  value="6" 
+                  class="absolute inset-x-0 w-full h-1.5 bg-transparent appearance-none cursor-pointer focus:outline-none 
+                         [&::-webkit-slider-runnable-track]:bg-transparent 
+                         [&::-webkit-slider-thumb]:appearance-none 
+                         [&::-webkit-slider-thumb]:h-5 
+                         [&::-webkit-slider-thumb]:w-5 
+                         [&::-webkit-slider-thumb]:rounded-full 
+                         [&::-webkit-slider-thumb]:bg-primary 
+                         [&::-webkit-slider-thumb]:border-2 
+                         [&::-webkit-slider-thumb]:border-white 
+                         [&::-webkit-slider-thumb]:shadow-md 
+                         [&::-webkit-slider-thumb]:transition-all 
+                         [&::-webkit-slider-thumb]:duration-150 
+                         [&::-webkit-slider-thumb]:hover:scale-110 
+                         [&::-moz-range-track]:bg-transparent
+                         [&::-moz-range-thumb]:h-5 
+                         [&::-moz-range-thumb]:w-5 
+                         [&::-moz-range-thumb]:rounded-full 
+                         [&::-moz-range-thumb]:bg-primary 
+                         [&::-moz-range-thumb]:border-2 
+                         [&::-moz-range-thumb]:border-white 
+                         [&::-moz-range-thumb]:shadow-md 
+                         [&::-moz-range-thumb]:transition-all 
+                         [&::-moz-range-thumb]:duration-150 
+                         [&::-moz-range-thumb]:hover:scale-110" 
+                />
+              </div>
+
+              <div class="flex justify-between text-[10px] font-black text-text-tertiary select-none uppercase tracking-wider">
+                <span>1 ดีล</span>
+                <span>100 ดีลขึ้นไป</span>
+              </div>
+            </div>
           </div>
 
-          {/* Price */}
-          <div class="mt-6 text-center">
-            <div class="flex items-baseline justify-center gap-1">
-              <span class="text-4xl font-bold text-secondary">
-                ฿{plan.priceMonthly}
-              </span>
-              <span class="text-text-secondary">/เดือน</span>
+          {/* RIGHT SIDE: Dynamic Recommendation Ticket (md:col-span-5) */}
+          <div id="calculator-recommendation-card" class="p-6 md:p-8 bg-accent/5 flex flex-col justify-between items-start text-left min-h-[260px] transition-all duration-300 relative overflow-hidden md:col-span-5">
+            {/* Decorative corner tag or pattern */}
+            <div class="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-primary/5 blur-md"></div>
+            
+            <div class="space-y-4 w-full relative z-10">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[9px] font-black uppercase tracking-wider text-text-tertiary">แพลนที่ระบบแนะนำ</span>
+                <div id="recommendation-badge" class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-black text-white bg-accent select-none">
+                  FREE TIER
+                </div>
+              </div>
+              
+              <div class="space-y-1.5">
+                <h4 id="recommendation-title" class="text-xl font-extrabold text-secondary tracking-tight">FREE PLAN</h4>
+                <p id="recommendation-desc" class="text-[11px] font-bold text-text-secondary leading-relaxed">
+                  เหมาะสำหรับร้านค้าเริ่มต้นทดลองระบบ หรือจัดโปรโมชันร้านแบบพื้นฐาน
+                </p>
+              </div>
+
+              <ul id="recommendation-highlights" class="space-y-2 pt-3.5 border-t border-border/10">
+                <li class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
+                  <span class="text-emerald-500">✓</span> <span>จัดดีลพร้อมกันสูงสุด 6 ดีล</span>
+                </li>
+                <li class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
+                  <span class="text-emerald-500">✓</span> <span>แชร์ QR Code หน้าร้าน</span>
+                </li>
+              </ul>
             </div>
-            {plan.price === 0 && (
-              <p class="mt-2 text-sm text-green-600">ฟรีตลอดไป</p>
-            )}
+
+            <button id="recommendation-cta" class="mt-6 w-full py-3 px-4 rounded-xl text-[10px] font-black text-center text-white bg-accent hover:bg-accent/90 shadow-md shadow-accent/15 hover:scale-[1.02] active:scale-95 transition-all select-none z-10 flex items-center justify-center gap-1 cursor-pointer">
+              <span>สมัครร้านค้าแพลนฟรี</span>
+              <span>→</span>
+            </button>
           </div>
 
-          {/* Features */}
-          <ul class="mt-8 space-y-3">
-            {plan.featuresTh.map((feature) => (
-              <li class="flex items-start gap-3">
-                <Icon name="check" class="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" />
-                <span class="text-text-secondary">{feature}</span>
-              </li>
-            ))}
-          </ul>
+        </div>
+      </div>
 
-          {/* CTA */}
-          <div class="mt-8">
-            {plan.id === 'free' ? (
-              <a
-                href="/auth/register"
-                class="btn btn-secondary w-full min-h-[48px]"
-              >
-                เริ่มต้นฟรี
-              </a>
-            ) : (
-              <button
-                id="upgrade-pro-btn"
-                class="btn btn-primary w-full min-h-[48px]"
-                data-tier={plan.id}
-              >
-                ติดต่อเพื่ออัปเกรด
-              </button>
+      {/* Pricing Cards Grid */}
+      <div class="mt-16 py-8 grid gap-10 md:grid-cols-2 lg:max-w-4xl lg:mx-auto relative z-10">
+        {PRICING_PLANS.map((plan, planIdx) => (
+          <div
+            id={`plan-card-wrapper-${plan.id}`}
+            class:list={[
+              'relative transition-all duration-300',
+              plan.id === 'free' ? 'stagger-2 z-10' : 'stagger-3 scale-105 z-20',
+            ]}
+          >
+            {/* Popular Badge (Placed on Outer Wrapper so it is never clipped by inner overflow-hidden) */}
+            {plan.isPopular && (
+              <div class="absolute -top-4 left-1/2 -translate-x-1/2 z-30">
+                <span class="rounded-full bg-gradient-to-r from-primary to-orange-500 px-4.5 py-1 text-xs font-black text-white shadow-md select-none">
+                  แนะนำ (Pro)
+                </span>
+              </div>
             )}
+
+            <div
+              id={`plan-card-${plan.id}`}
+              class:list={[
+                'relative rounded-[24px] p-8 transition-all duration-300 flex flex-col justify-between h-full hover-shine animate-slide-up',
+                plan.isPopular
+                  ? 'bg-card-bg/75 border-2 border-primary shadow-xl dark:shadow-primary/10'
+                  : 'bg-card-bg/65 border border-border/15 backdrop-blur-md shadow-sm',
+              ]}
+            >
+              <div>
+                {/* Plan Header */}
+                <div class="text-center">
+                  <h2 class="text-xl font-extrabold text-secondary">{plan.nameTh}</h2>
+                  <p class="mt-0.5 text-xs font-bold text-text-secondary">{plan.name} Plan</p>
+                  <p class="mt-2 text-[11px] font-bold text-text-tertiary">
+                    {plan.id === 'free' 
+                      ? 'ลงโปรโมชันขั้นพื้นฐานเพื่อเปิดร้านค้าออนไลน์' 
+                      : 'จัดเต็มด้วยเครื่องมือการตลาดและการวิเคราะห์ครบวงจร'}
+                  </p>
+                </div>
+
+                {/* Price */}
+                <div class="mt-6 text-center">
+                  <div class="flex items-baseline justify-center gap-0.5">
+                    <span class="text-2xl font-black text-secondary align-top mt-1">฿</span>
+                    <span class="text-5xl font-black text-secondary tracking-tight price-display" data-plan-id={plan.id}>
+                      {plan.priceMonthly}
+                    </span>
+                    <span class="text-text-secondary text-xs font-bold billing-period-display">/เดือน</span>
+                  </div>
+                  <p class="mt-2 text-[10px] text-text-tertiary font-bold h-5 price-sub-display" data-plan-id={plan.id}>
+                    {plan.price === 0 ? 'ฟรีตลอดไป ไม่มีเงื่อนไขแอบแฝง' : 'ชำระรายเดือนตามจริง'}
+                  </p>
+                </div>
+
+                {/* Features List Container */}
+                <div class="mx-auto w-full max-w-[290px] mt-8 border-t border-border/15 pt-6 flex-grow">
+                  <ul class="space-y-4">
+                    {plan.featuresTh.map((feature) => (
+                      <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          <Icon name="check" class="h-3 w-3" />
+                        </span>
+                        <span class="text-xs text-text-secondary leading-normal text-left font-bold">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <div class="mt-8">
+                {plan.id === 'free' ? (
+                  <a
+                    href="/auth/register"
+                    class="btn btn-secondary w-full min-h-[44px] rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    เริ่มต้นใช้งานฟรี
+                    <Icon name="arrow-right" class="h-4 w-4" />
+                  </a>
+                ) : (
+                  <button
+                    id="upgrade-pro-btn"
+                    class="btn btn-primary w-full min-h-[44px] rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                    data-tier={plan.id}
+                  >
+                    <Icon name="diamond" class="h-4 w-4 animate-pulse" />
+                    ติดต่อเพื่ออัปเกรด
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Detailed Feature Comparison Section */}
+      <div class="mt-16 text-center relative z-10">
+        <button id="toggle-comparison-btn" class="py-2.5 px-6 rounded-xl border border-border/30 bg-card-bg text-xs font-black text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center gap-2 mx-auto cursor-pointer">
+          <span id="comparison-btn-text">ดูตารางเปรียบเทียบฟีเจอร์อย่างละเอียด</span>
+          <Icon name="chevron-down" id="comparison-chevron" class="h-4 w-4 transition-transform duration-300" />
+        </button>
+        
+        <div id="comparison-table-wrapper" class="max-h-0 overflow-hidden invisible opacity-0 mt-8 text-left transition-all duration-500 ease-in-out">
+          <div class="rounded-[24px] border border-border/15 bg-card-bg/60 backdrop-blur-md p-6 overflow-x-auto shadow-sm">
+            <table class="w-full text-xs table-fixed min-w-[600px]">
+              <thead>
+                <tr class="border-b border-border/15 text-secondary text-sm">
+                  <th class="py-4 px-6 text-left font-black w-1/2">ฟีเจอร์เด่น</th>
+                  <th class="py-4 px-6 text-center font-black w-1/4">ฟรี (Free)</th>
+                  <th class="py-4 px-6 text-center font-black w-1/4 text-primary">โปร (Pro)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border/10 font-bold text-text-secondary">
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="store" class="h-4 w-4" /></span>
+                      จำนวนหน้าร้านต่อบัญชี
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">1 หน้าร้าน</td>
+                  <td class="py-4 px-6 text-center text-primary font-black">1 หน้าร้าน</td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="fire" class="h-4 w-4" /></span>
+                      จำนวนดีลโปรโมชันที่เปิดพร้อมกัน
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">สูงสุด 6 ดีล</td>
+                  <td class="py-4 px-6 text-center text-primary font-black">สูงสุด 100 ดีล</td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="menu" class="h-4 w-4" /></span>
+                      รายการอาหาร/สินค้าในเมนูร้าน
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">สูงสุด 10 รายการ</td>
+                  <td class="py-4 px-6 text-center text-primary font-black">สูงสุด 100 รายการ</td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="qrcode" class="h-4 w-4" /></span>
+                      QR Code คุณภาพสูงสำหรับแชร์ร้าน
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Icon name="check" class="h-3.5 w-3.5" />
+                    </span>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Icon name="check" class="h-3.5 w-3.5" />
+                    </span>
+                  </td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="chart" class="h-4 w-4" /></span>
+                      ระบบวิเคราะห์ข้อมูลสถิติ (Analytics)
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <Icon name="x" class="h-3 w-3" />
+                    </span>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Icon name="check" class="h-3.5 w-3.5" />
+                    </span>
+                  </td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="settings" class="h-4 w-4" /></span>
+                      ปรับแต่งแบรนด์ (Custom Branding)
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <Icon name="x" class="h-3 w-3" />
+                    </span>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Icon name="check" class="h-3.5 w-3.5" />
+                    </span>
+                  </td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="clock" class="h-4 w-4" /></span>
+                      ตั้งเวลาโพสต์ดีลล่วงหน้า (Schedule)
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <Icon name="x" class="h-3 w-3" />
+                    </span>
+                  </td>
+                  <td class="py-4 px-6 text-center">
+                    <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Icon name="check" class="h-3.5 w-3.5" />
+                    </span>
+                  </td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="users" class="h-4 w-4" /></span>
+                      ระดับการบริการหลังการขาย
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">แบบทั่วไป</td>
+                  <td class="py-4 px-6 text-center text-primary font-black">ดูแลพิเศษ (Priority)</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-      ))}
+      </div>
+
+      {/* Interactive FAQ Section (Accordion Stack) */}
+      <div class="mt-28 max-w-3xl mx-auto z-10 relative">
+        <div class="text-center animate-slide-up">
+          <h2 class="text-3xl font-extrabold tracking-tight text-secondary">
+            คำถามที่พบบ่อย (FAQ)
+          </h2>
+          <p class="mt-2 text-xs font-bold text-text-secondary">มีข้อสงสัยเกี่ยวกับแพลนของเราใช่ไหม? หาคำตอบได้ทันทีที่นี่</p>
+        </div>
+        
+        <div class="mt-10 space-y-4">
+          {/* FAQ 1 */}
+          <div class="faq-item rounded-2xl border border-border/25 bg-card-bg/60 backdrop-blur-md shadow-sm overflow-hidden transition-all duration-300">
+            <button class="faq-toggle-btn w-full flex items-center justify-between p-5 text-left font-black text-secondary hover:bg-bg-tertiary/30 transition-colors cursor-pointer">
+              <span class="text-xs md:text-sm">ชำระเงินอย่างไร?</span>
+              <Icon name="chevron-down" class="faq-chevron h-5 w-5 text-text-tertiary transition-transform duration-300" />
+            </button>
+            <div class="faq-answer-wrapper max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+              <div class="p-5 pt-0 text-[11px] md:text-xs leading-relaxed text-text-secondary border-t border-border/10 mt-2 font-bold">
+                ระบบรองรับการชำระเงินผ่านบัตรเครดิต/เดบิต และโอนเงินทางธนาคาร (PromptPay) อย่างสะดวกรวดเร็ว โดยระบบชำระเงินอัตโนมัติจะเปิดให้บริการอย่างเป็นทางการเร็วๆ นี้
+              </div>
+            </div>
+          </div>
+          
+          {/* FAQ 2 */}
+          <div class="faq-item rounded-2xl border border-border/25 bg-card-bg/60 backdrop-blur-md shadow-sm overflow-hidden transition-all duration-300">
+            <button class="faq-toggle-btn w-full flex items-center justify-between p-5 text-left font-black text-secondary hover:bg-bg-tertiary/30 transition-colors cursor-pointer">
+              <span class="text-xs md:text-sm">ยกเลิกเมื่อไรก็ได้?</span>
+              <Icon name="chevron-down" class="faq-chevron h-5 w-5 text-text-tertiary transition-transform duration-300" />
+            </button>
+            <div class="faq-answer-wrapper max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+              <div class="p-5 pt-0 text-[11px] md:text-xs leading-relaxed text-text-secondary border-t border-border/10 mt-2 font-bold">
+                ใช่ครับ คุณสามารถเลือกยกเลิกการสมัครสมาชิกแพลน Pro ได้ตลอดเวลาตามที่คุณต้องการโดยไม่มีข้อผูกมัดหรือเงื่อนไขใดๆ เพิ่มเติม เมื่อยกเลิกแล้วระบบจะปรับบัญชีของคุณเป็นแพลนฟรีหลังครบกำหนดรอบบิลเดิม
+              </div>
+            </div>
+          </div>
+
+          {/* FAQ 3 */}
+          <div class="faq-item rounded-2xl border border-border/25 bg-card-bg/60 backdrop-blur-md shadow-sm overflow-hidden transition-all duration-300">
+            <button class="faq-toggle-btn w-full flex items-center justify-between p-5 text-left font-black text-secondary hover:bg-bg-tertiary/30 transition-colors cursor-pointer">
+              <span class="text-xs md:text-sm">มีทดลองใช้ไหม?</span>
+              <Icon name="chevron-down" class="faq-chevron h-5 w-5 text-text-tertiary transition-transform duration-300" />
+            </button>
+            <div class="faq-answer-wrapper max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+              <div class="p-5 pt-0 text-[11px] md:text-xs leading-relaxed text-text-secondary border-t border-border/10 mt-2 font-bold">
+                เราไม่มีระยะเวลาทดลองใช้เนื่องจากแพลน Free ของเราสามารถลงทะเบียนและใช้งานได้ฟรีตลอดไป โดยไม่มีวันหมดอายุ และไม่จำเป็นต้องกรอกรายละเอียดข้อมูลบัตรเครดิตล่วงหน้า
+              </div>
+            </div>
+          </div>
+
+          {/* FAQ 4 */}
+          <div class="faq-item rounded-2xl border border-border/25 bg-card-bg/60 backdrop-blur-md shadow-sm overflow-hidden transition-all duration-300">
+            <button class="faq-toggle-btn w-full flex items-center justify-between p-5 text-left font-black text-secondary hover:bg-bg-tertiary/30 transition-colors cursor-pointer">
+              <span class="text-xs md:text-sm">ดีลเก่าหายไหม?</span>
+              <Icon name="chevron-down" class="faq-chevron h-5 w-5 text-text-tertiary transition-transform duration-300" />
+            </button>
+            <div class="faq-answer-wrapper max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+              <div class="p-5 pt-0 text-[11px] md:text-xs leading-relaxed text-text-secondary border-t border-border/10 mt-2 font-bold">
+                ดีลเก่าของร้านคุณจะไม่หายไปไหนครับ ข้อมูลและสถิติทั้งหมดยังได้รับการเก็บบันทึกไว้อย่างปลอดภัย เพียงแต่ระบบจะจำกัดการแสดงผลดีลที่เปิดพร้อมกัน (Active) บนหน้าเว็บบนเบราว์เซอร์ให้สอดคล้องกับขีดจำกัดของแพลนที่คุณใช้งานปัจจุบันเท่านั้น (สูงสุด 6 ดีลสำหรับแพลน Free)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom CTA Banner (Vibrant Orange Gradient Banner) */}
+      <section class="bg-gradient-to-r from-primary to-orange-500 text-white py-16 text-center shadow-lg relative overflow-hidden rounded-3xl mt-24">
+        {/* Floating Aura Spheres */}
+        <div class="absolute -right-12 -bottom-12 h-32 w-32 rounded-full bg-white/10 blur-xl"></div>
+        <div class="absolute -left-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-xl"></div>
+        
+        <div class="max-w-2xl mx-auto px-4 space-y-6 relative z-10">
+          <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">เริ่มขยายหน้าร้านของคุณวันนี้</h2>
+          <p class="text-xs font-bold text-white/90">สมัครสิทธิ์เปิดใช้งานหน้ารวมคูปองโปรโมชันฟรีในเวลาไม่ถึง 2 นาที</p>
+          <div class="pt-2">
+            <a href="/auth/register" class="inline-flex items-center gap-1.5 px-8 py-3.5 bg-white text-primary hover:bg-white/95 rounded-full text-xs font-black shadow-lg hover:scale-105 active:scale-95 transition-transform cursor-pointer">
+              <Icon name="rocket" class="h-4.5 w-4.5" />
+              <span>เคลมสิทธิ์สมัครร้านค้าฟรี</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
     </div>
 
     {/* Coming Soon Modal */}
-    <div id="coming-soon-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
-      <div class="w-full max-w-sm rounded-2xl bg-bg p-6 mx-4">
+    <div id="coming-soon-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div class="w-full max-w-md rounded-2xl bg-bg border border-border dark:border-border/30 p-8 mx-4 shadow-2xl relative animate-scale-in">
         <div class="text-center">
-          <Icon name="rocket" class="h-10 w-10 mx-auto text-primary" />
-          <h3 class="mt-4 text-xl font-bold text-secondary">เร็วๆ นี้!</h3>
-          <p class="mt-2 text-text-secondary">
-            ระบบชำระเงินจะเปิดให้บริการเร็วๆ นี้
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
+            <Icon name="rocket" class="h-7 w-7" />
+          </div>
+          <h3 class="text-2xl font-bold text-secondary">อัปเกรดเป็น Pro เร็วๆ นี้!</h3>
+          <p class="mt-3 text-text-secondary text-sm leading-relaxed">
+            ระบบชำระเงินอัตโนมัติกำลังอยู่ในระหว่างการพัฒนาและจะพร้อมให้บริการเร็วๆ นี้
           </p>
-          <p class="mt-2 text-sm text-text-tertiary">
-            กรุณาติดต่อ support@dealdoor.co เพื่ออัปเกรด
-          </p>
+          <div class="mt-4 p-4 rounded-xl bg-bg-secondary dark:bg-bg-tertiary text-left text-sm space-y-2 border border-border/50">
+            <p class="text-text-primary font-medium flex items-center gap-2">
+              <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+              ต้องการอัปเกรดใช้งานทันทีก่อนใคร?
+            </p>
+            <p class="text-text-secondary pl-3.5">
+              โปรดส่งอีเมลแจ้งความประสงค์มาที่ <a href="mailto:support@dealdoor.co" class="text-primary hover:underline font-semibold">support@dealdoor.co</a> หรือติดต่อทีมงานของเราได้เลยครับ
+            </p>
+          </div>
           <button 
             id="close-modal-btn"
-            class="btn btn-primary mt-6 w-full min-h-[44px]"
+            class="btn btn-primary mt-6 w-full min-h-[48px]"
           >
             รับทราบ
           </button>
@@ -112,46 +494,16 @@ import Icon from '../components/icons/index.astro';
       </div>
     </div>
 
-    {/* FAQ */}
-    <div class="mt-16">
-      <h2 class="text-center text-2xl font-bold text-secondary">
-        คำถามที่พบบ่อย
-      </h2>
-      <div class="mt-8 grid gap-6 md:grid-cols-2">
-        <div class="rounded-xl border border-border bg-bg p-6">
-          <h3 class="font-semibold text-secondary">ชำระเงินอย่างไร?</h3>
-          <p class="mt-2 text-sm text-text-secondary">
-            รองรับบัตรเครดิต/เดบิต โอนผ่านธนาคาร PromptPay (เร็วๆ นี้)
-          </p>
-        </div>
-        <div class="rounded-xl border border-border bg-bg p-6">
-          <h3 class="font-semibold text-secondary">ยกเลิกเมื่อไรก็ได้?</h3>
-          <p class="mt-2 text-sm text-text-secondary">
-            ใช่ ยกเลิกเมื่อไรก็ได้ ไม่มีข้อผูกมัด
-          </p>
-        </div>
-        <div class="rounded-xl border border-border bg-bg p-6">
-          <h3 class="font-semibold text-secondary">มีทดลองใช้ไหม?</h3>
-          <p class="mt-2 text-sm text-text-secondary">
-            แพลนฟรีใช้ได้ตลอดไป ไม่ต้องใส่บัตรเครดิต
-          </p>
-        </div>
-        <div class="rounded-xl border border-border bg-bg p-6">
-          <h3 class="font-semibold text-secondary">ดีลเก่าหายไหม?</h3>
-          <p class="mt-2 text-sm text-text-secondary">
-            ไม่หาย ดีลเก่ายังอยู่ แค่ไม่แสดงเกินจำนวนที่กำหนด
-          </p>
-        </div>
-      </div>
-    </div>
   </div>
 </BaseLayout>
 
 <script>
+  // Elements
   const upgradeBtn = document.getElementById('upgrade-pro-btn');
   const modal = document.getElementById('coming-soon-modal');
   const closeBtn = document.getElementById('close-modal-btn');
 
+  // Modal event listeners
   upgradeBtn?.addEventListener('click', () => {
     modal?.classList.remove('hidden');
     modal?.classList.add('flex');
@@ -162,7 +514,6 @@ import Icon from '../components/icons/index.astro';
     modal?.classList.remove('flex');
   });
 
-  // Close on backdrop click
   modal?.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.classList.add('hidden');
@@ -170,11 +521,241 @@ import Icon from '../components/icons/index.astro';
     }
   });
 
-  // Close on escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !modal?.classList.contains('hidden')) {
       modal?.classList.add('hidden');
       modal?.classList.remove('flex');
     }
+  });
+
+  // Billing Toggle Logic
+  const billingToggleBtn = document.getElementById('billing-toggle-btn');
+  const toggleIndicator = document.getElementById('toggle-indicator');
+  const billingMonthlyLabel = document.getElementById('billing-monthly-label');
+  const billingYearlyLabel = document.getElementById('billing-yearly-label');
+  const priceDisplays = document.querySelectorAll('.price-display');
+  const priceSubDisplays = document.querySelectorAll('.price-sub-display');
+  
+  let isYearly = false;
+  
+  const prices: Record<string, { monthly: string; yearly: string; subMonthly: string; subYearly: string }> = {
+    free: { monthly: '0', yearly: '0', subMonthly: 'ฟรีตลอดไป ไม่มีเงื่อนไขแอบแฝง', subYearly: 'ฟรีตลอดไป ไม่มีเงื่อนไขแอบแฝง' },
+    pro: { monthly: '299', yearly: '207', subMonthly: 'ชำระรายเดือนตามจริง', subYearly: 'ชำระเป็นรายปี ฿2,490/ปี (ประหยัด 30%)' }
+  };
+  
+  function updatePrices() {
+    priceDisplays.forEach(display => {
+      const planId = display.getAttribute('data-plan-id');
+      if (planId && prices[planId]) {
+        display.textContent = isYearly ? prices[planId].yearly : prices[planId].monthly;
+      }
+    });
+    
+    priceSubDisplays.forEach(display => {
+      const planId = display.getAttribute('data-plan-id');
+      if (planId && prices[planId]) {
+        display.textContent = isYearly ? prices[planId].subYearly : prices[planId].subMonthly;
+      }
+    });
+  }
+  
+  billingToggleBtn?.addEventListener('click', () => {
+    isYearly = !isYearly;
+    billingToggleBtn.setAttribute('aria-checked', isYearly.toString());
+    
+    if (isYearly) {
+      toggleIndicator?.classList.replace('translate-x-0', 'translate-x-7');
+      billingToggleBtn?.classList.replace('bg-border', 'bg-primary');
+      billingYearlyLabel?.classList.replace('text-text-secondary', 'text-secondary');
+      billingYearlyLabel?.classList.add('font-semibold');
+      billingMonthlyLabel?.classList.replace('text-secondary', 'text-text-secondary');
+      billingMonthlyLabel?.classList.remove('font-semibold');
+      billingMonthlyLabel?.classList.add('font-medium');
+    } else {
+      toggleIndicator?.classList.replace('translate-x-7', 'translate-x-0');
+      billingToggleBtn?.classList.replace('bg-primary', 'bg-border');
+      billingMonthlyLabel?.classList.replace('text-text-secondary', 'text-secondary');
+      billingMonthlyLabel?.classList.add('font-semibold');
+      billingYearlyLabel?.classList.replace('text-secondary', 'text-text-secondary');
+      billingYearlyLabel?.classList.remove('font-semibold');
+      billingYearlyLabel?.classList.add('font-medium');
+    }
+    
+    updatePrices();
+  });
+
+  // Deal Slider Calculator Logic
+  const dealSlider = document.getElementById('deal-slider') as HTMLInputElement | null;
+  const sliderValueDisplay = document.getElementById('slider-value-display');
+  const sliderTrackFill = document.getElementById('slider-track-fill');
+  
+  const recommendationCard = document.getElementById('calculator-recommendation-card');
+  const recommendationBadge = document.getElementById('recommendation-badge');
+  const recommendationTitle = document.getElementById('recommendation-title');
+  const recommendationDesc = document.getElementById('recommendation-desc');
+  const recommendationHighlights = document.getElementById('recommendation-highlights');
+  const recommendationCta = document.getElementById('recommendation-cta');
+  
+  const cardFree = document.getElementById('plan-card-free');
+  const cardPro = document.getElementById('plan-card-pro');
+  const wrapperFree = document.getElementById('plan-card-wrapper-free');
+  const wrapperPro = document.getElementById('plan-card-wrapper-pro');
+  
+  function updateSlider() {
+    if (!dealSlider) return;
+    const val = parseInt(dealSlider.value);
+    if (sliderValueDisplay) sliderValueDisplay.textContent = val >= 100 ? '100+' : val.toString();
+    
+    // Exact track fill percentage alignment calculation
+    const percent = ((val - 1) / 99) * 100;
+    if (sliderTrackFill) sliderTrackFill.style.width = `${percent}%`;
+    
+    if (val <= 6) {
+      // FREE Recommendation State
+      if (recommendationCard) {
+        recommendationCard.className = 'p-6 md:p-8 bg-accent/5 flex flex-col justify-between items-start text-left min-h-[260px] transition-all duration-300 relative overflow-hidden md:col-span-5';
+      }
+      if (recommendationBadge) {
+        recommendationBadge.textContent = 'FREE TIER';
+        recommendationBadge.className = 'inline-block px-2.5 py-0.5 rounded-md text-[10px] font-black text-white bg-accent select-none';
+      }
+      if (recommendationTitle) recommendationTitle.textContent = 'FREE PLAN';
+      if (recommendationDesc) {
+        recommendationDesc.textContent = 'เหมาะสำหรับร้านค้าเริ่มต้นทดลองระบบ หรือจัดโปรโมชันร้านแบบพื้นฐาน';
+      }
+      if (recommendationHighlights) {
+        recommendationHighlights.innerHTML = `
+          <li class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
+            <span class="text-emerald-500">✓</span> <span>จัดดีลพร้อมกันสูงสุด 6 ดีล</span>
+          </li>
+          <li class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
+            <span class="text-emerald-500">✓</span> <span>แชร์ QR Code หน้าร้าน</span>
+          </li>
+        `;
+      }
+      if (recommendationCta) {
+        recommendationCta.innerHTML = '<span>สมัครร้านค้าแพลนฟรี</span> <span>→</span>';
+        recommendationCta.setAttribute('data-target-tier', 'free');
+        recommendationCta.className = 'mt-6 w-full py-3 px-4 rounded-xl text-[10px] font-black text-center text-white bg-accent hover:bg-accent/90 shadow-md shadow-accent/15 hover:scale-[1.02] active:scale-95 transition-all select-none z-10 flex items-center justify-center gap-1 cursor-pointer';
+      }
+      
+      // Highlight Free Card, dim Pro slightly
+      if (cardFree) cardFree.className = 'relative rounded-[24px] p-8 transition-all duration-300 flex flex-col justify-between h-full hover-shine animate-slide-up bg-card-bg/75 border-2 border-primary shadow-xl';
+      if (cardPro) cardPro.className = 'relative rounded-[24px] p-8 transition-all duration-300 flex flex-col justify-between h-full hover-shine animate-slide-up bg-card-bg/65 border border-border/15 backdrop-blur-md shadow-sm opacity-85';
+      
+      // Scale Free wrapper, reset Pro wrapper
+      if (wrapperFree) wrapperFree.className = 'relative z-20 scale-105 transition-all duration-300';
+      if (wrapperPro) wrapperPro.className = 'relative z-10 scale-100 transition-all duration-300 opacity-80';
+    } else {
+      // PRO Recommendation State
+      if (recommendationCard) {
+        recommendationCard.className = 'p-6 md:p-8 bg-primary/5 flex flex-col justify-between items-start text-left min-h-[260px] transition-all duration-300 relative overflow-hidden md:col-span-5';
+      }
+      if (recommendationBadge) {
+        recommendationBadge.textContent = 'RECOMMENDED';
+        recommendationBadge.className = 'inline-block px-2.5 py-0.5 rounded-md text-[10px] font-black text-white bg-primary select-none';
+      }
+      if (recommendationTitle) recommendationTitle.textContent = 'PRO PLAN';
+      if (recommendationDesc) {
+        recommendationDesc.textContent = 'จัดเต็มด้วยเครื่องมือการตลาดและการวิเคราะห์ครบวงจร ดันยอดขายพุ่งทะยาน';
+      }
+      if (recommendationHighlights) {
+        recommendationHighlights.innerHTML = `
+          <li class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
+            <span class="text-emerald-500">✓</span> <span>จัดดีลพร้อมกันสูงสุด 100 ดีล</span>
+          </li>
+          <li class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
+            <span class="text-emerald-500">✓</span> <span>ระบบสถิติเชิงลึก & ตั้งเวลาดีล</span>
+          </li>
+        `;
+      }
+      if (recommendationCta) {
+        recommendationCta.innerHTML = '<span>ติดต่อเพื่ออัปเกรด Pro</span> <span>💎</span>';
+        recommendationCta.setAttribute('data-target-tier', 'pro');
+        recommendationCta.className = 'mt-6 w-full py-3 px-4 rounded-xl text-[10px] font-black text-center text-white bg-primary hover:bg-primary-hover shadow-md shadow-primary/15 hover:scale-[1.02] active:scale-95 transition-all select-none z-10 flex items-center justify-center gap-1 cursor-pointer';
+      }
+
+      // Highlight Pro Card, dim Free
+      if (cardPro) cardPro.className = 'relative rounded-[24px] p-8 transition-all duration-300 flex flex-col justify-between h-full hover-shine animate-slide-up bg-card-bg/75 border-2 border-primary shadow-xl';
+      if (cardFree) cardFree.className = 'relative rounded-[24px] p-8 transition-all duration-300 flex flex-col justify-between h-full hover-shine animate-slide-up bg-card-bg/65 border border-border/15 backdrop-blur-md shadow-sm opacity-85';
+      
+      // Scale Pro wrapper, reset Free wrapper
+      if (wrapperPro) wrapperPro.className = 'relative z-20 scale-105 transition-all duration-300';
+      if (wrapperFree) wrapperFree.className = 'relative z-10 scale-100 transition-all duration-300 opacity-80';
+    }
+  }
+
+  dealSlider?.addEventListener('input', updateSlider);
+  // Run on initial load
+  updateSlider();
+
+  // Bind click event on Recommendation CTA
+  recommendationCta?.addEventListener('click', () => {
+    const tier = recommendationCta.getAttribute('data-target-tier');
+    if (tier === 'free') {
+      window.location.href = '/auth/register';
+    } else if (tier === 'pro') {
+      modal?.classList.remove('hidden');
+      modal?.classList.add('flex');
+    }
+  });
+
+  // Comparison Table Expand/Collapse Logic
+  const toggleComparisonBtn = document.getElementById('toggle-comparison-btn');
+  const comparisonTableWrapper = document.getElementById('comparison-table-wrapper');
+  const comparisonChevron = document.getElementById('comparison-chevron');
+  const comparisonBtnText = document.getElementById('comparison-btn-text');
+  
+  let isComparisonOpen = false;
+  
+  toggleComparisonBtn?.addEventListener('click', () => {
+    isComparisonOpen = !isComparisonOpen;
+    if (isComparisonOpen) {
+      comparisonTableWrapper?.classList.remove('max-h-0', 'invisible', 'opacity-0');
+      comparisonTableWrapper?.classList.add('max-h-[800px]', 'opacity-100');
+      comparisonChevron?.classList.add('rotate-180');
+      if (comparisonBtnText) comparisonBtnText.textContent = 'ซ่อนตารางเปรียบเทียบฟีเจอร์';
+    } else {
+      comparisonTableWrapper?.classList.add('max-h-0', 'invisible', 'opacity-0');
+      comparisonTableWrapper?.classList.remove('max-h-[800px]', 'opacity-100');
+      comparisonChevron?.classList.remove('rotate-180');
+      if (comparisonBtnText) comparisonBtnText.textContent = 'ดูตารางเปรียบเทียบฟีเจอร์อย่างละเอียด';
+    }
+  });
+
+  // FAQ Accordion Stack Logic
+  const faqToggleBtns = document.querySelectorAll('.faq-toggle-btn');
+  
+  faqToggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      const answerWrapper = item?.querySelector('.faq-answer-wrapper');
+      const chevron = btn.querySelector('.faq-chevron');
+      const isOpen = answerWrapper?.classList.contains('max-h-[500px]');
+      
+      // Close all FAQs first
+      document.querySelectorAll('.faq-item').forEach(otherItem => {
+        if (otherItem !== item) {
+          const wrapper = otherItem.querySelector('.faq-answer-wrapper');
+          wrapper?.classList.remove('max-h-[500px]');
+          wrapper?.classList.add('max-h-0');
+          otherItem.querySelector('.faq-chevron')?.classList.remove('rotate-180');
+          otherItem.classList.remove('border-primary/30', 'bg-primary/5', 'shadow-sm');
+        }
+      });
+      
+      // Toggle current
+      if (isOpen) {
+        answerWrapper?.classList.remove('max-h-[500px]');
+        answerWrapper?.classList.add('max-h-0');
+        chevron?.classList.remove('rotate-180');
+        item?.classList.remove('border-primary/30', 'bg-primary/5', 'shadow-sm');
+      } else {
+        answerWrapper?.classList.remove('max-h-0');
+        answerWrapper?.classList.add('max-h-[500px]');
+        chevron?.classList.add('rotate-180');
+        item?.classList.add('border-primary/30', 'bg-primary/5', 'shadow-sm');
+      }
+    });
   });
 </script>

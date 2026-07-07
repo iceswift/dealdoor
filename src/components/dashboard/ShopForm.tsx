@@ -25,6 +25,10 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
     category: 'cafe' as ShopCategory,
     description: '',
     address: '',
+    latitude: '',
+    longitude: '',
+    openingHours: '',
+    isOpen: true,
     // Contact
     phone: '',
     lineId: '',
@@ -70,6 +74,109 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
     logoImage: '',
   });
 
+  const hasContact =
+    Boolean(formData.phone.trim()) ||
+    Boolean(formData.lineId.trim()) ||
+    Boolean(formData.facebookUrl.trim()) ||
+    Boolean(formData.instagramUrl.trim()) ||
+    Boolean(formData.tiktokUrl.trim()) ||
+    Boolean(formData.websiteUrl.trim());
+  const hasCoordinates = Boolean(formData.latitude.trim()) && Boolean(formData.longitude.trim());
+  const hasPaymentInfo =
+    formData.acceptsPromptPay ||
+    formData.acceptsCash ||
+    formData.acceptsCreditCard ||
+    formData.acceptsTrueMoney ||
+    formData.acceptsRabbitLinePay ||
+    Boolean(formData.paymentNotes.trim());
+  const hasAccessInfo =
+    formData.wheelchairAccessible ||
+    formData.strollerAccessible ||
+    formData.seniorFriendlyRestroom ||
+    formData.elevatorAvailable ||
+    formData.brailleMenu ||
+    formData.freeParking ||
+    formData.paidParking ||
+    formData.motorcycleParking ||
+    formData.evCharging ||
+    Boolean(formData.nearbyBts.trim()) ||
+    Boolean(formData.nearbyMrt.trim()) ||
+    Boolean(formData.accessibilityNotes.trim()) ||
+    Boolean(formData.parkingNotes.trim());
+
+  const readinessItems = [
+    {
+      label: 'ชื่อร้านและประเภทร้าน',
+      done: Boolean(formData.name.trim()) && Boolean(formData.category),
+      tab: 'basic' as TabType,
+      required: true,
+    },
+    {
+      label: 'คำอธิบายร้านสำหรับช่วยตัดสินใจ',
+      done: Boolean(formData.description.trim()),
+      tab: 'basic' as TabType,
+      required: true,
+    },
+    {
+      label: 'ที่อยู่ร้าน',
+      done: Boolean(formData.address.trim()),
+      tab: 'basic' as TabType,
+      required: true,
+    },
+    {
+      label: 'พิกัด latitude/longitude สำหรับหมุดแผนที่',
+      done: hasCoordinates,
+      tab: 'basic' as TabType,
+      required: true,
+    },
+    {
+      label: 'เวลาเปิด-ปิดและสถานะร้าน',
+      done: Boolean(formData.openingHours.trim()),
+      tab: 'basic' as TabType,
+      required: true,
+    },
+    {
+      label: 'ช่องทางติดต่ออย่างน้อย 1 ช่องทาง',
+      done: hasContact,
+      tab: 'contact' as TabType,
+      required: true,
+    },
+    {
+      label: 'รูปปกและโลโก้ร้าน',
+      done: Boolean(formData.coverImage) && Boolean(formData.logoImage),
+      tab: 'branding' as TabType,
+      required: true,
+    },
+    {
+      label: 'ช่องทางชำระเงิน',
+      done: hasPaymentInfo,
+      tab: 'amenities' as TabType,
+      required: false,
+    },
+    {
+      label: 'ข้อมูลการเดินทางและสิ่งอำนวยความสะดวก',
+      done: hasAccessInfo,
+      tab: 'amenities' as TabType,
+      required: false,
+    },
+  ];
+  const completedReadinessItems = readinessItems.filter((item) => item.done).length;
+  const readinessScore = Math.round((completedReadinessItems / readinessItems.length) * 100);
+  const missingRequiredItems = readinessItems.filter((item) => item.required && !item.done);
+  const nextMissingItems = readinessItems.filter((item) => !item.done).slice(0, 4);
+  const readinessLabel =
+    missingRequiredItems.length === 0
+      ? 'พร้อมขึ้น Explore'
+      : hasCoordinates
+        ? 'ใกล้พร้อมแล้ว'
+        : 'ยังไม่พร้อมขึ้นแผนที่';
+  const readinessTone =
+    missingRequiredItems.length === 0
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : hasCoordinates
+        ? 'border-amber-200 bg-amber-50 text-amber-700'
+        : 'border-orange-200 bg-orange-50 text-orange-700';
+
   useEffect(() => {
     if (shop) {
       setFormData({
@@ -77,6 +184,10 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
         category: shop.category as ShopCategory,
         description: shop.description || '',
         address: shop.address || '',
+        latitude: shop.latitude?.toString() || '',
+        longitude: shop.longitude?.toString() || '',
+        openingHours: (shop as any).openingHours || '',
+        isOpen: (shop as any).isOpen ?? true,
         phone: shop.phone || '',
         lineId: shop.lineId || '',
         facebookUrl: shop.facebookUrl || '',
@@ -116,6 +227,10 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
       });
     }
   }, [shop]);
+
+  useEffect(() => {
+    onChange?.(formData);
+  }, [formData, onChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +284,63 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
           {error}
         </div>
       )}
+
+      <section className="rounded-2xl border border-border/60 bg-bg-secondary/50 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-black text-secondary">ความพร้อมของร้านบน Explore</h2>
+              <span className={`rounded-full border px-2.5 py-1 text-xs font-black ${readinessTone}`}>
+                {readinessLabel}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-text-secondary">
+              ระบบใช้ข้อมูลนี้สร้างการ์ดร้าน หมุดแผนที่ ตัวกรอง และรายละเอียดก่อนลูกค้ากดไปดูดีล
+            </p>
+          </div>
+          <div className="w-full lg:w-56">
+            <div className="flex items-end justify-between">
+              <span className="text-xs font-bold text-text-secondary">ความครบถ้วน</span>
+              <span className="text-2xl font-black text-secondary">{readinessScore}%</span>
+            </div>
+            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-bg-tertiary">
+              <div
+                className={`h-full rounded-full ${
+                  missingRequiredItems.length === 0
+                    ? 'bg-emerald-500'
+                    : hasCoordinates
+                      ? 'bg-amber-500'
+                      : 'bg-primary'
+                }`}
+                style={{ width: `${readinessScore}%` }}
+              />
+            </div>
+            <p className="mt-1 text-right text-[11px] font-bold text-text-tertiary">
+              {completedReadinessItems}/{readinessItems.length} รายการ
+            </p>
+          </div>
+        </div>
+
+        {nextMissingItems.length > 0 ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {nextMissingItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => setActiveTab(item.tab)}
+                className="flex min-h-[44px] items-center justify-between gap-3 rounded-xl border border-border/50 bg-bg px-3 py-2 text-left transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <span className="text-sm font-bold text-secondary">{item.label}</span>
+                <span className="shrink-0 text-xs font-black text-primary">ไปกรอก</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+            ข้อมูลร้านครบสำหรับแสดงบน Explore แล้ว
+          </div>
+        )}
+      </section>
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-xl bg-bg-secondary p-1">
@@ -239,15 +411,97 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
             />
           </div>
 
+          <div className="rounded-2xl border border-border/40 bg-bg-secondary/45 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-secondary">สถานะร้านบน Explore</h3>
+                <p className="mt-1 text-xs text-text-secondary">
+                  ข้อมูลนี้ใช้แสดงและกรองร้านที่เปิดอยู่ในหน้า Explore
+                </p>
+              </div>
+              <label className="flex min-h-[44px] items-center gap-2 rounded-xl border border-border/40 bg-bg px-3 text-sm font-bold text-secondary">
+                <input
+                  type="checkbox"
+                  checked={formData.isOpen}
+                  onChange={(e) => setFormData({ ...formData, isOpen: e.target.checked })}
+                  className="rounded text-primary"
+                />
+                เปิดให้บริการอยู่
+              </label>
+            </div>
+            <div className="mt-3">
+              <label className="block text-xs font-bold text-text-secondary">เวลาเปิด-ปิด</label>
+              <input
+                type="text"
+                value={formData.openingHours}
+                onChange={(e) => setFormData({ ...formData, openingHours: e.target.value })}
+                className="input mt-1"
+                placeholder="เช่น ทุกวัน 09:00-20:00 หรือ จันทร์-ศุกร์ 10:00-18:00"
+              />
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-secondary">ที่อยู่</label>
+            <label className="block text-sm font-medium text-secondary">ที่อยู่ร้าน</label>
             <input
               type="text"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="input mt-1"
-              placeholder="ที่อยู่ร้าน"
+              placeholder="เช่น 123 ซอยเยาวราช 5 เขตป้อมปราบฯ กรุงเทพฯ"
             />
+          </div>
+
+          <div className="rounded-2xl border border-border/40 bg-bg-secondary/45 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-secondary">พิกัดหมุดบนแผนที่</h3>
+                <p className="mt-1 text-xs text-text-secondary">
+                  เพิ่ม latitude และ longitude เพื่อให้ร้านแสดงเป็นหมุดบนหน้า Explore
+                </p>
+              </div>
+              <a
+                href="https://www.google.com/maps"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-primary hover:underline"
+              >
+                เปิด Google Maps
+              </a>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-bold text-text-secondary">Latitude</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="-90"
+                  max="90"
+                  value={formData.latitude}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  className="input mt-1"
+                  placeholder="13.7563"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-text-secondary">Longitude</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="-180"
+                  max="180"
+                  value={formData.longitude}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  className="input mt-1"
+                  placeholder="100.5018"
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] font-medium text-text-tertiary">
+              วิธีหา: คลิกขวาที่ตำแหน่งร้านใน Google Maps แล้วคัดลอกคู่ตัวเลขพิกัดชุดแรก
+            </p>
           </div>
         </div>
       )}
@@ -351,6 +605,13 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
                 </label>
               ))}
             </div>
+            <textarea
+              value={formData.paymentNotes}
+              onChange={(e) => setFormData({ ...formData, paymentNotes: e.target.value })}
+              className="input mt-3"
+              rows={2}
+              placeholder="หมายเหตุการชำระเงิน เช่น ขั้นต่ำบัตรเครดิต 300 บาท"
+            />
           </div>
 
           {/* Accessibility */}
@@ -375,6 +636,13 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
                 </label>
               ))}
             </div>
+            <textarea
+              value={formData.accessibilityNotes}
+              onChange={(e) => setFormData({ ...formData, accessibilityNotes: e.target.value })}
+              className="input mt-3"
+              rows={2}
+              placeholder="รายละเอียดเพิ่มเติม เช่น ทางเข้าร้านอยู่ด้านข้าง มีทางลาด"
+            />
           </div>
 
           {/* Parking */}
@@ -420,6 +688,13 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
                 />
               </div>
             </div>
+            <textarea
+              value={formData.parkingNotes}
+              onChange={(e) => setFormData({ ...formData, parkingNotes: e.target.value })}
+              className="input mt-3"
+              rows={2}
+              placeholder="รายละเอียดที่จอดรถ เช่น จอดในอาคารฟรี 1 ชั่วโมง"
+            />
           </div>
 
           {/* Pet Policy */}
@@ -442,6 +717,13 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
                 </label>
               ))}
             </div>
+            <textarea
+              value={formData.petNotes}
+              onChange={(e) => setFormData({ ...formData, petNotes: e.target.value })}
+              className="input mt-3"
+              rows={2}
+              placeholder="เงื่อนไขสัตว์เลี้ยง เช่น เฉพาะโซน outdoor"
+            />
           </div>
 
           {/* Family */}
@@ -465,6 +747,13 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
                 </label>
               ))}
             </div>
+            <textarea
+              value={formData.familyNotes}
+              onChange={(e) => setFormData({ ...formData, familyNotes: e.target.value })}
+              className="input mt-3"
+              rows={2}
+              placeholder="รายละเอียดสำหรับครอบครัว เช่น มีเก้าอี้เด็ก 4 ตัว"
+            />
           </div>
         </div>
       )}
@@ -500,3 +789,4 @@ export default function ShopForm({ shop, merchantId, onSuccess, onChange }: Shop
     </form>
   );
 }
+

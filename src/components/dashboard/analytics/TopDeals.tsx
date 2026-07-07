@@ -39,7 +39,10 @@ export default function TopDeals({ shopId }: TopDealsProps) {
 
   const fetchTopDeals = async () => {
     try {
-      const res = await fetch(`/api/analytics/stats?shopId=${shopId}`);
+      const res = await fetch(`/api/analytics/stats?shopId=${shopId}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       const data = await res.json();
       if (data.success) {
         const topDeals = data.data.topDeals || [];

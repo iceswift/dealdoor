@@ -6,6 +6,7 @@ import { getLangFromUrl, t } from '../i18n';
 import NotificationBell from '../components/shared/NotificationBell.tsx';
 import ThemeToggle from '../components/shared/ThemeToggle.astro';
 import Icon from '../components/icons/index.astro';
+import { getMerchantFromUser, getMerchantShop } from '../lib/auth';
 
 interface Props {
   title: string;
@@ -20,8 +21,14 @@ const lang = getLangFromUrl(Astro.url);
 const user = Astro.locals.user;
 // ───────────────────────────────────────
 
+// ─── Resolve the merchant's tier for the sidebar badge ───
+const merchant = user ? await getMerchantFromUser(user.id) : null;
+const shop = merchant ? await getMerchantShop(merchant.id) : null;
+const isPro = shop?.tier === 'pro';
+
 const tabs = [
-  { id: 'shop', label: 'ข้อมูลร้าน', href: '/dashboard', icon: 'store' },
+  { id: 'shop', label: 'ข้อมูลร้าน', href: '/dashboard', icon: 'shop' },
+  { id: 'edit', label: 'แก้ไขร้าน', href: '/dashboard/edit', icon: 'pencil' },
   { id: 'deals', label: 'ดีล', href: '/dashboard/deals', icon: 'tag' },
   { id: 'analytics', label: 'วิเคราะห์', href: '/dashboard/analytics', icon: 'chart' },
   { id: 'preview', label: 'ดูตัวอย่าง', href: '/dashboard/preview', icon: 'eye' },
@@ -66,9 +73,15 @@ const tabs = [
             
             <div class="min-w-0 leading-tight">
               <p class="text-xs font-black text-secondary truncate">{user.name}</p>
-              <span class="inline-block mt-1.5 rounded-lg bg-gradient-to-r from-primary to-orange-500 px-2 py-0.5 text-[8px] font-extrabold text-white shadow-sm shadow-primary/15 tracking-wide">
-                PRO MERCHANT
-              </span>
+              {isPro ? (
+                <span class="inline-block mt-1.5 rounded-lg bg-gradient-to-r from-primary to-orange-500 px-2 py-0.5 text-[8px] font-extrabold text-white shadow-sm shadow-primary/15 tracking-wide">
+                  PRO MERCHANT
+                </span>
+              ) : (
+                <span class="inline-block mt-1.5 rounded-lg bg-bg-secondary border border-border/40 px-2 py-0.5 text-[8px] font-extrabold text-text-secondary tracking-wide">
+                  FREE MERCHANT
+                </span>
+              )}
             </div>
           </div>
         )}

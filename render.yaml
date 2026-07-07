@@ -3,10 +3,10 @@
 services:
   - type: web
     name: dealdoor
-    runtime: node
+    runtime: bun
     plan: free
-    buildCommand: pnpm install && pnpm build
-    startCommand: node dist/server/entry.mjs
+    buildCommand: bun install && bun run build
+    startCommand: bun dist/server/entry.mjs
     envVars:
       - key: NODE_ENV
         value: production

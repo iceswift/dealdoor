@@ -8,11 +8,11 @@ echo ""
 
 # Run tests
 echo "🧪 Running tests..."
-pnpm test || true
+bun run test || true
 
 # Build application
 echo "🔨 Building application..."
-pnpm build
+bun run build
 
 # Backup database
 echo "💾 Backing up database..."
@@ -23,8 +23,8 @@ if command -v pm2 &> /dev/null; then
     echo "🔄 Restarting application..."
     pm2 restart dealdoor || pm2 start ecosystem.config.js
 else
-    echo "⚠️ PM2 not found. Starting with node..."
-    node dist/server/entry.mjs &
+    echo "⚠️ PM2 not found. Starting with bun..."
+    bun dist/server/entry.mjs &
 fi
 
 echo ""

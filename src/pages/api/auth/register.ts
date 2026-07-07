@@ -14,7 +14,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Validate with Zod
     const validation = validateInput(registerSchema, rawData);
     if (!validation.success) {
-      throw badRequest('VALIDATION_ERROR', 'à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡', validation.errors);
+      throw badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', validation.errors);
     }
 
     const data = validation.data!;
@@ -43,7 +43,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       { status: 201, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    if (error.message === 'à¸­à¸µà¹€à¸¡à¸¥à¸™à¸µà¹‰à¸–à¸¹à¸à¹ƒà¸Šà¹‰à¹à¸¥à¹‰à¸§') {
+    if (error.message === 'อีเมลนี้ถูกใช้แล้ว') {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'EMAIL_EXISTS', message: error.message } }),
         { status: 409, headers: { 'Content-Type': 'application/json' } }
@@ -52,3 +52,4 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return handleApiError(error);
   }
 };
+

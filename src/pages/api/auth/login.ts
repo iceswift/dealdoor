@@ -14,7 +14,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Validate with Zod
     const validation = validateInput(loginSchema, rawData);
     if (!validation.success) {
-      throw badRequest('VALIDATION_ERROR', 'à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡', validation.errors);
+      throw badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', validation.errors);
     }
 
     const data = validation.data!;
@@ -39,7 +39,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       { headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    if (error.message === 'à¸­à¸µà¹€à¸¡à¸¥à¸«à¸£à¸·à¸­à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡') {
+    if (error.message === 'อีเมลหรือรหัสผ่านไม่ถูกต้อง') {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'INVALID_CREDENTIALS', message: error.message } }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -48,3 +48,4 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return handleApiError(error);
   }
 };
+

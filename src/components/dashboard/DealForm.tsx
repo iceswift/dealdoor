@@ -25,6 +25,7 @@ export default function DealForm({ shopId, deal, onSuccess, onCancel }: DealForm
     conditions: '',
     couponCode: '',
     claimType: 'copy_code' as ClaimType,
+    startDate: '',
     endDate: '',
     imageUrl: '',
   });
@@ -40,6 +41,7 @@ export default function DealForm({ shopId, deal, onSuccess, onCancel }: DealForm
         conditions: deal.conditions || '',
         couponCode: deal.couponCode || '',
         claimType: deal.claimType as ClaimType,
+        startDate: deal.startDate ? new Date(deal.startDate).toISOString().split('T')[0] : '',
         endDate: new Date(deal.endDate).toISOString().split('T')[0],
         imageUrl: deal.imageUrl || '',
       });
@@ -50,8 +52,18 @@ export default function DealForm({ shopId, deal, onSuccess, onCancel }: DealForm
     e.preventDefault();
     setError('');
 
-    if (!formData.title || !formData.category || !formData.claimType || !formData.endDate) {
+    if (!formData.title || !formData.category || !formData.discountText || !formData.claimType || !formData.endDate) {
       setError('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+      return;
+    }
+
+    if (formData.claimType === 'copy_code' && !formData.couponCode.trim()) {
+      setError('กรุณากรอกโค้ดคูปองเมื่อเลือกวิธีรับสิทธิ์แบบคัดลอกโค้ด');
+      return;
+    }
+
+    if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+      setError('วันที่เริ่มต้นต้องมาก่อนวันหมดอายุ');
       return;
     }
 
@@ -235,8 +247,21 @@ export default function DealForm({ shopId, deal, onSuccess, onCancel }: DealForm
             />
           </div>
 
-          {/* End Date */}
-          <div className="space-y-1.5">
+          {/* Campaign Dates */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-secondary">
+                วันที่เริ่มโปรโมชัน
+              </label>
+              <input
+                type="date"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
+              />
+            </div>
+
+            <div className="space-y-1.5">
             <label className="block text-xs font-bold text-secondary">
               วันหมดอายุการจัดโปรโมชัน <span className="text-danger">*</span>
             </label>
@@ -247,6 +272,7 @@ export default function DealForm({ shopId, deal, onSuccess, onCancel }: DealForm
               className="input block w-full text-xs rounded-xl border border-border/20 bg-bg/25 text-secondary p-3 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45 transition-all shadow-sm"
               required
             />
+            </div>
           </div>
         </div>
 

@@ -64,6 +64,7 @@ const menuItemsList = await db
 
 const dealId = Astro.url.searchParams.get('deal');
 const highlightedDeal = dealId ? [...activeDeals, ...expiredDeals].find(d => d.id === dealId) : null;
+const invalidDealId = Boolean(dealId && !highlightedDeal);
 // ────────────────────────────────────────────────────────
 
 const localBusinessSchema = generateLocalBusinessSchema(shop);
@@ -106,7 +107,7 @@ const breadcrumbSchema = generateBreadcrumbSchema([
       {activeDeals.length > 0 ? (
         <div class="grid gap-6 sm:grid-cols-2">
           {activeDeals.map((deal) => (
-            <DealCard deal={deal} shopLineId={shop.lineId} />
+            <DealCard deal={deal} shop={shop} highlighted={deal.id === dealId} />
           ))}
         </div>
       ) : (
@@ -131,7 +132,7 @@ const breadcrumbSchema = generateBreadcrumbSchema([
         </div>
         <div class="grid gap-6 sm:grid-cols-2 opacity-60">
           {expiredDeals.map((deal) => (
-            <DealCard deal={deal} shopLineId={shop.lineId} />
+            <DealCard deal={deal} shop={shop} highlighted={deal.id === dealId} />
           ))}
         </div>
       </section>
@@ -231,16 +232,21 @@ const breadcrumbSchema = generateBreadcrumbSchema([
 
   {/* Deal Detail Modal (client-side interactive component) */}
   <DealDetailModal
-    client:visible
+    client:load
     deal={highlightedDeal}
-    shopName={shop.name}
-    shopLineId={shop.lineId}
+    shop={shop}
     onClose={() => {
       const url = new URL(window.location.href);
       url.searchParams.delete('deal');
       window.history.replaceState({}, '', url.toString());
     }}
   />
+
+  {invalidDealId && (
+    <div class="fixed bottom-6 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-warning/30 bg-warning-bg px-4 py-3 text-sm font-bold text-warning-text shadow-xl">
+      ไม่พบดีลที่เปิดจากลิงก์นี้ อาจถูกลบหรือหมดอายุไปแล้ว
+    </div>
+  )}
 </BaseLayout>
 
 <script is:inline define:vars={{ shopId: shop.id }}>

@@ -1,0 +1,120 @@
+---
+// src/components/dashboard/ExploreReadiness.astro
+// "ความพร้อมของร้านบน Explore" — surfaces Explore-critical data quality so a
+// shop shows up well on the Pin Map. Persistent status card (green when done).
+
+import Icon from '../icons/index.astro';
+import type { Shop } from '../../../db/schema';
+
+interface Props {
+  shop: Shop;
+}
+
+const { shop } = Astro.props;
+
+const checks = [
+  {
+    id: 'location',
+    label: 'พิกัดแผนที่',
+    hint: 'เพื่อให้ร้านปักหมุดบนแผนที่ Explore',
+    done: shop.latitude != null && shop.longitude != null,
+    icon: 'map-pin',
+  },
+  {
+    id: 'hours',
+    label: 'เวลาเปิด-ปิด',
+    hint: 'เพื่อแสดงสถานะ “เปิดอยู่” ให้ลูกค้า',
+    done: Boolean(shop.openingHours && shop.openingHours.length > 2),
+    icon: 'clock',
+  },
+  {
+    id: 'contact',
+    label: 'ช่องทางติดต่อ',
+    hint: 'เบอร์โทรหรือ LINE อย่างน้อย 1 ช่องทาง',
+    done: Boolean(shop.phone || shop.lineId),
+    icon: 'phone',
+  },
+  {
+    id: 'image',
+    label: 'รูปหน้าปกหรือโลโก้',
+    hint: 'เพื่อให้การ์ดร้านดูน่าสนใจ',
+    done: Boolean(shop.coverImage || shop.logoImage),
+    icon: 'eye',
+  },
+  {
+    id: 'address',
+    label: 'ที่อยู่ร้าน',
+    hint: 'ช่วยให้ลูกค้านำทางมาถูก',
+    done: Boolean(shop.address && shop.address.length > 5),
+    icon: 'building',
+  },
+];
+
+const doneCount = checks.filter(c => c.done).length;
+const percent = Math.round((doneCount / checks.length) * 100);
+const allDone = doneCount === checks.length;
+const missing = checks.filter(c => !c.done);
+---
+
+<div class="rounded-3xl border border-info/15 bg-gradient-to-br from-info-bg/40 via-card-bg/80 to-card-bg/60 backdrop-blur-md p-5 sm:p-6 shadow-md relative overflow-hidden">
+  <div class="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-info/5 blur-2xl pointer-events-none"></div>
+
+  <div class="relative z-10">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-info to-sky-400 flex items-center justify-center shadow-sm">
+          <Icon name="map" class="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h3 class="text-base font-black text-secondary">ความพร้อมบน Explore</h3>
+          <p class="text-xs text-text-tertiary font-bold">
+            {allDone ? 'ร้านของคุณพร้อมให้ลูกค้าค้นพบแล้ว' : 'เติมข้อมูลให้ครบเพื่อให้ลูกค้าเจอร้านง่ายขึ้น'}
+          </p>
+        </div>
+      </div>
+      <span class={`text-sm font-black px-3 py-1 rounded-full flex-shrink-0 ${
+        allDone ? 'bg-success-bg text-success' : 'bg-info-bg text-info'
+      }`}>
+        {percent}%
+      </span>
+    </div>
+
+    <div class="h-2.5 bg-bg-secondary rounded-full overflow-hidden border border-border/20 mb-5">
+      <div
+        class={`h-full rounded-full transition-all duration-700 ease-out ${
+          allDone ? 'bg-gradient-to-r from-success to-emerald-400' : 'bg-gradient-to-r from-info to-sky-400'
+        }`}
+        style={`width: ${percent}%`}
+      >
+      </div>
+    </div>
+
+    {allDone ? (
+      <a
+        href={`/${shop.slug}`}
+        class="flex items-center justify-center gap-2 rounded-2xl bg-success-bg/50 border border-success/20 py-3 text-sm font-black text-success hover:bg-success-bg transition-all"
+      >
+        <Icon name="check" class="h-4 w-4" />
+        <span>ดูร้านของคุณบน Explore</span>
+      </a>
+    ) : (
+      <div class="space-y-2">
+        {missing.map(check => (
+          <a
+            href="/dashboard/edit"
+            class="flex items-center gap-3 rounded-xl p-3 border border-transparent hover:border-info/15 hover:bg-info/5 transition-all duration-200 group"
+          >
+            <div class="h-8 w-8 rounded-lg bg-info/10 text-info flex items-center justify-center flex-shrink-0">
+              <Icon name={check.icon} class="h-4 w-4" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-bold text-secondary">{check.label}</p>
+              <p class="text-xs text-text-tertiary font-medium truncate">{check.hint}</p>
+            </div>
+            <Icon name="chevron-right" class="h-4 w-4 text-text-tertiary group-hover:text-info transition-colors flex-shrink-0" />
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+</div>

@@ -1,30 +1,24 @@
 # DealDoor - Production Dockerfile
 
 # Stage 1: Build
-FROM node:20-alpine AS builder
-
-# Enable corepack for pnpm
-RUN corepack enable
+FROM oven/bun:1.3.14-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json bun.lock* ./
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN pnpm build
+RUN bun run build
 
 # Stage 2: Production
-FROM node:20-alpine AS runner
-
-# Enable corepack for pnpm
-RUN corepack enable
+FROM oven/bun:1.3.14-alpine AS runner
 
 WORKDIR /app
 
@@ -61,4 +55,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:4321/api/health || exit 1
 
 # Start the application
-CMD ["node", "dist/server/entry.mjs"]
+CMD ["bun", "dist/server/entry.mjs"]

@@ -1,94 +1,166 @@
 ---
 // src/components/explore/ExploreDealCard.astro
 
-import type { Deal, Shop } from '../../db/schema';
-import { DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS } from '../../lib/constants';
-import type { DealCategory } from '../../lib/constants';
-import { getDaysRemaining } from '../../lib/utils';
+import type { Deal, Shop } from '../../../db/schema';
+import { getDealViewModel } from '../../lib/deals/view-model';
 import Icon from '../icons/index.astro';
 
 interface Props {
-  // ─── BACKEND DATABASE BINDINGS ───
   deal: Deal;
   shop: Shop;
-  // ─────────────────────────────────
 }
 
 const { deal, shop } = Astro.props;
+const view = getDealViewModel(deal, shop);
+const isExpired = view.urgency === 'expired';
 
-// ─── BACKEND DATABASE PROPERTIES ───
-const now = new Date();
-const endDate = new Date(deal.endDate);
-const isExpired = !deal.isActive || endDate < now;
-const daysLeft = getDaysRemaining(endDate);
-const categoryColor = DEAL_CATEGORY_COLORS[deal.category as DealCategory] || '#6B7280';
-// ───────────────────────────────────
+// Map categories to fallback gradient backgrounds
+let fallbackBg = 'from-primary/10 to-orange-100/50';
+let emoji = '🏷️';
+if (deal.category === 'cafe') {
+  fallbackBg = 'from-amber-100 to-amber-200/50';
+  emoji = '☕';
+} else if (deal.category === 'food') {
+  fallbackBg = 'from-orange-100 to-red-100';
+  emoji = '🍜';
+} else if (deal.category === 'dessert') {
+  fallbackBg = 'from-pink-100 to-rose-200/50';
+  emoji = '🍰';
+} else if (deal.category === 'beauty') {
+  fallbackBg = 'from-purple-100 to-pink-200/50';
+  emoji = '💇';
+} else if (deal.category === 'service') {
+  fallbackBg = 'from-blue-100 to-cyan-200/50';
+  emoji = '🛠️';
+} else if (deal.category === 'event') {
+  fallbackBg = 'from-yellow-100 to-orange-200/50';
+  emoji = '🎉';
+}
+
+// Parse original vs promo prices from discountText
+const discountLabel = view.discountLabel || '';
+const priceMatchResult = discountLabel.match(/฿([\d,]+)\s*\(ปกติ\s*฿([\d,]+)\)/);
+let priceMatch = null;
+if (priceMatchResult) {
+  const promoStr = priceMatchResult[1];
+  const originalStr = priceMatchResult[2];
+  const promo = parseInt(promoStr.replace(/,/g, ''));
+  const original = parseInt(originalStr.replace(/,/g, ''));
+  const saving = original - promo;
+  priceMatch = {
+    promo: promoStr,
+    original: originalStr,
+    saving: saving.toLocaleString(),
+  };
+}
 ---
 
 <a
-  href={`/${shop.slug}?deal=${deal.id}`}
+  href={view.urls.deal || `/${shop.slug}?deal=${deal.id}`}
   class:list={[
-    'card group block overflow-hidden bg-card-bg/60 backdrop-blur-sm border border-border/40 rounded-2xl hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg transition-all duration-300',
+    'group block overflow-hidden bg-card-bg/65 backdrop-blur-md border border-border/15 rounded-[24px] hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1.5 hover:border-primary/25 transition-all duration-300 relative cursor-pointer flex flex-col justify-between h-full shadow-sm',
     isExpired && 'opacity-65 grayscale-[20%]',
   ]}
+  aria-label={`ดูดีล ${view.title} จาก ${shop.name}`}
 >
-  {/* Category Glow Accent */}
-  <div class="h-1.2 w-full relative overflow-hidden" style={`background-color: ${categoryColor}`}>
-    <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
-  </div>
-  
-  <div class="p-5">
-    {/* Category Badge & Timer */}
-    <div class="flex items-center justify-between">
-      <span
-        class="badge border-none font-bold"
-        style={`background-color: ${categoryColor}12; color: ${categoryColor}`}
-      >
-        {DEAL_CATEGORY_LABELS[deal.category as DealCategory] || deal.category}
-      </span>
-      {!isExpired && daysLeft <= 7 && (
-        <span class="badge border-none bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">
-          <Icon name="clock" class="h-3.5 w-3.5" />
-          <span>เหลือ {daysLeft} วัน</span>
-        </span>
-      )}
-      {isExpired && (
-        <span class="badge border-none bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold">หมดอายุ</span>
-      )}
-    </div>
-
-    {/* Title */}
-    <h3 class="mt-4 text-base font-bold text-secondary line-clamp-2 group-hover:text-primary transition-colors leading-snug">
-      {deal.title}
-    </h3>
-
-    {/* Discount Badge */}
-    {deal.discountText && (
-      <div class="mt-3.5 inline-flex items-center gap-1.5 rounded-xl px-3 py-1 border border-border/10 transition-all duration-300" style={`background-color: ${categoryColor}10`}>
-        <Icon name="tag" class="h-4 w-4" style={`color: ${categoryColor}`} />
-        <span class="text-xs font-extrabold" style={`color: ${categoryColor}`}>
-          {deal.discountText}
-        </span>
+  {/* Visual Cover Photo (4:3 Ratio) */}
+  <div class="relative overflow-hidden aspect-[4/3] bg-bg-secondary flex items-center justify-center shrink-0">
+    {view.imageUrl ? (
+      <img
+        src={view.imageUrl}
+        alt={view.imageAlt}
+        loading="lazy"
+        class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+      />
+    ) : (
+      <div class={`w-full h-full bg-gradient-to-tr ${fallbackBg} flex items-center justify-center text-4xl select-none group-hover:scale-[1.04] transition-transform duration-500`}>
+        {emoji}
       </div>
     )}
 
-    {/* Shop Information Row */}
-    <div class="mt-5 flex items-center gap-3 border-t border-border/30 pt-4 relative">
-      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-orange-100/50 text-sm font-extrabold text-primary">
-        {shop.logoImage ? (
-          <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover rounded-xl" />
-        ) : (
-          shop.name.charAt(0)
-        )}
+    {/* Category Pill Tag Overlay - Glassmorphic look */}
+    <span
+      class="absolute top-3 left-3 text-[9px] font-black px-2.5 py-1 rounded-full border border-white/10 text-white backdrop-blur-md shadow-sm bg-black/45 tracking-wider uppercase"
+    >
+      {view.categoryLabel}
+    </span>
+
+    {/* Expiry Urgency badge overlay bottom-right */}
+    {view.expiryLabel && (
+      <span class:list={[
+        'absolute bottom-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-md border border-white/10 backdrop-blur-md shadow-sm text-white',
+        view.urgency === 'soon' ? 'bg-red-500/80' : isExpired ? 'bg-rose-600/80' : 'bg-black/50'
+      ]}>
+        {view.expiryLabel}
+      </span>
+    )}
+
+    {/* Save Button (Heart Badge) Overlay top-right */}
+    <div class="absolute top-3 right-3 h-7.5 w-7.5 rounded-full bg-white/90 dark:bg-black/60 border border-white/20 backdrop-blur-sm flex items-center justify-center text-secondary dark:text-white shadow-sm hover:scale-110 active:scale-95 transition-all hover:bg-white hover:text-rose-500 duration-300 cursor-pointer z-20">
+      <Icon name="heart" class="h-3.5 w-3.5" />
+    </div>
+  </div>
+
+  {/* Card Content body */}
+  <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+    
+    {/* Deal Title & Description */}
+    <div class="space-y-1">
+      <h3 class="text-sm font-extrabold text-secondary leading-snug line-clamp-1 group-hover:text-primary transition-colors duration-200">
+        {view.title}
+      </h3>
+      <p class="text-[11px] font-bold text-text-secondary line-clamp-2 leading-relaxed">
+        {view.summary}
+      </p>
+    </div>
+
+    {/* Price & Savings Stats Block */}
+    <div class="pt-1.5 flex items-center flex-wrap gap-1.5 border-t border-border/15">
+      {priceMatch ? (
+        <>
+          <span class="text-base font-black text-primary tracking-tight">
+            ฿{priceMatch.promo}
+          </span>
+          <span class="text-[10px] line-through text-text-tertiary font-bold ml-0.5">
+            ปกติ ฿{priceMatch.original}
+          </span>
+          <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded ml-auto">
+            ประหยัด ฿{priceMatch.saving}
+          </span>
+        </>
+      ) : (
+        <>
+          <span class="text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg">
+            {view.discountLabel}
+          </span>
+        </>
+      )}
+    </div>
+
+    {/* Merchant/Shop Logo Profile Footer Section */}
+    <div class="flex items-center justify-between pt-2 border-t border-border/15">
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="h-6 w-6 rounded-full bg-gradient-to-br from-primary/10 to-orange-100/50 flex-shrink-0 flex items-center justify-center text-[10px] font-black text-primary overflow-hidden border border-border/20 shadow-sm">
+          {shop.logoImage ? (
+            <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover" />
+          ) : (
+            shop.name.charAt(0).toUpperCase()
+          )}
+        </div>
+        <div class="min-w-0">
+          <p class="text-[9px] font-black text-secondary truncate flex items-center gap-0.5">
+            <span>{shop.name}</span>
+            <span class="text-primary text-[7px] select-none">✓</span>
+          </p>
+          <p class="text-[8px] text-text-tertiary truncate">
+            {view.shop.addressShort || 'ดูพิกัดร้าน'}
+          </p>
+        </div>
       </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-xs font-bold text-secondary truncate">{shop.name}</p>
-        <p class="text-[11px] text-text-tertiary truncate mt-0.5">
-          {shop.address?.split(' ').slice(-2).join(' ') || 'ดูรายละเอียด'}
-        </p>
-      </div>
-      <div class="h-8 w-8 rounded-lg bg-bg-secondary flex items-center justify-center text-text-tertiary transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-        <Icon name="chevron-right" class="h-4.5 w-4.5 transition-transform group-hover:translate-x-0.5" />
+
+      {/* Sleek Minimal Arrow Link */}
+      <div class="h-6 w-6 rounded-full bg-bg-secondary flex items-center justify-center text-text-secondary group-hover:bg-primary group-hover:text-white transition-all duration-300 shrink-0">
+        <Icon name="arrow-right" class="h-3 w-3" />
       </div>
     </div>
   </div>

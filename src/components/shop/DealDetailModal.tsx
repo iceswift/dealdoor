@@ -1,25 +1,29 @@
 // src/components/shop/DealDetailModal.tsx
 
-import { useState, useEffect } from 'react';
-import type { Deal } from '../../../db/schema';
-import { DEAL_CATEGORY_LABELS, DEAL_CATEGORY_COLORS, CLAIM_TYPE_LABELS } from '../../lib/constants';
-import type { DealCategory, ClaimType } from '../../lib/constants';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import type { Deal, Shop } from '../../../db/schema';
+import { getDealViewModel } from '../../lib/deals/view-model';
 import { formatDate } from '../../lib/utils';
 
 interface DealDetailModalProps {
   deal: Deal | null;
-  shopName: string;
-  shopLineId?: string | null;
+  shop: Shop;
   onClose: () => void;
 }
 
-export default function DealDetailModal({ deal, shopName, shopLineId, onClose }: DealDetailModalProps) {
+export default function DealDetailModal({ deal, shop, onClose }: DealDetailModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
-    if (deal) {
-      document.body.style.overflow = 'hidden';
-    }
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!deal) return;
+    document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
     };
@@ -33,177 +37,230 @@ export default function DealDetailModal({ deal, shopName, shopLineId, onClose }:
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  if (!deal) return null;
+  if (!deal || !mounted) return null;
 
+  const view = getDealViewModel(deal, shop, typeof window !== 'undefined' ? window.location.origin : undefined);
+  const isExpired = view.urgency === 'expired';
   const endDate = new Date(deal.endDate);
-  const now = new Date();
-  const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  const isExpired = !deal.isActive || endDate < now;
-  const categoryColor = DEAL_CATEGORY_COLORS[deal.category as DealCategory] || '#6B7280';
 
-  const handleCopyCode = () => {
-    if (deal.couponCode) {
-      navigator.clipboard.writeText(deal.couponCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const handleCopyCode = async () => {
+    if (!view.couponCode) return;
+    await navigator.clipboard.writeText(view.couponCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
   };
 
-  const handleShare = () => {
-    const url = `${window.location.origin}${window.location.pathname}?deal=${deal.id}`;
+  const handleShare = async () => {
+    const dealUrl = `${window.location.origin}${view.urls.deal || `${window.location.pathname}?deal=${deal.id}`}`;
+
     if (navigator.share) {
-      navigator.share({
-        title: `${deal.title} — ${shopName}`,
-        text: deal.shortDescription || deal.title,
-        url: url,
-      });
-    } else {
-      navigator.clipboard.writeText(url);
-      alert('คัดลอกลิงก์แล้ว!');
+      try {
+        await navigator.share({
+          title: `${view.title} | ${shop.name}`,
+          text: view.shareText,
+          url: dealUrl,
+        });
+        return;
+      } catch {
+        // Fall through to clipboard.
+      }
     }
+
+    await navigator.clipboard.writeText(dealUrl);
+    setShared(true);
+    setTimeout(() => setShared(false), 1800);
   };
 
-  return (
+  const primaryAction = () => {
+    if (isExpired) {
+      return (
+        <button className="btn w-full cursor-not-allowed rounded-xl bg-bg-tertiary text-text-tertiary" disabled>
+          หมดอายุแล้ว
+        </button>
+      );
+    }
+
+    if (view.claimType === 'copy_code' && view.couponCode) {
+      return (
+        <button onClick={handleCopyCode} className="btn btn-primary min-h-[48px] w-full rounded-xl font-bold">
+          {copied ? 'คัดลอกแล้ว' : `คัดลอกโค้ด ${view.couponCode}`}
+        </button>
+      );
+    }
+
+    if (view.claimType === 'open_line' && view.shop.lineUrl) {
+      return (
+        <a
+          href={view.shop.lineUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn min-h-[48px] w-full rounded-xl border-none bg-[#06C755] font-bold text-white hover:bg-[#05B34C]"
+        >
+          เปิด LINE เพื่อรับสิทธิ์
+        </a>
+      );
+    }
+
+    if (view.claimType === 'contact_shop') {
+      return (
+        <a href={view.shop.phoneUrl || view.urls.shop || '#'} className="btn btn-primary min-h-[48px] w-full rounded-xl font-bold">
+          ติดต่อร้านเพื่อรับสิทธิ์
+        </a>
+      );
+    }
+
+    return (
+      <button className="btn btn-primary min-h-[48px] w-full rounded-xl font-bold">
+        แสดงดีลนี้ที่ร้าน
+      </button>
+    );
+  };
+
+  const modal = (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-sm md:items-center md:p-6"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="deal-modal-title"
     >
       <div
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-bg shadow-xl"
+        className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-bg shadow-2xl md:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Category accent */}
-        <div className="h-1 w-full" style={{ backgroundColor: categoryColor }} />
-        
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-bg/95 backdrop-blur-sm px-5 py-4">
-          <h2 id="deal-modal-title" className="text-lg font-semibold text-secondary">
-            รายละเอียดดีล
-          </h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-text-tertiary hover:bg-bg-secondary hover:text-text-primary transition-colors"
-            aria-label="ปิด"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-xl bg-black/45 text-white backdrop-blur hover:bg-black/60"
+          aria-label="ปิด"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="relative aspect-[16/10] overflow-hidden bg-bg-secondary">
+          {view.imageUrl ? (
+            <img src={view.imageUrl} alt={view.imageAlt} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-orange-400/10">
+              <span className="text-5xl font-extrabold text-primary">{shop.name.charAt(0)}</span>
+            </div>
+          )}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="rounded-full px-3 py-1 text-xs font-bold"
+                style={{ backgroundColor: `${view.categoryColor}22`, color: 'white' }}
+              >
+                {view.categoryLabel}
+              </span>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white backdrop-blur">
+                {view.expiryLabel}
+              </span>
+            </div>
+            <h2 id="deal-modal-title" className="mt-3 text-2xl font-extrabold leading-tight text-white">
+              {view.title}
+            </h2>
+          </div>
+        </div>
+
+        <div className="space-y-6 p-5 pb-28 md:p-7 md:pb-7">
+          {view.discountLabel && (
+            <section className="rounded-2xl border border-border/40 p-5" style={{ backgroundColor: `${view.categoryColor}10` }}>
+              <p className="text-xs font-bold uppercase tracking-wide text-text-tertiary">สิทธิพิเศษ</p>
+              <p className="mt-1 text-2xl font-extrabold" style={{ color: view.categoryColor }}>
+                {view.discountLabel}
+              </p>
+            </section>
+          )}
+
+          <section>
+            <h3 className="text-sm font-bold text-secondary">สรุปดีล</h3>
+            <p className="mt-2 text-sm leading-relaxed text-text-secondary">{view.summary}</p>
+          </section>
+
+          {view.description && view.description !== view.summary && (
+            <section>
+              <h3 className="text-sm font-bold text-secondary">รายละเอียด</h3>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-text-secondary">{view.description}</p>
+            </section>
+          )}
+
+          <section className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-bg-secondary p-4">
+              <p className="text-xs font-bold text-text-tertiary">วิธีรับสิทธิ์</p>
+              <p className="mt-1 text-sm font-bold text-secondary">{view.claimLabel}</p>
+            </div>
+            <div className="rounded-2xl bg-bg-secondary p-4">
+              <p className="text-xs font-bold text-text-tertiary">หมดอายุ</p>
+              <p className="mt-1 text-sm font-bold text-secondary">{formatDate(endDate)}</p>
+            </div>
+          </section>
+
+          {view.couponCode && view.claimType === 'copy_code' && (
+            <section>
+              <h3 className="text-sm font-bold text-secondary">โค้ดคูปอง</h3>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="flex-1 rounded-xl border border-border bg-bg-secondary px-4 py-3 font-mono text-sm font-bold tracking-wider text-secondary">
+                  {view.couponCode}
+                </code>
+                <button onClick={handleCopyCode} className="btn btn-secondary min-h-[44px] rounded-xl">
+                  {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
+                </button>
+              </div>
+            </section>
+          )}
+
+          {view.conditions && (
+            <section>
+              <h3 className="text-sm font-bold text-secondary">เงื่อนไข</h3>
+              <div className="mt-2 rounded-2xl bg-bg-secondary p-4 whitespace-pre-line text-sm leading-relaxed text-text-secondary">
+                {view.conditions}
+              </div>
+            </section>
+          )}
+
+          <section className="rounded-2xl border border-border/40 bg-bg-secondary/50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-text-tertiary">ร้านค้า</p>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-primary/10 text-sm font-extrabold text-primary">
+                {view.shop.logoImage ? <img src={view.shop.logoImage} alt={shop.name} className="h-full w-full object-cover" /> : shop.name.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-secondary">{shop.name}</p>
+                <p className="truncate text-xs text-text-tertiary">{view.shop.addressShort || shop.category}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {view.shop.lineUrl && (
+                <a href={view.shop.lineUrl} target="_blank" rel="noopener noreferrer" className="btn min-h-[44px] rounded-xl bg-[#06C755] px-2 text-xs font-bold text-white">
+                  LINE
+                </a>
+              )}
+              {view.shop.phoneUrl && (
+                <a href={view.shop.phoneUrl} className="btn btn-secondary min-h-[44px] rounded-xl px-2 text-xs font-bold">
+                  โทร
+                </a>
+              )}
+              {view.shop.mapUrl && (
+                <a href={view.shop.mapUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary min-h-[44px] rounded-xl px-2 text-xs font-bold">
+                  แผนที่
+                </a>
+              )}
+            </div>
+          </section>
+
+          <button onClick={handleShare} className="btn btn-secondary min-h-[48px] w-full rounded-xl font-bold">
+            {shared ? 'คัดลอกลิงก์แล้ว' : 'แชร์ดีลนี้'}
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5 space-y-5">
-          {/* Category & Status */}
-          <div className="flex items-center justify-between">
-            <span
-              className="badge"
-              style={{
-                backgroundColor: `${categoryColor}15`,
-                color: categoryColor,
-              }}
-            >
-              {DEAL_CATEGORY_LABELS[deal.category as DealCategory] || deal.category}
-            </span>
-            
-            {isExpired ? (
-              <span className="badge badge-danger">หมดอายุ</span>
-            ) : daysLeft <= 7 ? (
-              <span className="badge badge-warning">
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                เหลือ {daysLeft} วัน
-              </span>
-            ) : null}
-          </div>
-
-          {/* Title */}
-          <h3 className="text-xl font-bold text-secondary">{deal.title}</h3>
-
-          {/* Description */}
-          {deal.description && (
-            <p className="text-sm text-text-secondary leading-relaxed">{deal.description}</p>
-          )}
-
-          {/* Discount */}
-          {deal.discountText && (
-            <div className="rounded-xl p-4" style={{ backgroundColor: `${categoryColor}10` }}>
-              <div className="flex items-center gap-3">
-                <svg className="h-6 w-6" style={{ color: categoryColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                <span className="text-lg font-bold" style={{ color: categoryColor }}>{deal.discountText}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Expiration */}
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <svg className="h-4 w-4 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span>หมดอายุ: {formatDate(endDate)}</span>
-          </div>
-
-          {/* Conditions */}
-          {deal.conditions && (
-            <div>
-              <h4 className="text-sm font-semibold text-secondary mb-2">เงื่อนไข</h4>
-              <div className="rounded-xl bg-bg-secondary p-4 whitespace-pre-line text-sm text-text-secondary">
-                {deal.conditions}
-              </div>
-            </div>
-          )}
-
-          {/* Coupon Code */}
-          {deal.couponCode && deal.claimType === 'copy_code' && !isExpired && (
-            <div>
-              <h4 className="text-sm font-semibold text-secondary mb-2">โค้ด</h4>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 rounded-xl bg-bg-secondary px-4 py-3 font-mono text-sm tracking-wider text-secondary border border-border">
-                  {deal.couponCode}
-                </code>
-                <button
-                  onClick={handleCopyCode}
-                  className={`btn ${copied ? 'btn-primary' : 'btn-secondary'}`}
-                >
-                  {copied ? (
-                    <>
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      คัดลอกแล้ว
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      คัดลอก
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex flex-col gap-3 pt-2">
-            <button
-              onClick={handleShare}
-              className="btn btn-secondary w-full justify-center"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-              แชร์ดีลนี้
-            </button>
-          </div>
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bg/95 p-4 backdrop-blur md:absolute md:rounded-b-3xl">
+          <div className="mx-auto max-w-2xl">{primaryAction()}</div>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

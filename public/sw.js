@@ -1,13 +1,11 @@
 // public/sw.js
 
-const CACHE_NAME = 'dealdoor-v1';
-const STATIC_CACHE = 'dealdoor-static-v1';
-const DYNAMIC_CACHE = 'dealdoor-dynamic-v1';
+const CACHE_VERSION = 'v20260706-no-api-cache';
+const STATIC_CACHE = `dealdoor-static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `dealdoor-dynamic-${CACHE_VERSION}`;
 
 // Static assets to cache
 const STATIC_ASSETS = [
-  '/',
-  '/explore',
   '/offline.html',
 ];
 
@@ -43,9 +41,9 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Skip API requests (network only)
+  // Skip API requests (network only, no cache)
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkOnly(request));
+    event.respondWith(fetch(request));
     return;
   }
 
@@ -94,10 +92,6 @@ async function networkFirst(request, cacheName) {
     const cached = await caches.match(request);
     return cached || caches.match('/offline.html');
   }
-}
-
-async function networkOnly(request) {
-  return fetch(request);
 }
 
 // Helper functions

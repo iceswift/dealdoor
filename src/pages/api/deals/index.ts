@@ -77,6 +77,7 @@ export const POST: APIRoute = async ({ request }) => {
       couponCode: data.couponCode || null,
       claimType: data.claimType,
       imageUrl: data.imageUrl || null,
+      startDate: data.startDate ? new Date(data.startDate) : null,
       endDate: new Date(data.endDate),
       isActive: true,
     });

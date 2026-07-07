@@ -7,7 +7,15 @@ import { createId } from '@paralleldrive/cuid2';
 
 // ─── Event Types ─────────────────────────────────────────
 
-export type EventType = 'page_view' | 'deal_view' | 'deal_click' | 'deal_share' | 'contact_click';
+export type EventType =
+  | 'page_view'
+  | 'deal_view'
+  | 'deal_click'
+  | 'deal_share'
+  | 'contact_click'
+  | 'map_pin_click'
+  | 'map_directions_click'
+  | 'map_filter_change';
 
 // ─── Track Event ─────────────────────────────────────────
 

@@ -10,12 +10,20 @@ import path from 'path';
 export default defineConfig({
   site: 'https://dealdoor.co',
   output: 'server',
+  server: {
+    host: 'localhost',
+    port: 4321,
+  },
   adapter: node({
     mode: 'standalone',
   }),
   integrations: [react()],
 
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    optimizeDeps: {
+      noDiscovery: true,
+      include: [],
+    },
   }
 });

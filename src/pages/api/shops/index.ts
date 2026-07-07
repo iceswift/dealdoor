@@ -25,18 +25,14 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const rawData = await request.json();
 
-    // Validate with Zod
     const validation = validateInput(shopSchema, rawData);
     if (!validation.success) {
       throw badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', validation.errors);
     }
 
     const data = validation.data!;
-
-    // Generate slug from shop name
     const slug = sanitizeSlug(data.name);
 
-    // Check if slug exists
     const existing = await db.select().from(shops).where(eq(shops.slug, slug)).get();
     if (existing) {
       throw badRequest('SLUG_TAKEN', 'ลิงก์นี้ถูกใช้แล้ว', { slug });
@@ -53,14 +49,46 @@ export const POST: APIRoute = async ({ request }) => {
       description: data.description || null,
       category: data.category,
       address: data.address || null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      openingHours: data.openingHours || null,
+      isOpen: data.isOpen ?? true,
       phone: data.phone || null,
       lineId: data.lineId || null,
       facebookUrl: data.facebookUrl || null,
       instagramUrl: data.instagramUrl || null,
+      tiktokUrl: data.tiktokUrl || null,
       websiteUrl: data.websiteUrl || null,
+      acceptsPromptPay: data.acceptsPromptPay ?? false,
+      acceptsCash: data.acceptsCash ?? true,
+      acceptsCreditCard: data.acceptsCreditCard ?? false,
+      acceptsTrueMoney: data.acceptsTrueMoney ?? false,
+      acceptsRabbitLinePay: data.acceptsRabbitLinePay ?? false,
+      paymentNotes: data.paymentNotes || null,
+      wheelchairAccessible: data.wheelchairAccessible ?? false,
+      strollerAccessible: data.strollerAccessible ?? false,
+      seniorFriendlyRestroom: data.seniorFriendlyRestroom ?? false,
+      elevatorAvailable: data.elevatorAvailable ?? false,
+      brailleMenu: data.brailleMenu ?? false,
+      accessibilityNotes: data.accessibilityNotes || null,
+      freeParking: data.freeParking ?? false,
+      paidParking: data.paidParking ?? false,
+      motorcycleParking: data.motorcycleParking ?? false,
+      evCharging: data.evCharging ?? false,
+      nearbyBts: data.nearbyBts || null,
+      nearbyMrt: data.nearbyMrt || null,
+      parkingNotes: data.parkingNotes || null,
+      petFriendly: data.petFriendly ?? false,
+      petMenu: data.petMenu ?? false,
+      petWaterBowl: data.petWaterBowl ?? false,
+      petNotes: data.petNotes || null,
+      kidsMenu: data.kidsMenu ?? false,
+      highChairs: data.highChairs ?? false,
+      playArea: data.playArea ?? false,
+      babyChanging: data.babyChanging ?? false,
+      familyNotes: data.familyNotes || null,
       coverImage: data.coverImage || null,
       logoImage: data.logoImage || null,
-      isOpen: true,
       tier: 'free',
       maxActiveDeals: 6,
     });

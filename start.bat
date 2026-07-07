@@ -36,4 +36,4 @@ echo   Press Ctrl+C to stop
 echo ========================================
 echo.
 
-node dist/server/entry.mjs
+bun dist/server/entry.mjs

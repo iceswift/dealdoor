@@ -6,6 +6,7 @@ module.exports = {
     {
       name: 'dealdoor',
       script: 'dist/server/entry.mjs',
+      interpreter: 'bun',
       instances: 'max', // Use all CPU cores
       exec_mode: 'cluster',
       env: {

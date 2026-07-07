@@ -1,0 +1,131 @@
+---
+// src/components/dashboard/DealSnapshot.astro
+// Home-dashboard glance at the shop's active deals so merchants don't need to
+// jump to the ดีล tab. Server-rendered (no interactivity needed).
+
+import Icon from '../icons/index.astro';
+
+interface SnapshotDeal {
+  id: string;
+  title: string;
+  discountText: string | null;
+  imageUrl: string | null;
+  endDate: Date;
+  views: number;
+}
+
+interface Props {
+  deals: SnapshotDeal[];
+  activeCount: number;
+  maxDeals: number;
+}
+
+const { deals, activeCount, maxDeals } = Astro.props;
+
+const now = Date.now();
+const DAY = 1000 * 60 * 60 * 24;
+
+function daysLeft(endDate: Date): number {
+  return Math.ceil((endDate.getTime() - now) / DAY);
+}
+---
+
+<div class="rounded-3xl border border-border/30 bg-card-bg/70 backdrop-blur-md p-5 sm:p-6 shadow-md relative overflow-hidden">
+  <div class="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 blur-2xl pointer-events-none"></div>
+
+  <div class="relative z-10">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-orange-400 flex items-center justify-center shadow-sm">
+          <Icon name="tag" class="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h3 class="text-base font-black text-secondary">ดีลของคุณ</h3>
+          <p class="text-xs text-text-tertiary font-bold">
+            ใช้งานอยู่ {activeCount}/{maxDeals} ดีล
+          </p>
+        </div>
+      </div>
+      <a
+        href="/dashboard/deals"
+        class="text-xs font-black text-primary hover:text-primary-hover transition-colors flex items-center gap-1"
+      >
+        <span>จัดการทั้งหมด</span>
+        <Icon name="chevron-right" class="h-3.5 w-3.5" />
+      </a>
+    </div>
+
+    {deals.length === 0 ? (
+      <div class="rounded-2xl border border-dashed border-border/50 bg-bg-secondary/30 p-6 text-center">
+        <div class="h-12 w-12 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+          <Icon name="tag" class="h-6 w-6" />
+        </div>
+        <p class="text-sm font-black text-secondary">ยังไม่มีดีลที่ใช้งานอยู่</p>
+        <p class="text-xs text-text-tertiary font-bold mt-1 mb-4">สร้างดีลแรกเพื่อดึงดูดลูกค้าเข้าร้าน</p>
+        <a
+          href="/dashboard/deals/new"
+          class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-black hover:bg-primary-hover transition-all shadow-md shadow-primary/20"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>สร้างดีลแรก</span>
+        </a>
+      </div>
+    ) : (
+      <div class="space-y-2">
+        {deals.map(deal => {
+          const left = daysLeft(deal.endDate);
+          const expiringSoon = left >= 0 && left <= 3;
+          return (
+            <a
+              href="/dashboard/deals"
+              class="flex items-center gap-3 rounded-2xl p-2.5 border border-transparent hover:border-primary/10 hover:bg-primary/5 transition-all duration-200 group"
+            >
+              <div class="h-12 w-12 rounded-xl overflow-hidden flex-shrink-0 bg-bg-secondary flex items-center justify-center border border-border/20">
+                {deal.imageUrl ? (
+                  <img src={deal.imageUrl} alt={deal.title} class="h-full w-full object-cover" />
+                ) : (
+                  <Icon name="tag" class="h-5 w-5 text-text-tertiary" />
+                )}
+              </div>
+
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-black text-secondary truncate">{deal.title}</p>
+                  {expiringSoon && (
+                    <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-danger-bg/60 text-danger border border-danger/20 flex-shrink-0">
+                      <Icon name="clock" class="h-3 w-3" />
+                      {left === 0 ? 'หมดวันนี้' : `${left} วัน`}
+                    </span>
+                  )}
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  {deal.discountText && (
+                    <span class="text-xs font-bold text-primary truncate">{deal.discountText}</span>
+                  )}
+                  <span class="inline-flex items-center gap-1 text-[11px] font-bold text-text-tertiary flex-shrink-0">
+                    <Icon name="eye" class="h-3 w-3" />
+                    {deal.views.toLocaleString('th-TH')}
+                  </span>
+                </div>
+              </div>
+
+              <Icon name="chevron-right" class="h-4 w-4 text-text-tertiary group-hover:text-primary transition-colors flex-shrink-0" />
+            </a>
+          );
+        })}
+
+        <a
+          href="/dashboard/deals/new"
+          class="flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-primary/30 bg-primary/5 py-2.5 text-xs font-black text-primary hover:bg-primary/10 transition-all mt-1"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>สร้างดีลใหม่</span>
+        </a>
+      </div>
+    )}
+  </div>
+</div>

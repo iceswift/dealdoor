@@ -1,4 +1,4 @@
-// src/lib/validations.ts
+﻿// src/lib/validations.ts
 
 import { z } from 'zod';
 
@@ -26,6 +26,23 @@ export const shopSchema = z.object({
     .max(200, 'ที่อยู่ต้องไม่เกิน 200 ตัวอักษร')
     .optional()
     .transform(s => s?.trim() || undefined),
+  latitude: z.preprocess(
+    (value) => value === undefined || value === '' || value === null ? undefined : Number(value),
+    z.number().min(-90, 'Latitude must be at least -90').max(90, 'Latitude must be at most 90').optional()
+  ),
+
+  longitude: z.preprocess(
+    (value) => value === undefined || value === '' || value === null ? undefined : Number(value),
+    z.number().min(-180, 'Longitude must be at least -180').max(180, 'Longitude must be at most 180').optional()
+  ),
+
+  openingHours: z.string()
+    .max(200, 'เวลาเปิด-ปิดต้องไม่เกิน 200 ตัวอักษร')
+    .optional()
+    .transform(s => s?.trim() || undefined),
+
+  isOpen: z.boolean().optional(),
+
   
   phone: z.string()
     .regex(/^[0-9-]{9,12}$/, 'รูปแบบเบอร์โทรไม่ถูกต้อง')
@@ -51,6 +68,44 @@ export const shopSchema = z.object({
     .url('รูปแบบ URL ไม่ถูกต้อง')
     .optional()
     .or(z.literal('')),
+
+  tiktokUrl: z.string()
+    .url('รูปแบบ URL ไม่ถูกต้อง')
+    .optional()
+    .or(z.literal('')),
+
+  acceptsPromptPay: z.boolean().optional(),
+  acceptsCash: z.boolean().optional(),
+  acceptsCreditCard: z.boolean().optional(),
+  acceptsTrueMoney: z.boolean().optional(),
+  acceptsRabbitLinePay: z.boolean().optional(),
+  paymentNotes: z.string().max(300, 'หมายเหตุการชำระเงินต้องไม่เกิน 300 ตัวอักษร').optional().transform(s => s?.trim() || undefined),
+
+  wheelchairAccessible: z.boolean().optional(),
+  strollerAccessible: z.boolean().optional(),
+  seniorFriendlyRestroom: z.boolean().optional(),
+  elevatorAvailable: z.boolean().optional(),
+  brailleMenu: z.boolean().optional(),
+  accessibilityNotes: z.string().max(300, 'หมายเหตุสิ่งอำนวยความสะดวกต้องไม่เกิน 300 ตัวอักษร').optional().transform(s => s?.trim() || undefined),
+
+  freeParking: z.boolean().optional(),
+  paidParking: z.boolean().optional(),
+  motorcycleParking: z.boolean().optional(),
+  evCharging: z.boolean().optional(),
+  nearbyBts: z.string().max(80, 'BTS ใกล้เคียงต้องไม่เกิน 80 ตัวอักษร').optional().transform(s => s?.trim() || undefined),
+  nearbyMrt: z.string().max(80, 'MRT ใกล้เคียงต้องไม่เกิน 80 ตัวอักษร').optional().transform(s => s?.trim() || undefined),
+  parkingNotes: z.string().max(300, 'หมายเหตุที่จอดรถต้องไม่เกิน 300 ตัวอักษร').optional().transform(s => s?.trim() || undefined),
+
+  petFriendly: z.boolean().optional(),
+  petMenu: z.boolean().optional(),
+  petWaterBowl: z.boolean().optional(),
+  petNotes: z.string().max(300, 'หมายเหตุสัตว์เลี้ยงต้องไม่เกิน 300 ตัวอักษร').optional().transform(s => s?.trim() || undefined),
+
+  kidsMenu: z.boolean().optional(),
+  highChairs: z.boolean().optional(),
+  playArea: z.boolean().optional(),
+  babyChanging: z.boolean().optional(),
+  familyNotes: z.string().max(300, 'หมายเหตุครอบครัวต้องไม่เกิน 300 ตัวอักษร').optional().transform(s => s?.trim() || undefined),
   
   coverImage: z.string().optional(),
   logoImage: z.string().optional(),
@@ -59,7 +114,7 @@ export const shopSchema = z.object({
 
 // ─── Deal Validation ─────────────────────────────────────
 
-export const dealSchema = z.object({
+const legacyDealSchema = z.object({
   title: z.string()
     .min(2, 'ชื่อดีลต้องมีอย่างน้อย 2 ตัวอักษร')
     .max(100, 'ชื่อดีลต้องไม่เกิน 100 ตัวอักษร')
@@ -112,6 +167,87 @@ export const dealSchema = z.object({
 });
 
 // ─── User Registration Validation ────────────────────────
+
+export const dealSchema = z.object({
+  title: z.string()
+    .min(2, 'Deal title must be at least 2 characters')
+    .max(100, 'Deal title must be 100 characters or less')
+    .transform(s => s.trim()),
+
+  category: z.enum([
+    'birthday', 'monthly', 'festival', 'special_day',
+    'senior', 'kids', 'student', 'flash', 'custom'
+  ], {
+    errorMap: () => ({ message: 'Invalid deal category' }),
+  }),
+
+  description: z.string()
+    .max(1000, 'Description must be 1000 characters or less')
+    .optional()
+    .transform(s => s?.trim() || undefined),
+
+  shortDescription: z.string()
+    .max(200, 'Short summary must be 200 characters or less')
+    .optional()
+    .transform(s => s?.trim() || undefined),
+
+  discountText: z.string()
+    .min(1, 'Please enter the customer benefit')
+    .max(100, 'Discount text must be 100 characters or less')
+    .transform(s => s.trim()),
+
+  conditions: z.string()
+    .max(500, 'Conditions must be 500 characters or less')
+    .optional()
+    .transform(s => s?.trim() || undefined),
+
+  couponCode: z.string()
+    .regex(/^[A-Z0-9-]*$/, 'Coupon code can use A-Z, 0-9, and hyphen only')
+    .max(30, 'Coupon code must be 30 characters or less')
+    .optional()
+    .or(z.literal('')),
+
+  claimType: z.enum(['copy_code', 'show_at_shop', 'contact_shop', 'open_line'], {
+    errorMap: () => ({ message: 'Invalid claim method' }),
+  }),
+
+  startDate: z.string()
+    .optional()
+    .or(z.literal(''))
+    .refine((val) => {
+      if (!val) return true;
+      return !isNaN(new Date(val).getTime());
+    }, 'Invalid start date'),
+
+  endDate: z.string()
+    .refine((val) => {
+      const date = new Date(val);
+      return !isNaN(date.getTime()) && date > new Date();
+    }, 'End date must be in the future'),
+
+  imageUrl: z.string().optional(),
+  shopId: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.claimType === 'copy_code' && !data.couponCode?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['couponCode'],
+      message: 'Coupon code is required when the claim method is copy code',
+    });
+  }
+
+  if (data.startDate) {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start > end) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['startDate'],
+        message: 'Start date must be before the end date',
+      });
+    }
+  }
+});
 
 export const registerSchema = z.object({
   name: z.string()
@@ -175,3 +311,4 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown): {
   
   return { success: false, errors };
 }
+

@@ -47,6 +47,8 @@ export const PUT: APIRoute = async ({ params, request }) => {
         conditions: data.conditions !== undefined ? data.conditions : existing.conditions,
         couponCode: data.couponCode !== undefined ? data.couponCode : existing.couponCode,
         claimType: data.claimType || existing.claimType,
+        imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
+        startDate: data.startDate ? new Date(data.startDate) : existing.startDate,
         endDate: data.endDate ? new Date(data.endDate) : existing.endDate,
         isActive: data.isActive !== undefined ? data.isActive : existing.isActive,
         updatedAt: new Date(),
