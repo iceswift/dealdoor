@@ -11,6 +11,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+dev-output.log
+
+# local runtime data
+db/*.db
+db/*.db-shm
+db/*.db-wal
+public/uploads/
 
 
 # environment variables

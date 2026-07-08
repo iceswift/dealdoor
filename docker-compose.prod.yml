@@ -1,0 +1,81 @@
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: dealdoor-caddy
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - SITE_DOMAIN=${SITE_DOMAIN:-dealdoor.co}
+      - CADDY_EMAIL=${CADDY_EMAIL:-admin@dealdoor.co}
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dealdoor-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4321"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=4321
+      - SITE_URL=${SITE_URL:-https://dealdoor.co}
+      - PUBLIC_SITE_URL=${PUBLIC_SITE_URL:-https://dealdoor.co}
+      - DATABASE_URL=${DATABASE_URL:-postgres://dealdoor:${POSTGRES_PASSWORD}@postgres:5432/dealdoor}
+      - STORAGE_DRIVER=${STORAGE_DRIVER:-r2}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4321/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: dealdoor-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-dealdoor}
+      - POSTGRES_USER=${POSTGRES_USER:-dealdoor}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dealdoor} -d ${POSTGRES_DB:-dealdoor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
