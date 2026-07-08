@@ -78,8 +78,8 @@ export default function InstallPrompt() {
       <div className="rounded-2xl border border-border bg-bg p-4 shadow-xl">
         <div className="flex items-start gap-4">
           {/* Icon */}
-          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-orange-100">
-            <span className="text-2xl">📱</span>
+          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-orange-100 p-2">
+            <img src="/icons/DealDoor_icon.png" alt="DealDoor" className="h-full w-full object-contain" />
           </div>
 
           {/* Content */}

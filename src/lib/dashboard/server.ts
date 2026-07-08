@@ -2,12 +2,12 @@
 // Dashboard-only server helpers. Keep merchant ownership checks here so pages
 // and API routes do not re-invent user -> merchant -> shop lookup.
 
-import { and, desc, eq, gte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte } from 'drizzle-orm';
 import { db } from '../db';
 import { getMerchantFromUser, getMerchantShop } from '../auth';
-import { getShopStats, getTopDeals } from '../analytics';
+import { getShopStats, getTopDeals } from '../../server/services/analytics.service';
 import { getTierLimits, type Tier } from '../tiers';
-import { deals, shops, analyticsEvents, type Deal, type Shop } from '../../../db/schema';
+import { deals, shops, analyticsEvents, menuItems, shopSpecialHours, type Deal, type Shop } from '../../../db/schema';
 import { forbidden, notFound, unauthorized } from '../errors';
 
 type DashboardUser = {
@@ -99,6 +99,50 @@ export async function listDashboardDeals(shopId: string) {
     .orderBy(desc(deals.createdAt));
 }
 
+export async function listDashboardMenuItems(shopId: string) {
+  return db
+    .select()
+    .from(menuItems)
+    .where(eq(menuItems.shopId, shopId))
+    .orderBy(asc(menuItems.sortOrder), asc(menuItems.createdAt));
+}
+
+export async function listDashboardSpecialHours(shopId: string) {
+  return db
+    .select()
+    .from(shopSpecialHours)
+    .where(eq(shopSpecialHours.shopId, shopId))
+    .orderBy(asc(shopSpecialHours.date));
+}
+
+export async function getOwnedSpecialHour(itemId: string, shopId: string) {
+  const item = await db
+    .select()
+    .from(shopSpecialHours)
+    .where(and(eq(shopSpecialHours.id, itemId), eq(shopSpecialHours.shopId, shopId)))
+    .get();
+
+  if (!item) {
+    throw notFound('ไม่พบเวลาพิเศษนี้ในร้านของคุณ');
+  }
+
+  return item;
+}
+
+export async function getOwnedMenuItem(itemId: string, shopId: string) {
+  const item = await db
+    .select()
+    .from(menuItems)
+    .where(and(eq(menuItems.id, itemId), eq(menuItems.shopId, shopId)))
+    .get();
+
+  if (!item) {
+    throw notFound('ไม่พบเมนูนี้ในร้านของคุณ');
+  }
+
+  return item;
+}
+
 export function getDealState(deal: Pick<Deal, 'isActive' | 'startDate' | 'endDate'>) {
   const now = new Date();
   const startsAt = deal.startDate ? new Date(deal.startDate) : null;
@@ -116,13 +160,62 @@ export function countActiveDeals(dealRows: Pick<Deal, 'isActive' | 'startDate' |
 
 export function getShopReadiness(shop: Shop | null, dealCount: number) {
   const checks = [
-    { id: 'identity', label: 'ชื่อร้านและประเภทร้าน', done: Boolean(shop?.name && shop?.category), required: true },
-    { id: 'story', label: 'คำอธิบายร้าน', done: Boolean(shop?.description), required: true },
-    { id: 'location', label: 'ที่อยู่และพิกัดแผนที่', done: Boolean(shop?.address && shop?.latitude && shop?.longitude), required: true },
-    { id: 'hours', label: 'เวลาเปิด-ปิด', done: Boolean(shop?.openingHours), required: true },
-    { id: 'contact', label: 'ช่องทางติดต่ออย่างน้อย 1 ช่องทาง', done: Boolean(shop?.phone || shop?.lineId || shop?.facebookUrl || shop?.instagramUrl || shop?.websiteUrl), required: true },
-    { id: 'brand', label: 'รูปหน้าปกหรือโลโก้', done: Boolean(shop?.coverImage || shop?.logoImage), required: false },
-    { id: 'deals', label: 'มีดีลอย่างน้อย 1 รายการ', done: dealCount > 0, required: true },
+    {
+      id: 'identity',
+      label: 'ชื่อร้านและประเภทร้าน',
+      done: Boolean(shop?.name && shop?.category),
+      required: true,
+      targetHref: '/dashboard/edit?section=identity',
+      actionLabel: 'แก้ข้อมูลร้าน',
+    },
+    {
+      id: 'story',
+      label: 'คำอธิบายร้าน',
+      done: Boolean(shop?.description),
+      required: true,
+      targetHref: '/dashboard/edit?section=identity',
+      actionLabel: 'เติมคำอธิบาย',
+    },
+    {
+      id: 'location',
+      label: 'ที่อยู่และพิกัดแผนที่',
+      done: Boolean(shop?.address && shop?.latitude && shop?.longitude),
+      required: true,
+      targetHref: '/dashboard/edit?section=location',
+      actionLabel: 'เติมพิกัด',
+    },
+    {
+      id: 'hours',
+      label: 'เวลาเปิด-ปิด',
+      done: Boolean(shop?.openingHours),
+      required: true,
+      targetHref: '/dashboard/edit?section=hours',
+      actionLabel: 'เติมเวลา',
+    },
+    {
+      id: 'contact',
+      label: 'ช่องทางติดต่ออย่างน้อย 1 ช่องทาง',
+      done: Boolean(shop?.phone || shop?.lineId || shop?.facebookUrl || shop?.instagramUrl || shop?.websiteUrl),
+      required: true,
+      targetHref: '/dashboard/edit?section=contact',
+      actionLabel: 'เติมช่องทางติดต่อ',
+    },
+    {
+      id: 'brand',
+      label: 'รูปหน้าปกหรือโลโก้',
+      done: Boolean(shop?.coverImage || shop?.logoImage),
+      required: false,
+      targetHref: '/dashboard/edit?section=brand',
+      actionLabel: 'เพิ่มรูปภาพ',
+    },
+    {
+      id: 'deals',
+      label: 'มีดีลอย่างน้อย 1 รายการ',
+      done: dealCount > 0,
+      required: true,
+      targetHref: '/dashboard/deals/new',
+      actionLabel: 'สร้างดีล',
+    },
   ];
 
   const doneCount = checks.filter((item) => item.done).length;

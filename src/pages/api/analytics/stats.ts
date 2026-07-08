@@ -3,16 +3,18 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { getShopStats, getTopDeals } from '../../../lib/analytics';
 import { handleApiError } from '../../../lib/errors';
 import { json, requireDashboardShop } from '../../../lib/dashboard/server';
+import {
+  getDashboardAnalytics,
+  normalizeAnalyticsDays,
+} from '../../../server/services/analytics.service';
 
 export const GET: APIRoute = async ({ url, locals }) => {
   try {
     const { shop } = await requireDashboardShop(locals.user);
-    const days = Math.min(365, Math.max(7, parseInt(url.searchParams.get('days') || '30', 10)));
-    const { stats, totals } = await getShopStats(shop.id, days);
-    const topDeals = await getTopDeals(shop.id, 5);
+    const days = normalizeAnalyticsDays(url.searchParams.get('days'));
+    const { stats, totals, topDeals, source } = await getDashboardAnalytics(shop.id, days);
 
     return json({
       success: true,
@@ -20,6 +22,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
         stats,
         totals,
         topDeals,
+        source,
       },
     });
   } catch (error) {

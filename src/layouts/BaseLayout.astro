@@ -128,7 +128,7 @@ const user = Astro.locals.user;
   
   <!-- Floating Glass Navbar Header -->
   {!hideHeader && (
-  <header class="sticky top-0 z-50 transition-all duration-300">
+  <header class="sticky top-0 z-[1200] transition-all duration-300">
     <div class="mx-auto max-w-4xl px-4 py-3">
       <nav class="glass rounded-2xl px-6 py-3 flex items-center justify-between shadow-lg shadow-secondary/5 border border-border/40">
         <a href="/" class="flex items-center gap-2 group">
@@ -192,7 +192,7 @@ const user = Astro.locals.user;
               {/* Dropdown Menu */}
               <div
                 id="user-dropdown-menu"
-                class="absolute right-0 mt-2 w-64 origin-top-right rounded-2xl border border-border/50 bg-card-bg/95 backdrop-blur-md shadow-xl ring-1 ring-black/5 focus:outline-none transition-all duration-200 transform scale-95 opacity-0 pointer-events-none z-50 p-2"
+                class="fixed right-[max(1rem,calc((100vw-56rem)/2+1rem))] top-[76px] w-64 origin-top-right rounded-2xl border border-border/50 bg-card-bg/95 backdrop-blur-md shadow-xl ring-1 ring-black/5 focus:outline-none transition-all duration-200 transform scale-95 opacity-0 pointer-events-none z-[2147483647] p-2"
                 role="menu"
                 aria-orientation="vertical"
                 aria-labelledby="dropdown-avatar-btn"
@@ -271,7 +271,7 @@ const user = Astro.locals.user;
     </div>
   
     {/* Mobile Slide Drawer Menu */}
-    <div id="mobile-menu" class="hidden md:hidden fixed inset-0 z-40 bg-bg/98 backdrop-blur-xl animate-fade-in flex flex-col pt-6 px-6 pb-8 overflow-y-auto">
+    <div id="mobile-menu" class="hidden md:hidden fixed inset-0 z-[999] bg-bg/98 backdrop-blur-xl animate-fade-in flex flex-col pt-6 px-6 pb-8 overflow-y-auto">
       <!-- 1. Top Header Bar inside Menu (Go back to Home / Close Option) -->
       <div class="flex items-center justify-between pb-4 border-b border-border/30">
         <!-- Logo (Go back to Home) -->
@@ -487,28 +487,53 @@ const user = Astro.locals.user;
     // ─── USER DROP-DOWN MENU CONTROLLER ───
     const dropdownAvatarBtn = document.getElementById('dropdown-avatar-btn');
     const userDropdownMenu = document.getElementById('user-dropdown-menu');
+
+    function positionUserDropdownMenu() {
+      if (!dropdownAvatarBtn || !userDropdownMenu) return;
+      if (userDropdownMenu.parentElement !== document.body) {
+        document.body.appendChild(userDropdownMenu);
+      }
+
+      const triggerRect = dropdownAvatarBtn.getBoundingClientRect();
+      const menuWidth = userDropdownMenu.offsetWidth || 256;
+      const left = Math.min(window.innerWidth - menuWidth - 16, Math.max(16, triggerRect.right - menuWidth));
+      const top = triggerRect.bottom + 8;
+
+      userDropdownMenu.style.position = 'fixed';
+      userDropdownMenu.style.left = `${left}px`;
+      userDropdownMenu.style.right = 'auto';
+      userDropdownMenu.style.top = `${top}px`;
+      userDropdownMenu.style.zIndex = '2147483647';
+    }
+
+    function openUserDropdownMenu() {
+      positionUserDropdownMenu();
+      dropdownAvatarBtn?.setAttribute('aria-expanded', 'true');
+      userDropdownMenu?.classList.remove('scale-95', 'opacity-0', 'pointer-events-none');
+      userDropdownMenu?.classList.add('scale-100', 'opacity-100', 'pointer-events-auto');
+    }
+
+    function closeUserDropdownMenu() {
+      dropdownAvatarBtn?.setAttribute('aria-expanded', 'false');
+      userDropdownMenu?.classList.remove('scale-100', 'opacity-100', 'pointer-events-auto');
+      userDropdownMenu?.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+    }
     
     dropdownAvatarBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       const isExpanded = dropdownAvatarBtn.getAttribute('aria-expanded') === 'true';
-      dropdownAvatarBtn.setAttribute('aria-expanded', !isExpanded ? 'true' : 'false');
-      
       if (!isExpanded) {
-        userDropdownMenu.classList.remove('scale-95', 'opacity-0', 'pointer-events-none');
-        userDropdownMenu.classList.add('scale-100', 'opacity-100', 'pointer-events-auto');
+        openUserDropdownMenu();
       } else {
-        userDropdownMenu.classList.remove('scale-100', 'opacity-100', 'pointer-events-auto');
-        userDropdownMenu.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+        closeUserDropdownMenu();
       }
     });
     
     // Close dropdown on outside click
     document.addEventListener('click', (e) => {
       if (userDropdownMenu && !userDropdownMenu.classList.contains('opacity-0')) {
-        if (!e.target.closest('#user-dropdown-container')) {
-          dropdownAvatarBtn?.setAttribute('aria-expanded', 'false');
-          userDropdownMenu.classList.remove('scale-100', 'opacity-100', 'pointer-events-auto');
-          userDropdownMenu.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+        if (!userDropdownMenu.contains(e.target) && !dropdownAvatarBtn?.contains(e.target)) {
+          closeUserDropdownMenu();
         }
       }
     });
@@ -516,9 +541,13 @@ const user = Astro.locals.user;
     // Close dropdown on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && userDropdownMenu && !userDropdownMenu.classList.contains('opacity-0')) {
-        dropdownAvatarBtn?.setAttribute('aria-expanded', 'false');
-        userDropdownMenu.classList.remove('scale-100', 'opacity-100', 'pointer-events-auto');
-        userDropdownMenu.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+        closeUserDropdownMenu();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (userDropdownMenu && !userDropdownMenu.classList.contains('opacity-0')) {
+        positionUserDropdownMenu();
       }
     });
     // ───────────────────────────────────────
@@ -598,6 +627,6 @@ const user = Astro.locals.user;
   </script>
   
   <!-- Toast Container -->
-  <div id="toast-container" class="fixed right-4 top-4 z-50 flex flex-col gap-2"></div>
+  <div id="toast-container" class="fixed right-4 top-4 z-[1000] flex flex-col gap-2"></div>
 </body>
 </html>

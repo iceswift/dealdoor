@@ -3,7 +3,7 @@
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { db } from '../lib/db';
-import { shops, deals, menuItems } from '../../db/schema';
+import { shops, deals, menuItems, shopSpecialHours } from '../../db/schema';
 import { eq, and, gte, lt, asc } from 'drizzle-orm';
 import ShopHeader from '../components/shop/ShopHeader.astro';
 import DealCard from '../components/shop/DealCard.astro';
@@ -62,6 +62,12 @@ const menuItemsList = await db
   .where(eq(menuItems.shopId, shop.id))
   .orderBy(asc(menuItems.sortOrder));
 
+const specialHoursList = await db
+  .select()
+  .from(shopSpecialHours)
+  .where(eq(shopSpecialHours.shopId, shop.id))
+  .orderBy(asc(shopSpecialHours.date));
+
 const dealId = Astro.url.searchParams.get('deal');
 const highlightedDeal = dealId ? [...activeDeals, ...expiredDeals].find(d => d.id === dealId) : null;
 const invalidDealId = Boolean(dealId && !highlightedDeal);
@@ -91,7 +97,7 @@ const breadcrumbSchema = generateBreadcrumbSchema([
     <div class="absolute bottom-20 left-0 bg-mesh bg-mesh-teal h-64 w-64 opacity-5"></div>
 
     {/* Shop Profile Header */}
-    <ShopHeader shop={shop} />
+    <ShopHeader shop={shop} specialHours={specialHoursList} />
 
     {/* Active Coupons/Deals Listing */}
     <section class="mt-8">

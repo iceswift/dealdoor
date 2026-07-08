@@ -61,6 +61,9 @@ export const shops = sqliteTable('shops', {
   websiteUrl: text('website_url'),
   openingHours: text('opening_hours'),
   isOpen: integer('is_open', { mode: 'boolean' }).default(true),
+  vacationMode: integer('vacation_mode', { mode: 'boolean' }).default(false),
+  vacationMessage: text('vacation_message'),
+  vacationUntil: integer('vacation_until', { mode: 'timestamp' }),
   tier: text('tier').default('free'),
   maxActiveDeals: integer('max_active_deals').default(6),
 
@@ -152,6 +155,21 @@ export const menuItems = sqliteTable('menu_items', {
 
 // ─── Relations ───────────────────────────────────────────
 
+export const shopSpecialHours = sqliteTable('shop_special_hours', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  date: text('date').notNull(), // YYYY-MM-DD
+  isClosed: integer('is_closed', { mode: 'boolean' }).default(false),
+  openTime: text('open_time'),
+  closeTime: text('close_time'),
+  note: text('note'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopDateIdx: index('shop_special_hours_shop_date_idx').on(table.shopId, table.date),
+  shopIdx: index('shop_special_hours_shop_idx').on(table.shopId),
+}));
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   merchant: one(merchants),
   sessions: many(sessions),
@@ -179,6 +197,7 @@ export const shopsRelations = relations(shops, ({ one, many }) => ({
   }),
   deals: many(deals),
   menuItems: many(menuItems),
+  specialHours: many(shopSpecialHours),
 }));
 
 export const dealsRelations = relations(deals, ({ one }) => ({
@@ -191,6 +210,13 @@ export const dealsRelations = relations(deals, ({ one }) => ({
 export const menuItemsRelations = relations(menuItems, ({ one }) => ({
   shop: one(shops, {
     fields: [menuItems.shopId],
+    references: [shops.id],
+  }),
+}));
+
+export const shopSpecialHoursRelations = relations(shopSpecialHours, ({ one }) => ({
+  shop: one(shops, {
+    fields: [shopSpecialHours.shopId],
     references: [shops.id],
   }),
 }));

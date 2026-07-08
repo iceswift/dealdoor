@@ -1,4 +1,4 @@
-import type { deals, shops } from '../../../db/schema';
+import type { deals, shops, shopSpecialHours } from '../../../db/schema';
 import {
   SHOP_CATEGORIES,
   SHOP_CATEGORY_COLORS,
@@ -9,6 +9,7 @@ import type { ShopCategory } from '../constants';
 
 type Deal = typeof deals.$inferSelect;
 type Shop = typeof shops.$inferSelect;
+type ShopSpecialHour = typeof shopSpecialHours.$inferSelect;
 type DealWithShop = { deal: Deal; shop: Shop | null };
 type ShopDealGroup = { shop: Shop; deals: Deal[] };
 
@@ -50,6 +51,7 @@ export type ExploreMapPin = {
   activeDealCount: number;
   urgentDealCount: number;
   isOpen: boolean;
+  specialHourLabel: string;
   hasCouponCode: boolean;
   claimTypes: string[];
   bestEndTime: number;
@@ -151,7 +153,27 @@ export function getBestDeal(shopDeals: Deal[], now = new Date()) {
   })[0];
 }
 
-export function getExploreMapData(activeDeals: DealWithShop[], now = new Date()) {
+function getTodaySpecialHour(shopId: string, specialHoursByShop: Map<string, ShopSpecialHour[]>, now: Date) {
+  const todayKey = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+  return specialHoursByShop.get(shopId)?.find((item) => item.date === todayKey) || null;
+}
+
+function getSpecialHourStatus(item: ShopSpecialHour | null, now: Date) {
+  if (!item) return { isOpen: null as boolean | null, label: '' };
+  if (item.isClosed) return { isOpen: false, label: item.note ? `ปิดพิเศษ · ${item.note}` : 'ปิดพิเศษวันนี้' };
+
+  const nowTime = now.toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Bangkok',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const isOpen = Boolean(item.openTime && item.closeTime && nowTime >= item.openTime && nowTime <= item.closeTime);
+  const label = `เปิดพิเศษ ${item.openTime}-${item.closeTime}${item.note ? ` · ${item.note}` : ''}`;
+  return { isOpen, label };
+}
+
+export function getExploreMapData(activeDeals: DealWithShop[], now = new Date(), specialHoursByShop = new Map<string, ShopSpecialHour[]>()) {
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const dealsByShop = new Map<string, ShopDealGroup>();
 
@@ -176,6 +198,9 @@ export function getExploreMapData(activeDeals: DealWithShop[], now = new Date())
     const latitude = Number(shop.latitude);
     const longitude = Number(shop.longitude);
     const openingHours = formatOpeningHours(shop.openingHours);
+    const isVacation = Boolean(shop.vacationMode);
+    const specialHour = getTodaySpecialHour(shop.id, specialHoursByShop, now);
+    const specialHourStatus = getSpecialHourStatus(specialHour, now);
 
     return {
       shopId: shop.id,
@@ -192,7 +217,8 @@ export function getExploreMapData(activeDeals: DealWithShop[], now = new Date())
       longitude,
       activeDealCount: shopDeals.length,
       urgentDealCount,
-      isOpen: shop.isOpen ?? true,
+      isOpen: !isVacation && (specialHourStatus.isOpen ?? (shop.isOpen ?? true)),
+      specialHourLabel: specialHourStatus.label,
       hasCouponCode: shopDeals.some((deal) => !!deal.couponCode),
       claimTypes: Array.from(new Set(shopDeals.map((deal) => deal.claimType))),
       bestEndTime: bestEndDate?.getTime() || Number.MAX_SAFE_INTEGER,
@@ -217,7 +243,7 @@ export function getExploreMapData(activeDeals: DealWithShop[], now = new Date())
         : null,
       shopHref: `/${shop.slug}`,
       directionsHref: `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`,
-      searchText: `${shop.name} ${shop.address || ''} ${openingHours} ${shop.nearbyBts || ''} ${shop.nearbyMrt || ''} ${shop.accessibilityNotes || ''} ${shop.parkingNotes || ''} ${shop.petNotes || ''} ${shop.familyNotes || ''} ${shopDeals
+      searchText: `${shop.name} ${shop.address || ''} ${isVacation ? 'หยุดพักร้าน ปิดชั่วคราว' : ''} ${shop.vacationMessage || ''} ${openingHours} ${specialHourStatus.label} ${specialHour?.note || ''} ${shop.nearbyBts || ''} ${shop.nearbyMrt || ''} ${shop.accessibilityNotes || ''} ${shop.parkingNotes || ''} ${shop.petNotes || ''} ${shop.familyNotes || ''} ${shopDeals
         .map((deal) => `${deal.title} ${deal.description || ''} ${deal.discountText || ''} ${deal.couponCode || ''}`)
         .join(' ')}`.toLowerCase(),
     };

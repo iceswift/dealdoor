@@ -3,6 +3,7 @@
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import ShopFormWrapper from '../../components/dashboard/ShopFormWrapper.tsx';
+import Icon from '../../components/icons/index.astro';
 import { getDashboardContext } from '../../lib/dashboard/server';
 
 const context = await getDashboardContext(Astro.locals.user);
@@ -14,9 +15,16 @@ if (!context) {
 <DashboardLayout title="ข้อมูลร้านค้า" activeTab="edit">
   <div class="space-y-6">
     <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
-      <p class="text-xs font-black uppercase tracking-wider text-primary">Shop Profile</p>
-      <h1 class="text-2xl font-black text-secondary">{context.shop ? 'แก้ไขข้อมูลร้านค้า' : 'สร้างร้านค้า'}</h1>
-      <p class="mt-1 text-sm font-bold text-text-secondary">ข้อมูลนี้ถูกใช้กับหน้าร้าน การ์ดดีล หน้า Explore และ Pin Map</p>
+      <div class="flex items-start gap-3">
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Icon name="pencil" class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-xs font-black uppercase tracking-wider text-primary">Shop Profile</p>
+          <h1 class="text-2xl font-black text-secondary">{context.shop ? 'แก้ไขข้อมูลร้านค้า' : 'สร้างร้านค้า'}</h1>
+          <p class="mt-1 text-sm font-bold text-text-secondary">ข้อมูลนี้ถูกใช้กับหน้าร้าน การ์ดดีล หน้า Explore และ Pin Map</p>
+        </div>
+      </div>
     </section>
 
     <ShopFormWrapper client:load shop={context.shop} />

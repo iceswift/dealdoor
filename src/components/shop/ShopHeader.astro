@@ -1,7 +1,7 @@
 ---
 // src/components/shop/ShopHeader.astro
 
-import type { Shop } from '../../db/schema';
+import type { Shop, shopSpecialHours } from '../../db/schema';
 import { SHOP_CATEGORY_LABELS, SHOP_CATEGORY_ICONS } from '../../lib/constants';
 import type { ShopCategory } from '../../lib/constants';
 import { isOpenNow, parseOpeningHours } from '../../lib/utils';
@@ -13,16 +13,37 @@ import Icon from '../icons/index.astro';
 interface Props {
   // ─── BACKEND DATABASE BINDINGS ───
   shop: Shop;
+  specialHours?: (typeof shopSpecialHours.$inferSelect)[];
   // ─────────────────────────────────
 }
 
-const { shop } = Astro.props;
+const { shop, specialHours = [] } = Astro.props;
 
 // ─── BACKEND PROPERTIES ───
 const categoryLabel = SHOP_CATEGORY_LABELS[shop.category as ShopCategory] || shop.category;
 const categoryIcon = SHOP_CATEGORY_ICONS[shop.category as ShopCategory] || '🏪';
 const hours = parseOpeningHours(shop.openingHours);
-const shopIsOpen = isOpenNow(hours);
+const isVacation = Boolean(shop.vacationMode);
+const todayKey = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+const todaySpecialHour = specialHours.find((item) => item.date === todayKey);
+const nowTime = new Date().toLocaleTimeString('en-GB', {
+  timeZone: 'Asia/Bangkok',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+const isOpenBySpecialHour = todaySpecialHour
+  ? !todaySpecialHour.isClosed && Boolean(todaySpecialHour.openTime && todaySpecialHour.closeTime && nowTime >= todaySpecialHour.openTime && nowTime <= todaySpecialHour.closeTime)
+  : null;
+const shopIsOpen = !isVacation && (isOpenBySpecialHour ?? isOpenNow(hours));
+const specialHourLabel = todaySpecialHour
+  ? todaySpecialHour.isClosed
+    ? 'วันนี้ร้านปิดพิเศษ'
+    : `วันนี้เปิดพิเศษ ${todaySpecialHour.openTime}-${todaySpecialHour.closeTime}`
+  : null;
+const vacationUntilLabel = shop.vacationUntil
+  ? new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).format(new Date(shop.vacationUntil))
+  : null;
 // ──────────────────────────
 ---
 
@@ -63,11 +84,16 @@ const shopIsOpen = isOpenNow(hours);
             <span
               class:list={[
                 'badge border-none shadow-sm font-bold',
-                shopIsOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+                isVacation
+                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                  : shopIsOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
               ]}
             >
-              <span class:list={['h-1.5 w-1.5 rounded-full animate-ping', shopIsOpen ? 'bg-emerald-500' : 'bg-rose-500']} />
-              {shopIsOpen ? 'เปิดอยู่' : 'ปิดแล้ว'}
+              <span class:list={[
+                'h-1.5 w-1.5 rounded-full animate-ping',
+                isVacation ? 'bg-amber-500' : shopIsOpen ? 'bg-emerald-500' : 'bg-rose-500'
+              ]} />
+              {isVacation ? 'หยุดพักร้าน' : shopIsOpen ? 'เปิดอยู่' : 'ปิดแล้ว'}
             </span>
             <span class="badge border-none bg-secondary/10 dark:bg-secondary/20 text-secondary dark:text-white font-bold">
               {categoryLabel}
@@ -89,6 +115,37 @@ const shopIsOpen = isOpenNow(hours);
       
       {shop.description && (
         <p class="mt-2.5 text-sm text-text-secondary leading-relaxed max-w-2xl">{shop.description}</p>
+      )}
+
+      {specialHourLabel && !isVacation && (
+        <div class="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-secondary">
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
+              <Icon name="calendar" class="h-4 w-4" />
+            </div>
+            <div>
+              <p class="text-sm font-extrabold">{specialHourLabel}</p>
+              {todaySpecialHour?.note && <p class="mt-1 text-xs font-bold leading-5 text-text-secondary">{todaySpecialHour.note}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isVacation && (
+        <div class="mt-4 rounded-2xl border border-amber-500/20 bg-amber-50 p-4 text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+              <Icon name="clock" class="h-4 w-4" />
+            </div>
+            <div>
+              <p class="text-sm font-extrabold">ร้านหยุดพักชั่วคราว</p>
+              <p class="mt-1 text-xs font-bold leading-5">
+                {shop.vacationMessage || 'ร้านหยุดรับลูกค้าชั่วคราว และจะกลับมาเปิดให้บริการเร็ว ๆ นี้'}
+                {vacationUntilLabel && <span> กลับมาเปิดประมาณ {vacationUntilLabel}</span>}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
       
       {shop.address && (

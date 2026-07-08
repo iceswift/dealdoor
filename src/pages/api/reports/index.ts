@@ -3,29 +3,17 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { createReport, getReports, getReportStats } from '../../../lib/reports';
-import { handleApiError, badRequest } from '../../../lib/errors';
-import { reportSchema, validateInput } from '../../../lib/validations';
+import { handleApiError } from '../../../lib/errors';
+import { json } from '../../../lib/dashboard/server';
+import {
+  createReportFromRequest,
+  getReportDashboardData,
+} from '../../../server/services/report.service';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
-    const status = url.searchParams.get('status') || undefined;
-    const targetType = url.searchParams.get('targetType') || undefined;
-    const limit = parseInt(url.searchParams.get('limit') || '50');
-
-    const reportsList = await getReports({ status, targetType, limit });
-    const stats = await getReportStats();
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          reports: reportsList,
-          stats,
-        },
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    const data = await getReportDashboardData(url);
+    return json({ success: true, data });
   } catch (error) {
     return handleApiError(error);
   }
@@ -33,40 +21,13 @@ export const GET: APIRoute = async ({ url }) => {
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    const rawData = await request.json();
-
-    // Validate with Zod
-    const validation = validateInput(reportSchema, rawData);
-    if (!validation.success) {
-      throw badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', validation.errors);
-    }
-
-    const data = validation.data!;
-
-    // Create report
-    const reportId = await createReport({
-      reporterId: locals.user?.id,
-      targetType: data.targetType,
-      targetId: data.targetId,
-      reason: data.reason as any,
-      description: data.description,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: { id: reportId },
-        message: 'รายงานสำเร็จ ขอบคุณสำหรับการแจ้งเตือน',
-      }),
-      { status: 201, headers: { 'Content-Type': 'application/json' } }
-    );
-  } catch (error: any) {
-    if (error.message === 'คุณได้รายงานรายการนี้แล้ว') {
-      return new Response(
-        JSON.stringify({ success: false, error: { code: 'DUPLICATE', message: error.message } }),
-        { status: 409, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    const report = await createReportFromRequest(await request.json(), locals.user?.id);
+    return json({
+      success: true,
+      data: report,
+      message: 'รายงานสำเร็จ ขอบคุณสำหรับการแจ้งเตือน',
+    }, { status: 201 });
+  } catch (error) {
     return handleApiError(error);
   }
 };

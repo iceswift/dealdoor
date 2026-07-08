@@ -42,6 +42,15 @@ export const shopSchema = z.object({
     .transform(s => s?.trim() || undefined),
 
   isOpen: z.boolean().optional(),
+  vacationMode: z.boolean().optional(),
+  vacationMessage: z.string()
+    .max(160, 'ข้อความหยุดพักร้านต้องไม่เกิน 160 ตัวอักษร')
+    .optional()
+    .transform(s => s?.trim() || undefined),
+  vacationUntil: z.preprocess(
+    (value) => value === undefined || value === '' || value === null ? undefined : new Date(String(value)),
+    z.date().optional()
+  ),
 
   
   phone: z.string()

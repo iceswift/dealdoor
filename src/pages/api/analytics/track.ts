@@ -3,32 +3,14 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { trackEvent, type EventType } from '../../../lib/analytics';
-import { handleApiError, badRequest } from '../../../lib/errors';
+import { handleApiError } from '../../../lib/errors';
+import { json } from '../../../lib/dashboard/server';
+import { trackEventFromRequest } from '../../../server/services/analytics.service';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const data = await request.json();
-
-    // Validate
-    if (!data.type || !data.shopId) {
-      throw badRequest('VALIDATION_ERROR', 'กรุณาระบุ type และ shopId');
-    }
-
-    // Track event
-    await trackEvent({
-      type: data.type as EventType,
-      shopId: data.shopId,
-      dealId: data.dealId,
-      metadata: data.metadata,
-      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
-      userAgent: request.headers.get('user-agent') || undefined,
-    });
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    await trackEventFromRequest(await request.json(), request);
+    return json({ success: true });
   } catch (error) {
     return handleApiError(error);
   }

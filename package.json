@@ -15,6 +15,8 @@
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bunx drizzle-kit migrate",
     "db:push": "bunx drizzle-kit push",
+    "db:check": "node scripts/db-check-schema.cjs",
+    "db:baseline": "node scripts/db-baseline-existing.cjs",
     "db:seed": "bun run db/seed.ts",
     "db:studio": "bunx drizzle-kit studio",
     "db:reset": "if (Test-Path db/dev.db) { Remove-Item db/dev.db }; bun run db:push; bun run db:seed",

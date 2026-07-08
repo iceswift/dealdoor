@@ -3,23 +3,14 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { getSessionCookie, deleteSession, deleteSessionCookie } from '../../../lib/auth';
 import { handleApiError } from '../../../lib/errors';
+import { json } from '../../../lib/dashboard/server';
+import { logoutCurrentSession } from '../../../server/services/auth.service';
 
 export const POST: APIRoute = async ({ cookies }) => {
   try {
-    const sessionId = getSessionCookie(cookies);
-
-    if (sessionId) {
-      await deleteSession(sessionId);
-    }
-
-    deleteSessionCookie(cookies);
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    await logoutCurrentSession(cookies);
+    return json({ success: true });
   } catch (error) {
     return handleApiError(error);
   }
