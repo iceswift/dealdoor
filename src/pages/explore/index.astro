@@ -3,7 +3,7 @@
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../lib/db';
-import { shops, deals, shopSpecialHours } from '../../../db/schema';
+import { shops, deals, shopSpecialHours } from '../../lib/db-schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { getLangFromUrl, t } from '../../i18n';
 import { SHOP_CATEGORY_LABELS, SHOP_CATEGORY_COLORS } from '../../lib/constants';

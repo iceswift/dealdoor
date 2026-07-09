@@ -1,7 +1,7 @@
 // src/lib/auth.ts
 
 import { db } from './db';
-import { users, sessions, merchants, shops } from '../../db/schema';
+import { users, sessions, merchants, shops } from './db-schema';
 import { eq, and, gt } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 import { hash, verify } from '@node-rs/argon2';

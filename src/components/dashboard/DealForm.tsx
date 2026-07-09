@@ -1,7 +1,7 @@
 // src/components/dashboard/DealForm.tsx
 
 import { useMemo, useState } from 'react';
-import type { Deal } from '../../../db/schema';
+import type { Deal } from '../../lib/db-schema';
 import ImageUpload from '../shared/ImageUpload.tsx';
 import { DEAL_CATEGORY_COLORS, type DealCategory } from '../../lib/constants';
 

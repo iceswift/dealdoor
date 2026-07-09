@@ -1,6 +1,6 @@
 // src/components/shop/ContactButtons.tsx
 
-import type { Shop } from '../../../db/schema';
+import type { Shop } from '../../lib/db-schema';
 
 interface ContactButtonsProps {
   shop: Shop;

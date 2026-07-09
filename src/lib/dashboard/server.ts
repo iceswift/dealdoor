@@ -7,7 +7,8 @@ import { db } from '../db';
 import { getMerchantFromUser, getMerchantShop } from '../auth';
 import { getShopStats, getTopDeals } from '../../server/services/analytics.service';
 import { getTierLimits, type Tier } from '../tiers';
-import { deals, shops, analyticsEvents, menuItems, shopSpecialHours, type Deal, type Shop } from '../../../db/schema';
+import { deals, shops, analyticsEvents, menuItems, shopSpecialHours, type Deal, type Shop } from '../db-schema';
+import { firstRow } from '../db-query';
 import { forbidden, notFound, unauthorized } from '../errors';
 
 type DashboardUser = {
@@ -64,11 +65,11 @@ export async function requireDashboardShop(user: DashboardUser | null | undefine
 }
 
 export async function assertShopOwnership(shopId: string, merchantId: string) {
-  const shop = await db
+  const shop = await firstRow(db
     .select()
     .from(shops)
     .where(and(eq(shops.id, shopId), eq(shops.merchantId, merchantId)))
-    .get();
+    .limit(1));
 
   if (!shop) {
     throw forbidden('ไม่มีสิทธิ์จัดการร้านค้านี้');
@@ -78,11 +79,11 @@ export async function assertShopOwnership(shopId: string, merchantId: string) {
 }
 
 export async function getOwnedDeal(dealId: string, shopId: string) {
-  const deal = await db
+  const deal = await firstRow(db
     .select()
     .from(deals)
     .where(and(eq(deals.id, dealId), eq(deals.shopId, shopId)))
-    .get();
+    .limit(1));
 
   if (!deal) {
     throw notFound('ไม่พบดีลนี้ในร้านของคุณ');
@@ -116,11 +117,11 @@ export async function listDashboardSpecialHours(shopId: string) {
 }
 
 export async function getOwnedSpecialHour(itemId: string, shopId: string) {
-  const item = await db
+  const item = await firstRow(db
     .select()
     .from(shopSpecialHours)
     .where(and(eq(shopSpecialHours.id, itemId), eq(shopSpecialHours.shopId, shopId)))
-    .get();
+    .limit(1));
 
   if (!item) {
     throw notFound('ไม่พบเวลาพิเศษนี้ในร้านของคุณ');
@@ -130,11 +131,11 @@ export async function getOwnedSpecialHour(itemId: string, shopId: string) {
 }
 
 export async function getOwnedMenuItem(itemId: string, shopId: string) {
-  const item = await db
+  const item = await firstRow(db
     .select()
     .from(menuItems)
     .where(and(eq(menuItems.id, itemId), eq(menuItems.shopId, shopId)))
-    .get();
+    .limit(1));
 
   if (!item) {
     throw notFound('ไม่พบเมนูนี้ในร้านของคุณ');

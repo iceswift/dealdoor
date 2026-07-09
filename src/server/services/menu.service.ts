@@ -1,6 +1,6 @@
 import { createId } from '@paralleldrive/cuid2';
 import { eq } from 'drizzle-orm';
-import { menuItems, type Shop } from '../../../db/schema';
+import { menuItems, type Shop } from '../../lib/db-schema';
 import { badRequest, unprocessable } from '../../lib/errors';
 import { db } from '../../lib/db';
 import { getTierLimits, type Tier } from '../../lib/tiers';

@@ -1,0 +1,288 @@
+import {
+  boolean,
+  doublePrecision,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
+
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  email: text('email').unique().notNull(),
+  passwordHash: text('password_hash').notNull(),
+  name: text('name').notNull(),
+  role: text('role').default('merchant'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  emailIdx: index('users_email_idx').on(table.email),
+}));
+
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdx: index('sessions_user_idx').on(table.userId),
+  expiresAtIdx: index('sessions_expires_at_idx').on(table.expiresAt),
+}));
+
+export const merchants = pgTable('merchants', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  userId: text('user_id').references(() => users.id),
+  email: text('email').unique().notNull(),
+  name: text('name').notNull(),
+  phone: text('phone'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const shops = pgTable('shops', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  merchantId: text('merchant_id').notNull().references(() => merchants.id),
+  slug: text('slug').unique().notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  category: text('category').notNull(),
+  coverImage: text('cover_image'),
+  logoImage: text('logo_image'),
+  address: text('address'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  phone: text('phone'),
+  lineId: text('line_id'),
+  facebookUrl: text('facebook_url'),
+  instagramUrl: text('instagram_url'),
+  tiktokUrl: text('tiktok_url'),
+  websiteUrl: text('website_url'),
+  openingHours: text('opening_hours'),
+  isOpen: boolean('is_open').default(true),
+  vacationMode: boolean('vacation_mode').default(false),
+  vacationMessage: text('vacation_message'),
+  vacationUntil: timestamp('vacation_until', { mode: 'date' }),
+  tier: text('tier').default('free'),
+  maxActiveDeals: integer('max_active_deals').default(6),
+
+  acceptsPromptPay: boolean('accepts_prompt_pay').default(false),
+  acceptsCash: boolean('accepts_cash').default(true),
+  acceptsCreditCard: boolean('accepts_credit_card').default(false),
+  acceptsTrueMoney: boolean('accepts_true_money').default(false),
+  acceptsRabbitLinePay: boolean('accepts_rabbit_line_pay').default(false),
+  paymentNotes: text('payment_notes'),
+
+  wheelchairAccessible: boolean('wheelchair_accessible').default(false),
+  strollerAccessible: boolean('stroller_accessible').default(false),
+  seniorFriendlyRestroom: boolean('senior_friendly_restroom').default(false),
+  elevatorAvailable: boolean('elevator_available').default(false),
+  brailleMenu: boolean('braille_menu').default(false),
+  accessibilityNotes: text('accessibility_notes'),
+
+  freeParking: boolean('free_parking').default(false),
+  paidParking: boolean('paid_parking').default(false),
+  motorcycleParking: boolean('motorcycle_parking').default(false),
+  evCharging: boolean('ev_charging').default(false),
+  nearbyBts: text('nearby_bts'),
+  nearbyMrt: text('nearby_mrt'),
+  parkingNotes: text('parking_notes'),
+
+  petFriendly: boolean('pet_friendly').default(false),
+  petMenu: boolean('pet_menu').default(false),
+  petWaterBowl: boolean('pet_water_bowl').default(false),
+  petNotes: text('pet_notes'),
+
+  kidsMenu: boolean('kids_menu').default(false),
+  highChairs: boolean('high_chairs').default(false),
+  playArea: boolean('play_area').default(false),
+  babyChanging: boolean('baby_changing').default(false),
+  familyNotes: text('family_notes'),
+
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  slugIdx: index('shops_slug_idx').on(table.slug),
+  categoryIdx: index('shops_category_idx').on(table.category),
+  merchantIdx: index('shops_merchant_idx').on(table.merchantId),
+}));
+
+export const deals = pgTable('deals', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  title: text('title').notNull(),
+  category: text('category').notNull(),
+  description: text('description'),
+  shortDescription: text('short_description'),
+  discountText: text('discount_text'),
+  conditions: text('conditions'),
+  couponCode: text('coupon_code'),
+  claimType: text('claim_type').notNull(),
+  imageUrl: text('image_url'),
+  startDate: timestamp('start_date', { mode: 'date' }),
+  endDate: timestamp('end_date', { mode: 'date' }).notNull(),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopIdx: index('deals_shop_idx').on(table.shopId),
+  activeIdx: index('deals_active_idx').on(table.isActive, table.endDate),
+  categoryIdx: index('deals_category_idx').on(table.category),
+}));
+
+export const menuItems = pgTable('menu_items', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  name: text('name').notNull(),
+  price: doublePrecision('price'),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopIdx: index('menu_items_shop_idx').on(table.shopId),
+}));
+
+export const shopSpecialHours = pgTable('shop_special_hours', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  date: text('date').notNull(),
+  isClosed: boolean('is_closed').default(false),
+  openTime: text('open_time'),
+  closeTime: text('close_time'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopDateIdx: index('shop_special_hours_shop_date_idx').on(table.shopId, table.date),
+  shopIdx: index('shop_special_hours_shop_idx').on(table.shopId),
+}));
+
+export const analyticsEvents = pgTable('analytics_events', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  type: text('type').notNull(),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  dealId: text('deal_id').references(() => deals.id),
+  metadata: text('metadata'),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopIdx: index('analytics_shop_idx').on(table.shopId),
+  typeIdx: index('analytics_type_idx').on(table.type),
+  createdAtIdx: index('analytics_created_at_idx').on(table.createdAt),
+}));
+
+export const dailyStats = pgTable('daily_stats', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  date: text('date').notNull(),
+  pageViews: integer('page_views').default(0),
+  dealViews: integer('deal_views').default(0),
+  dealClicks: integer('deal_clicks').default(0),
+  shares: integer('shares').default(0),
+  contactClicks: integer('contact_clicks').default(0),
+  uniqueVisitors: integer('unique_visitors').default(0),
+}, (table) => ({
+  shopDateIdx: index('daily_stats_shop_date_idx').on(table.shopId, table.date),
+}));
+
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  userId: text('user_id').references(() => users.id),
+  shopId: text('shop_id').references(() => shops.id),
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  metadata: text('metadata'),
+  read: boolean('read').default(false),
+  readAt: timestamp('read_at', { mode: 'date' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdx: index('notifications_user_idx').on(table.userId),
+  shopIdx: index('notifications_shop_idx').on(table.shopId),
+  readIdx: index('notifications_read_idx').on(table.read),
+  userReadCreatedIdx: index('notifications_user_read_created_idx').on(table.userId, table.read, table.createdAt),
+  shopReadCreatedIdx: index('notifications_shop_read_created_idx').on(table.shopId, table.read, table.createdAt),
+}));
+
+export const reports = pgTable('reports', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  reporterId: text('reporter_id').references(() => users.id),
+  targetType: text('target_type').notNull(),
+  targetId: text('target_id').notNull(),
+  reason: text('reason').notNull(),
+  description: text('description'),
+  status: text('status').default('pending'),
+  reviewedBy: text('reviewed_by').references(() => users.id),
+  reviewedAt: timestamp('reviewed_at', { mode: 'date' }),
+  resolution: text('resolution'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  statusIdx: index('reports_status_idx').on(table.status),
+  targetIdx: index('reports_target_idx').on(table.targetType, table.targetId),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  merchant: one(merchants),
+  sessions: many(sessions),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const merchantsRelations = relations(merchants, ({ one, many }) => ({
+  user: one(users, {
+    fields: [merchants.userId],
+    references: [users.id],
+  }),
+  shops: many(shops),
+}));
+
+export const shopsRelations = relations(shops, ({ one, many }) => ({
+  merchant: one(merchants, {
+    fields: [shops.merchantId],
+    references: [merchants.id],
+  }),
+  deals: many(deals),
+  menuItems: many(menuItems),
+  specialHours: many(shopSpecialHours),
+}));
+
+export const dealsRelations = relations(deals, ({ one }) => ({
+  shop: one(shops, {
+    fields: [deals.shopId],
+    references: [shops.id],
+  }),
+}));
+
+export const menuItemsRelations = relations(menuItems, ({ one }) => ({
+  shop: one(shops, {
+    fields: [menuItems.shopId],
+    references: [shops.id],
+  }),
+}));
+
+export const shopSpecialHoursRelations = relations(shopSpecialHours, ({ one }) => ({
+  shop: one(shops, {
+    fields: [shopSpecialHours.shopId],
+    references: [shops.id],
+  }),
+}));
+
+export type User = typeof users.$inferSelect;
+export type Session = typeof sessions.$inferSelect;
+export type Shop = typeof shops.$inferSelect;
+export type Deal = typeof deals.$inferSelect;
+export type MenuItem = typeof menuItems.$inferSelect;
+export type Merchant = typeof merchants.$inferSelect;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type DailyStats = typeof dailyStats.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+export type Report = typeof reports.$inferSelect;

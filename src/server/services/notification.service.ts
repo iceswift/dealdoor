@@ -1,7 +1,8 @@
 import { createId } from '@paralleldrive/cuid2';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import { deals, notifications } from '../../../db/schema';
+import { deals, notifications } from '../../lib/db-schema';
 import { db } from '../../lib/db';
+import { isToday, jsonTextEquals } from '../../lib/db-sql';
 
 export type NotificationType = 'deal_expiring' | 'deal_expired' | 'milestone' | 'system';
 
@@ -165,8 +166,8 @@ export async function checkDealExpiration(): Promise<void> {
       where: and(
         eq(notifications.type, 'deal_expiring'),
         eq(notifications.shopId, deal.shopId),
-        sql`json_extract(${notifications.metadata}, '$.dealId') = ${deal.id}`,
-        sql`date(${notifications.createdAt}) = date('now')`
+        jsonTextEquals(notifications.metadata, 'dealId', deal.id),
+        isToday(notifications.createdAt)
       ),
     });
 

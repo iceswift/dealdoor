@@ -1,8 +1,8 @@
 # DealDoor Postgres Migration Plan
 
 Date: 2026-07-08  
-Phase: C - Postgres Migration Plan  
-Status: Planned, not implemented
+Phase: C2 - Postgres Schema Draft  
+Status: Postgres schema draft and first migration generated, runtime still SQLite
 
 ## Decision
 
@@ -40,10 +40,11 @@ Changing this directly in place would affect every service and page at once. The
 Recommended strategy:
 
 1. Keep current SQLite schema as the local baseline.
-2. Add a Postgres schema file in a later implementation phase, likely `db/schema.pg.ts`.
-3. Add a Postgres Drizzle config, likely `drizzle.pg.config.ts`.
+2. Add a Postgres schema file in a later implementation phase, likely `db/schema.pg.ts`. Done.
+3. Add a Postgres Drizzle config, likely `drizzle.pg.config.ts`. Done.
 4. Add a Postgres DB client module, likely `src/lib/db.pg.ts`, or update `src/lib/db.ts` with a production-only Postgres path after tests pass.
 5. Generate fresh Postgres migrations into a separate folder, likely `drizzle/pg-migrations`.
+   Done.
 6. Create a data export/import script from SQLite to Postgres.
 7. Run smoke tests against Postgres.
 8. Switch production runtime only after the import is verified.
@@ -280,33 +281,186 @@ After public traffic starts on Postgres, rollback to SQLite becomes harder becau
 
 Done in this document.
 
-Next:
+Done:
 
-- Add Postgres dependency.
 - Add `drizzle.pg.config.ts`.
-- Add Postgres schema draft.
+- Add Postgres schema draft as `db/schema.pg.ts`.
+- Add package scripts for Postgres generate/migrate/studio.
 
 ### Phase C2 - Postgres Schema
 
-Create `db/schema.pg.ts`.
+Done:
 
-Generate Postgres migration.
+- Create `db/schema.pg.ts`.
+- Generate Postgres migration in `drizzle/pg-migrations`.
+- Keep Postgres migrations separate from SQLite migrations.
 
 Do not change runtime app yet.
 
-### Phase C3 - Runtime Cutover Branch
+Current C2 note:
 
-Switch `src/lib/db.ts` to Postgres.
+- Runtime remains SQLite through `src/lib/db.ts`.
+- `db/schema.pg.ts` mirrors current table shape and intentionally does not normalize `shops`.
+- `metadata` fields remain `text` for simpler SQLite-to-Postgres migration.
+- `shop_special_hours.date` and `daily_stats.date` remain `text` because app logic expects `YYYY-MM-DD` strings.
+- Generated migration: `drizzle/pg-migrations/0000_chunky_sentry.sql`.
+
+### Phase C3 - Local Postgres Validation
+
+Done:
+
+- Add local Postgres compose file: `docker-compose.pg.yml`.
+- Add schema verification script: `scripts/db-verify-postgres-schema.cjs`.
+- Add package scripts for local Postgres lifecycle and verification.
+
+Commands:
+
+```bash
+bun run db:pg:up
+bun run db:check:pg
+```
+
+Local default `DATABASE_URL` for the Postgres Drizzle config is `postgres://dealdoor:dealdoor@localhost:54329/dealdoor`.
+Set `DATABASE_URL` explicitly when testing managed Postgres or VPS Postgres.
+
+Docker is not required for local Postgres. `docker-compose.pg.yml` is only the isolated default path. If native Postgres is installed on the laptop, use a normal local service instead:
+
+```powershell
+$env:DB_DRIVER="postgres"
+$env:DATABASE_URL="postgres://dealdoor:dealdoor@localhost:5432/dealdoor"
+bun run db:migrate:pg
+bun run dev
+```
+
+Native local Postgres is lighter than Docker Desktop on many Windows laptops, especially when Docker Desktop keeps WSL2 memory high.
+
+See `docs/local-postgres-options.md` for Native Postgres, Docker Postgres, and SQLite quick-mode workflows.
+
+Keep runtime app on SQLite until the Postgres schema has been applied and verified locally.
+
+### Phase C4 - Runtime Cutover Branch
+
+Phase started with runtime schema boundary work.
+
+Done:
+
+- Add `src/lib/db-schema.ts` as the only SQLite runtime schema adapter.
+- Add `src/lib/db-schema.postgres.ts` as the future Postgres schema adapter.
+- Rewrite runtime imports in `src` to use `src/lib/db-schema` instead of importing `db/schema` directly.
+- Add `bun run db:check:boundary` to prevent direct schema imports from coming back.
+
+Switch the runtime DB layer to Postgres.
+
+Important:
+
+- App code now imports table definitions through `src/lib/db-schema.ts`.
+- Postgres runtime needs the DB client and schema adapter to change together.
+- Do not flip only `src/lib/db.ts`; that would pair a Postgres client with the current SQLite schema adapter.
+- After this boundary step, the next cutover can change the schema adapter and DB client together.
 
 Run build and service smoke tests against local Docker Postgres.
 
-### Phase C4 - Data Migration Tooling
+### Phase C5 - Data Migration Tooling
 
-Add export/import scripts.
+Done:
+
+- Add shared table/column migration metadata in `scripts/db-migration-shared.cjs`.
+- Add SQLite JSON export script: `scripts/db-export-sqlite.cjs`.
+- Add Postgres JSON import script: `scripts/db-import-postgres.cjs`.
+- Add package scripts:
+  - `bun run db:export:sqlite`
+  - `bun run db:import:pg`
+
+Commands:
+
+```bash
+bun run db:export:sqlite
+bun run db:pg:up
+bun run db:check:pg
+bun run db:import:pg
+```
+
+The Postgres importer refuses to write into non-empty target tables unless `--truncate` is passed. Use `--truncate` only for disposable local, staging, or freshly restored databases.
+
+Local import result from the current `db/dev.db`:
+
+- `users`: 1
+- `sessions`: 7 imported, 18 orphan rows skipped
+- `merchants`: 3
+- `shops`: 3
+- `deals`: 10
+- `menu_items`: 5
+- `shop_special_hours`: 22
+- `analytics_events`: 408 imported, 52 orphan rows skipped
+- `daily_stats`: 0
+- `notifications`: 0
+- `reports`: 1
+
+Skipped orphan rows are expected cleanup from SQLite data that was allowed before Postgres foreign keys were enforced.
 
 Test with current `db/dev.db`.
 
-### Phase C5 - Staging Cutover
+### Phase C6 - Staging Cutover
+
+Before staging cutover, run the Postgres runtime smoke harness:
+
+```bash
+bun run db:pg:up
+bun run db:check:pg
+bun run db:export:sqlite
+bun run db:import:pg:truncate
+bun run db:smoke:pg
+```
+
+Runtime smoke status:
+
+- `src/lib/db.postgres.ts` provides a Postgres Drizzle client for validation.
+- `bun run db:smoke:pg` verifies imported data can be read through Drizzle Postgres table definitions.
+- The smoke test also verifies an analytics insert/select/delete cycle.
+- Latest local smoke passed against imported `db/dev.db` data:
+  - `users`: 1
+  - `sessions`: 7
+  - `shops`: 3
+  - `deals`: 10
+  - `menu_items`: 5
+  - `shop_special_hours`: 22
+  - `analytics_events`: 408
+  - `reports`: 1
+
+Known cutover blocker:
+
+- SQLite-only `.get()`, `.all()`, and `db.run()` calls were removed from runtime app queries.
+- Runtime date/json SQL helpers are centralized in `src/lib/db-sql.ts`.
+- `bun run db:check:portability` blocks SQLite-specific query helpers and SQL expressions from spreading back into app code.
+- Full app cutover still needs the main `src/lib/db.ts` and `src/lib/db-schema.ts` adapter switch to happen together.
+
+Runtime cutover switch status:
+
+- `DB_DRIVER=sqlite` or unset keeps the app on SQLite.
+- `DB_DRIVER=postgres` switches `src/lib/db.ts`, `src/lib/db-schema.ts`, and SQL helpers together.
+- Production env template now sets `DB_DRIVER=postgres`.
+- `bun run build:pg` builds the app with `DB_DRIVER=postgres` and local Postgres default `DATABASE_URL`.
+- Latest local `bun run build:pg` passed against imported Postgres data.
+
+Postgres app smoke:
+
+```bash
+bun run db:pg:up
+bun run db:check:pg
+bun run db:export:sqlite
+bun run db:import:pg:truncate
+bun run build:pg
+bun run smoke:pg:app
+```
+
+The app smoke starts the built Astro server on port `4325` with `DB_DRIVER=postgres`, checks `/api/health`, `/`, `/explore`, and `/moon-bowl-cafe`, then shuts the server down.
+
+Latest local app smoke passed:
+
+- `/api/health`: 200
+- `/`: 200
+- `/explore`: 200
+- `/moon-bowl-cafe`: 200
 
 Run Postgres app in staging.
 

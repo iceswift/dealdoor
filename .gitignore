@@ -18,6 +18,7 @@ db/*.db
 db/*.db-shm
 db/*.db-wal
 public/uploads/
+tmp/
 
 
 # environment variables

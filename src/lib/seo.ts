@@ -1,6 +1,6 @@
 // src/lib/seo.ts
 
-import type { Shop, Deal } from '../../db/schema';
+import type { Shop, Deal } from './db-schema';
 
 export function generateLocalBusinessSchema(shop: Shop): object {
   return {

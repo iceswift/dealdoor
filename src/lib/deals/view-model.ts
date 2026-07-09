@@ -1,4 +1,4 @@
-import type { Deal, Shop } from '../../../db/schema';
+import type { Deal, Shop } from '../db-schema';
 import {
   CLAIM_TYPE_LABELS,
   DEAL_CATEGORY_COLORS,

@@ -3,7 +3,8 @@
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../lib/db';
-import { deals, shops } from '../../../db/schema';
+import { deals, shops } from '../../lib/db-schema';
+import { firstRow } from '../../lib/db-query';
 import { eq, and, ne, gte } from 'drizzle-orm';
 import { getDealViewModel } from '../../lib/deals/view-model';
 import { getDealViewCount } from '../../lib/analytics';
@@ -17,7 +18,7 @@ if (!id) {
   return Astro.redirect('/explore');
 }
 
-const result = await db
+const result = await firstRow(db
   .select({
     deal: deals,
     shop: shops,
@@ -25,7 +26,7 @@ const result = await db
   .from(deals)
   .leftJoin(shops, eq(deals.shopId, shops.id))
   .where(eq(deals.id, id))
-  .get();
+  .limit(1));
 
 if (!result?.deal || !result.shop) {
   return Astro.redirect('/explore');

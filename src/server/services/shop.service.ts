@@ -1,8 +1,9 @@
 import { createId } from '@paralleldrive/cuid2';
 import { eq } from 'drizzle-orm';
 import type { z } from 'zod';
-import { shops, type Shop } from '../../../db/schema';
+import { shops, type Shop } from '../../lib/db-schema';
 import { db } from '../../lib/db';
+import { firstRow } from '../../lib/db-query';
 import { badRequest, conflict, notFound } from '../../lib/errors';
 import { sanitizeSlug } from '../../lib/security';
 import { shopSchema, validateInput } from '../../lib/validations';
@@ -130,7 +131,7 @@ export async function listShops() {
 }
 
 export async function getShopById(shopId: string) {
-  const shop = await db.select().from(shops).where(eq(shops.id, shopId)).get();
+  const shop = await firstRow(db.select().from(shops).where(eq(shops.id, shopId)).limit(1));
   if (!shop) {
     throw notFound('ไม่พบข้อมูลร้าน');
   }
@@ -149,7 +150,7 @@ export async function createShopForMerchant(context: DashboardContext, rawData: 
 
   const data = validation.data!;
   const slug = sanitizeSlug(data.name);
-  const existingSlug = await db.select().from(shops).where(eq(shops.slug, slug)).get();
+  const existingSlug = await firstRow(db.select().from(shops).where(eq(shops.slug, slug)).limit(1));
   if (existingSlug) {
     throw badRequest('SLUG_TAKEN', 'ลิงก์ร้านนี้ถูกใช้แล้ว', { slug });
   }

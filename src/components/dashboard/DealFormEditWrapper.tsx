@@ -1,7 +1,7 @@
 // src/components/dashboard/DealFormEditWrapper.tsx
 
 import { useEffect, useState } from 'react';
-import type { Deal } from '../../../db/schema';
+import type { Deal } from '../../lib/db-schema';
 import DealForm from './DealForm';
 
 interface DealFormEditWrapperProps {

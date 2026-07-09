@@ -1,7 +1,7 @@
 // src/components/dashboard/ShopFormWrapper.tsx
 
 import { useState } from 'react';
-import type { Shop } from '../../../db/schema';
+import type { Shop } from '../../lib/db-schema';
 import ShopForm from './ShopForm';
 import LivePreview from './LivePreview';
 

@@ -1,6 +1,6 @@
 import { createId } from '@paralleldrive/cuid2';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { deals, reports, shops } from '../../../db/schema';
+import { deals, reports, shops } from '../../lib/db-schema';
 import { db } from '../../lib/db';
 import { badRequest, conflict, notFound } from '../../lib/errors';
 import { reportSchema, validateInput } from '../../lib/validations';

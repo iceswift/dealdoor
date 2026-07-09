@@ -1,0 +1,36 @@
+import * as sqliteSchema from '../../db/schema';
+import * as postgresSchema from '../../db/schema.pg';
+import { isPostgresRuntime } from './db-runtime';
+
+const runtimeSchema = isPostgresRuntime() ? postgresSchema : sqliteSchema;
+
+export const users = runtimeSchema.users as typeof sqliteSchema.users;
+export const sessions = runtimeSchema.sessions as typeof sqliteSchema.sessions;
+export const merchants = runtimeSchema.merchants as typeof sqliteSchema.merchants;
+export const shops = runtimeSchema.shops as typeof sqliteSchema.shops;
+export const deals = runtimeSchema.deals as typeof sqliteSchema.deals;
+export const menuItems = runtimeSchema.menuItems as typeof sqliteSchema.menuItems;
+export const shopSpecialHours = runtimeSchema.shopSpecialHours as typeof sqliteSchema.shopSpecialHours;
+export const analyticsEvents = runtimeSchema.analyticsEvents as typeof sqliteSchema.analyticsEvents;
+export const dailyStats = runtimeSchema.dailyStats as typeof sqliteSchema.dailyStats;
+export const notifications = runtimeSchema.notifications as typeof sqliteSchema.notifications;
+export const reports = runtimeSchema.reports as typeof sqliteSchema.reports;
+
+export const usersRelations = runtimeSchema.usersRelations as typeof sqliteSchema.usersRelations;
+export const sessionsRelations = runtimeSchema.sessionsRelations as typeof sqliteSchema.sessionsRelations;
+export const merchantsRelations = runtimeSchema.merchantsRelations as typeof sqliteSchema.merchantsRelations;
+export const shopsRelations = runtimeSchema.shopsRelations as typeof sqliteSchema.shopsRelations;
+export const dealsRelations = runtimeSchema.dealsRelations as typeof sqliteSchema.dealsRelations;
+export const menuItemsRelations = runtimeSchema.menuItemsRelations as typeof sqliteSchema.menuItemsRelations;
+export const shopSpecialHoursRelations = runtimeSchema.shopSpecialHoursRelations as typeof sqliteSchema.shopSpecialHoursRelations;
+
+export type User = sqliteSchema.User;
+export type Session = sqliteSchema.Session;
+export type Shop = sqliteSchema.Shop;
+export type Deal = sqliteSchema.Deal;
+export type MenuItem = sqliteSchema.MenuItem;
+export type Merchant = sqliteSchema.Merchant;
+export type AnalyticsEvent = sqliteSchema.AnalyticsEvent;
+export type DailyStats = sqliteSchema.DailyStats;
+export type Notification = sqliteSchema.Notification;
+export type Report = sqliteSchema.Report;

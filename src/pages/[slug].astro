@@ -3,7 +3,8 @@
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { db } from '../lib/db';
-import { shops, deals, menuItems, shopSpecialHours } from '../../db/schema';
+import { shops, deals, menuItems, shopSpecialHours } from '../lib/db-schema';
+import { firstRow } from '../lib/db-query';
 import { eq, and, gte, lt, asc } from 'drizzle-orm';
 import ShopHeader from '../components/shop/ShopHeader.astro';
 import DealCard from '../components/shop/DealCard.astro';
@@ -19,8 +20,8 @@ import { getLangFromUrl, t } from '../i18n';
 import { generateLocalBusinessSchema, generateOfferSchema, generateBreadcrumbSchema } from '../lib/seo';
 import Icon from '../components/icons/index.astro';
 
-export function getStaticPaths() {
-  const allShops = db.select({ slug: shops.slug }).from(shops).all();
+export async function getStaticPaths() {
+  const allShops = await db.select({ slug: shops.slug }).from(shops);
   return allShops.map(shop => ({
     params: { slug: shop.slug },
   }));
@@ -37,7 +38,7 @@ if (!slug) {
 }
 
 // ─── BACKEND WORKFLOW: FETCH INDIVIDUAL MERCHANT SHOP ───
-const shop = await db.select().from(shops).where(eq(shops.slug, slug)).get();
+const shop = await firstRow(db.select().from(shops).where(eq(shops.slug, slug)).limit(1));
 
 if (!shop) {
   return Astro.redirect('/404');

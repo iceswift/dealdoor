@@ -146,6 +146,61 @@ Phase C should handle Postgres migration. Phase D should handle R2 storage.
 
 Phase C planning is documented in `docs/postgres-migration-plan.md`. The recommended approach is to keep the SQLite schema stable while drafting a parallel Postgres schema, then cut over in a dedicated implementation phase after smoke tests pass.
 
+Phase C2 status:
+
+- `db/schema.pg.ts` now contains the parallel Postgres schema draft.
+- `drizzle.pg.config.ts` targets `drizzle/pg-migrations`.
+- `drizzle/pg-migrations/0000_chunky_sentry.sql` is generated.
+- Runtime still uses SQLite through `src/lib/db.ts` until the cutover phase.
+
+Phase C3 status:
+
+- `docker-compose.pg.yml` provides a local Postgres-only validation service on port `54329`.
+- `bun run db:check:pg` runs Postgres migration plus table verification.
+- The app should not point at Postgres until the DB client and runtime schema adapter switch together.
+
+Phase C4 status:
+
+- Runtime schema imports are now centralized through `src/lib/db-schema.ts`.
+- `src/lib/db-schema.postgres.ts` is available for the future Postgres adapter switch.
+- `bun run db:check:boundary` verifies that app code does not import `db/schema` directly.
+
+Phase C5 status:
+
+- `bun run db:export:sqlite` exports current SQLite data to `tmp/dealdoor-sqlite-export.json`.
+- `bun run db:import:pg` imports the export into Postgres.
+- The importer refuses non-empty targets unless `--truncate` is provided.
+
+Phase C6 status:
+
+- `src/lib/db.postgres.ts` provides a Postgres Drizzle runtime smoke client.
+- `bun run db:smoke:pg` verifies imported data can be queried and analytics writes work.
+- Full app cutover still needs query adaptation for Postgres result APIs and date SQL expressions.
+
+Phase C7 status:
+
+- Runtime query code no longer uses SQLite-only `.get()`, `.all()`, or `db.run()` patterns.
+- Dialect-specific SQL is isolated in `src/lib/db-sql.ts`.
+- `bun run db:check:portability` is available as a pre-cutover guard.
+
+Phase C8 status:
+
+- Runtime DB selection is controlled by `DB_DRIVER`.
+- VPS production should set `DB_DRIVER=postgres`.
+- `bun run build:pg` should pass after Postgres migrations and data import are complete.
+
+Phase C9 status:
+
+- `bun run smoke:pg:app` is available for local or VPS app-level Postgres smoke tests.
+- Smoke starts the built server on port `4325` unless `SMOKE_PORT` is set.
+- Latest local smoke passed for health, home, explore, and sample shop pages.
+
+Local laptop note:
+
+- Docker Postgres is optional for development.
+- Native Postgres can be used with `DATABASE_URL=postgres://dealdoor:dealdoor@localhost:5432/dealdoor`.
+- See `docs/local-postgres-options.md`.
+
 ## VPS Directory Layout
 
 Suggested:

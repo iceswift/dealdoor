@@ -29,8 +29,8 @@ The current app can build and run, and the service layer is a good foundation. T
 Ready:
 
 - Astro server output with `@astrojs/node` standalone adapter.
-- `npm run build` passes.
-- `npm run db:check` passes.
+- `bun run build` passes.
+- `bun run db:check` passes.
 - Drizzle baseline migration exists.
 - Backend service layer exists for auth, shop, deal, menu, special-hours, analytics, reports, and notifications.
 - Health endpoint exists at `/api/health`.
@@ -169,7 +169,7 @@ Required fix:
 
 - Add a real typecheck script, likely `astro check`.
 - Add or intentionally skip lint, but do not use `|| true` for production gates.
-- Add `npm run db:check` to CI.
+- Add `bun run db:check` to CI.
 
 ### 2. Production environment docs are stale
 
@@ -301,6 +301,55 @@ Decision made:
 - Use Postgres for production data.
 - Use Cloudflare R2 or S3-compatible object storage for images.
 - Use offsite DB backups.
+
+Phase C2 progress:
+
+- Parallel Postgres schema draft added in `db/schema.pg.ts`.
+- Postgres Drizzle config added in `drizzle.pg.config.ts`.
+- Initial Postgres migration generated under `drizzle/pg-migrations`.
+- Runtime still uses SQLite until the dedicated cutover phase.
+
+Phase C3 progress:
+
+- Local Postgres validation compose file added in `docker-compose.pg.yml`.
+- Postgres schema verification script added in `scripts/db-verify-postgres-schema.cjs`.
+- Runtime cutover is intentionally delayed until the DB client and schema adapter can switch together.
+
+Phase C4 progress:
+
+- Runtime schema imports now go through `src/lib/db-schema.ts`.
+- Direct `db/schema` imports inside `src` are blocked by `bun run db:check:boundary`.
+- This prepares the app for a controlled DB client + schema adapter cutover.
+
+Phase C5 progress:
+
+- SQLite export and Postgres import scripts are available.
+- Local migration test imported the current `db/dev.db` into Postgres.
+- Importer skips stale orphan rows that would violate Postgres foreign keys.
+
+Phase C6 progress:
+
+- Postgres runtime smoke client added in `src/lib/db.postgres.ts`.
+- `bun run db:smoke:pg` validates Drizzle Postgres reads plus analytics insert/select/delete.
+- Runtime smoke passed against imported local data.
+
+Phase C7 progress:
+
+- SQLite-only `.get()`, `.all()`, and `db.run()` calls were removed from runtime app queries.
+- Dialect-specific date/json SQL is centralized in `src/lib/db-sql.ts`.
+- `bun run db:check:portability` now guards against runtime SQLite query patterns returning.
+
+Phase C8 progress:
+
+- `DB_DRIVER=postgres` now switches the runtime DB client, schema adapter, and SQL helpers together.
+- `bun run build:pg` verifies the app can build against local Postgres.
+- Default runtime remains SQLite unless `DB_DRIVER=postgres` is explicitly set.
+
+Phase C9 progress:
+
+- `bun run smoke:pg:app` starts the built app with `DB_DRIVER=postgres`.
+- The app smoke checks health, home, explore, and the sample shop page against imported Postgres data.
+- Latest local Postgres app smoke passed for `/api/health`, `/`, `/explore`, and `/moon-bowl-cafe`.
 
 ### Phase C - Security Hardening
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Deal, Shop } from '../../../db/schema';
+import type { Deal, Shop } from '../../lib/db-schema';
 import { getDealViewModel } from '../../lib/deals/view-model';
 import { formatDate } from '../../lib/utils';
 

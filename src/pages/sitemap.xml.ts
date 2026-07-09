@@ -2,7 +2,7 @@
 
 import type { APIRoute } from 'astro';
 import { db } from '../lib/db';
-import { shops } from '../../db/schema';
+import { shops } from '../lib/db-schema';
 
 export const GET: APIRoute = async ({ site }) => {
   const allShops = await db.select().from(shops);

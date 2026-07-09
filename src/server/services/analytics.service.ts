@@ -1,7 +1,9 @@
 import { createId } from '@paralleldrive/cuid2';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import { analyticsEvents, dailyStats, deals } from '../../../db/schema';
+import { analyticsEvents, dailyStats, deals } from '../../lib/db-schema';
 import { db } from '../../lib/db';
+import { firstRow } from '../../lib/db-query';
+import { dayBucket } from '../../lib/db-sql';
 import { badRequest } from '../../lib/errors';
 
 export type EventType =
@@ -87,14 +89,14 @@ export async function getShopStats(shopId: string, days: number = 30) {
 
   const aggregateRows = await db
     .select({
-      date: sql<string>`date(${analyticsEvents.createdAt}, 'unixepoch')`,
+      date: dayBucket(analyticsEvents.createdAt),
       type: analyticsEvents.type,
       count: sql<number>`count(*)`,
       uniqueIps: sql<number>`count(distinct ${analyticsEvents.ip})`,
     })
     .from(analyticsEvents)
     .where(and(eq(analyticsEvents.shopId, shopId), gte(analyticsEvents.createdAt, startDate)))
-    .groupBy(sql<string>`date(${analyticsEvents.createdAt}, 'unixepoch')`, analyticsEvents.type);
+    .groupBy(dayBucket(analyticsEvents.createdAt), analyticsEvents.type);
 
   const byDate = new Map<string, {
     shopId: string;
@@ -192,11 +194,11 @@ export async function getTopDeals(shopId: string, limit: number = 5) {
 }
 
 export async function getDealViewCount(dealId: string): Promise<number> {
-  const result = await db
+  const result = await firstRow(db
     .select({ views: sql<number>`count(*)` })
     .from(analyticsEvents)
     .where(and(eq(analyticsEvents.dealId, dealId), eq(analyticsEvents.type, 'deal_view')))
-    .get();
+    .limit(1));
 
   return result?.views || 0;
 }
@@ -226,11 +228,11 @@ export async function aggregateDailyStats(shopId: string, date: string): Promise
     stats[row.type] = { count: row.count, uniqueIps: row.uniqueIps };
   });
 
-  const existing = await db
+  const existing = await firstRow(db
     .select()
     .from(dailyStats)
     .where(and(eq(dailyStats.shopId, shopId), eq(dailyStats.date, date)))
-    .get();
+    .limit(1));
 
   const data = {
     pageViews: stats.page_view?.count || 0,

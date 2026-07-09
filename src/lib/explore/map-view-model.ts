@@ -1,4 +1,4 @@
-import type { deals, shops, shopSpecialHours } from '../../../db/schema';
+import type { deals, shops, shopSpecialHours } from '../db-schema';
 import {
   SHOP_CATEGORIES,
   SHOP_CATEGORY_COLORS,

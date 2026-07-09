@@ -1,7 +1,7 @@
 // src/components/dashboard/MenuManager.tsx
 
 import { useMemo, useState } from 'react';
-import type { MenuItem } from '../../../db/schema';
+import type { MenuItem } from '../../lib/db-schema';
 import { showToast } from '../../lib/toast';
 import ImageUpload from '../shared/ImageUpload.tsx';
 

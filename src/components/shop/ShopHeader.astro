@@ -1,7 +1,7 @@
 ---
 // src/components/shop/ShopHeader.astro
 
-import type { Shop, shopSpecialHours } from '../../db/schema';
+import type { Shop, shopSpecialHours } from '../../lib/db-schema';
 import { SHOP_CATEGORY_LABELS, SHOP_CATEGORY_ICONS } from '../../lib/constants';
 import type { ShopCategory } from '../../lib/constants';
 import { isOpenNow, parseOpeningHours } from '../../lib/utils';

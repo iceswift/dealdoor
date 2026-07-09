@@ -3,7 +3,7 @@
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { db } from '../lib/db';
-import { shops, deals } from '../../db/schema';
+import { shops, deals } from '../lib/db-schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { getLangFromUrl, t } from '../i18n';
 import { SHOP_CATEGORIES, SHOP_CATEGORY_ICONS, SHOP_CATEGORY_LABELS } from '../lib/constants';
@@ -24,8 +24,7 @@ const activeDeals = await db
   .from(deals)
   .leftJoin(shops, eq(deals.shopId, shops.id))
   .where(and(eq(deals.isActive, true), gte(deals.endDate, now)))
-  .orderBy(desc(deals.createdAt))
-  .all();
+  .orderBy(desc(deals.createdAt));
 
 const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 const expiringSoon = activeDeals.filter(({ deal }) => {

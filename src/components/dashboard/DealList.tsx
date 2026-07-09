@@ -1,7 +1,7 @@
 // src/components/dashboard/DealList.tsx
 
 import { useMemo, useState } from 'react';
-import type { Deal } from '../../../db/schema';
+import type { Deal } from '../../lib/db-schema';
 import { showToast } from '../../lib/toast';
 import { DEAL_CATEGORY_COLORS, type DealCategory } from '../../lib/constants';
 

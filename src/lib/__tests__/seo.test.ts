@@ -6,7 +6,7 @@ import {
   generateOfferSchema,
   generateBreadcrumbSchema,
 } from '../seo';
-import type { Shop, Deal } from '../../../db/schema';
+import type { Shop, Deal } from '../db-schema';
 
 const mockShop: Shop = {
   id: 'shop-1',

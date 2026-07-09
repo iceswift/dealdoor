@@ -1,7 +1,7 @@
 // src/components/dashboard/SetupProgress.tsx
 
 import { useState } from 'react';
-import type { Shop } from '../../../db/schema';
+import type { Shop } from '../../lib/db-schema';
 
 interface SetupProgressProps {
   shop: Shop | null;

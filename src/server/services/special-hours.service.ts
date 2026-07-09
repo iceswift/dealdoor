@@ -1,6 +1,6 @@
 import { createId } from '@paralleldrive/cuid2';
 import { eq } from 'drizzle-orm';
-import { shopSpecialHours } from '../../../db/schema';
+import { shopSpecialHours } from '../../lib/db-schema';
 import { badRequest } from '../../lib/errors';
 import { db } from '../../lib/db';
 import {

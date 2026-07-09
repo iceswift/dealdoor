@@ -4,6 +4,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { db } from '../../lib/db';
+import { users } from '../../lib/db-schema';
 import { sql } from 'drizzle-orm';
 
 export const GET: APIRoute = async () => {
@@ -13,7 +14,7 @@ export const GET: APIRoute = async () => {
   // Database check
   try {
     const start = Date.now();
-    await db.run(sql`SELECT 1`);
+    await db.select({ value: sql<number>`1` }).from(users).limit(1);
     checks.database = {
       status: 'healthy',
       latency: Date.now() - start,

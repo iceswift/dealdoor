@@ -3,7 +3,7 @@
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../lib/db';
-import { shops, deals } from '../../../db/schema';
+import { shops, deals } from '../../lib/db-schema';
 import { eq, and, gte, desc, like, or } from 'drizzle-orm';
 import CategoryChips from '../../components/explore/CategoryChips.astro';
 import SearchBar from '../../components/explore/SearchBar.tsx';

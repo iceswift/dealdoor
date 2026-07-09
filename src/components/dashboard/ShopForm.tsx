@@ -1,7 +1,7 @@
 // src/components/dashboard/ShopForm.tsx
 
 import { useEffect, useMemo, useState } from 'react';
-import type { Shop } from '../../../db/schema';
+import type { Shop } from '../../lib/db-schema';
 import ImageUpload from '../shared/ImageUpload.tsx';
 
 interface ShopFormProps {

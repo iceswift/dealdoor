@@ -5,11 +5,12 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import QRCode from 'qrcode';
 import { db } from '../../../lib/db';
-import { shops } from '../../../../db/schema';
+import { shops } from '../../../lib/db-schema';
+import { firstRow } from '../../../lib/db-query';
 import { eq } from 'drizzle-orm';
 
 export const GET: APIRoute = async ({ params, request }) => {
-  const shop = await db.select().from(shops).where(eq(shops.slug, params.slug!)).get();
+  const shop = await firstRow(db.select().from(shops).where(eq(shops.slug, params.slug!)).limit(1));
 
   if (!shop) {
     return new Response('Shop not found', { status: 404 });

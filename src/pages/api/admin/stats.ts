@@ -4,7 +4,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { db } from '../../../lib/db';
-import { users, shops, deals } from '../../../../db/schema';
+import { users, shops, deals } from '../../../lib/db-schema';
 import { sql } from 'drizzle-orm';
 
 export const GET: APIRoute = async () => {

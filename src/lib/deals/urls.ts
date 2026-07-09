@@ -1,4 +1,4 @@
-import type { Deal, Shop } from '../../../db/schema';
+import type { Deal, Shop } from '../db-schema';
 
 const SITE_URL = 'https://dealdoor.co';
 

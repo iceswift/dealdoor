@@ -1,6 +1,6 @@
 import { createId } from '@paralleldrive/cuid2';
 import { eq } from 'drizzle-orm';
-import { deals, type Shop } from '../../../db/schema';
+import { deals, type Shop } from '../../lib/db-schema';
 import { badRequest, unprocessable } from '../../lib/errors';
 import { db } from '../../lib/db';
 import { dealSchema, validateInput } from '../../lib/validations';
