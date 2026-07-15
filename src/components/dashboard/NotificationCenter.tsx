@@ -13,6 +13,8 @@ type Notification = {
 const typeLabel: Record<string, string> = {
   deal_expiring: 'ดีล',
   deal_expired: 'ดีล',
+  deal_quota_low: 'โควตาดีล',
+  deal_quota_reached: 'โควตาดีล',
   milestone: 'สถิติ',
   report_created: 'รายงาน',
   report_resolved: 'รายงาน',

@@ -14,7 +14,7 @@ export default function SearchBar({ placeholder = 'ค้นหาดีล ร�
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      window.location.href = `/explore/search?q=${encodeURIComponent(query.trim())}`;
+      window.location.href = `/deals?q=${encodeURIComponent(query.trim())}`;
     }
   };
 

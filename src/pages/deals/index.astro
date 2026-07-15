@@ -1,0 +1,317 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { db } from '../../lib/db';
+import { shops, deals } from '../../lib/db-schema';
+import { eq, and, gte, desc } from 'drizzle-orm';
+import { getLangFromRequest, getLocalizedPath, t } from '../../i18n';
+import { SHOP_CATEGORIES, SHOP_CATEGORY_ICONS } from '../../lib/constants';
+import type { ShopCategory } from '../../lib/constants';
+import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
+import Icon from '../../components/icons/index.astro';
+
+const lang = getLangFromRequest(Astro.request);
+const common = (key: string) => t(lang, 'common', key);
+const publicText = (key: string, params?: Record<string, string | number>) => t(lang, 'public', key, params);
+const localizedPath = (path: string) => getLocalizedPath(path, lang);
+
+const query = Astro.url.searchParams.get('q')?.trim() || '';
+const categoryParam = Astro.url.searchParams.get('category') || 'all';
+const activeCategory = SHOP_CATEGORIES.includes(categoryParam as ShopCategory)
+  ? categoryParam as ShopCategory
+  : 'all';
+const sortParam = Astro.url.searchParams.get('sort');
+const activeSort = sortParam === 'expiring' || sortParam === 'nearby' ? sortParam : 'latest';
+const couponOnly = Astro.url.searchParams.get('coupon') === '1';
+const savedOnly = Astro.url.searchParams.get('saved') === '1';
+const now = new Date();
+
+const activeDeals = await db
+  .select({ deal: deals, shop: shops })
+  .from(deals)
+  .leftJoin(shops, eq(deals.shopId, shops.id))
+  .where(and(eq(deals.isActive, true), gte(deals.endDate, now)))
+  .orderBy(desc(deals.createdAt))
+  .limit(80);
+
+const normalizedQuery = query.toLocaleLowerCase();
+const matchingDeals = activeDeals
+  .filter(({ deal, shop }) => {
+    if (!shop) return false;
+    if (activeCategory !== 'all' && shop.category !== activeCategory) return false;
+    if (couponOnly && !deal.couponCode) return false;
+    if (!normalizedQuery) return true;
+    return [deal.title, deal.shortDescription, deal.description, deal.discountText, shop.name, shop.address]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase()
+      .includes(normalizedQuery);
+  })
+  .sort((first, second) => activeSort === 'expiring'
+    ? new Date(first.deal.endDate).getTime() - new Date(second.deal.endDate).getTime()
+    : new Date(second.deal.createdAt).getTime() - new Date(first.deal.createdAt).getTime());
+
+const makeListUrl = (overrides: Record<string, string> = {}) => {
+  const params = new URLSearchParams();
+  const nextCategory = overrides.category ?? activeCategory;
+  const nextSort = overrides.sort ?? activeSort;
+  const nextQuery = overrides.q ?? query;
+  const nextCouponOnly = (overrides.coupon ?? (couponOnly ? '1' : '0')) === '1';
+  const nextSavedOnly = (overrides.saved ?? (savedOnly ? '1' : '0')) === '1';
+  if (nextQuery) params.set('q', nextQuery);
+  if (nextCategory !== 'all') params.set('category', nextCategory);
+  if (nextSort !== 'latest') params.set('sort', nextSort);
+  if (nextCouponOnly) params.set('coupon', '1');
+  if (nextSavedOnly) params.set('saved', '1');
+  return localizedPath(`/deals${params.size ? `?${params.toString()}` : ''}`);
+};
+
+const mapUrl = localizedPath(`/explore${Astro.url.search || ''}`);
+const dealsClientText = {
+  resultsCount: publicText('deals.resultsCount', { count: '{count}' }),
+  savedOnlyEmpty: publicText('deals.savedOnlyEmpty'),
+  locationRequesting: publicText('deals.locationRequesting'),
+  locationReady: publicText('deals.locationReady'),
+  locationUnavailable: publicText('deals.locationUnavailable'),
+  distanceAway: publicText('deals.distanceAway', { distance: '{distance}' }),
+};
+const dealsDiscoveryState = { savedOnly, activeSort };
+---
+
+<BaseLayout title={publicText('deals.pageTitle')}>
+  <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:py-10">
+    <header class="flex flex-col gap-4 border-b border-border/30 pb-6 sm:flex-row sm:items-end sm:justify-between">
+      <div class="flex-1">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-wider text-primary">{publicText('deals.eyebrow')}</p>
+            <h1 class="mt-1 text-2xl font-extrabold text-secondary sm:text-3xl">{publicText('deals.pageTitle')}</h1>
+          </div>
+          <a href={mapUrl} class="inline-flex sm:hidden min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border/45 bg-card-bg px-3 text-[11px] font-black text-text-secondary transition hover:border-primary/40 hover:text-primary shrink-0">
+            <Icon name="map-pin" class="h-3.5 w-3.5" />
+            <span>{publicText('deals.mapView')}</span>
+          </a>
+        </div>
+        <p class="mt-2.5 max-w-2xl text-sm font-medium text-text-secondary">{publicText('deals.description')}</p>
+      </div>
+      <a href={mapUrl} class="hidden sm:inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border/45 bg-card-bg px-4 text-xs font-black text-text-secondary transition hover:border-primary/40 hover:text-primary">
+        <Icon name="map-pin" class="h-4 w-4" />
+        <span>{publicText('deals.mapView')}</span>
+      </a>
+    </header>
+
+    <form method="get" action={localizedPath('/deals')} class="mt-6 flex gap-2">
+      {activeCategory !== 'all' && <input type="hidden" name="category" value={activeCategory} />}
+      {activeSort !== 'latest' && <input type="hidden" name="sort" value={activeSort} />}
+      {couponOnly && <input type="hidden" name="coupon" value="1" />}
+      {savedOnly && <input type="hidden" name="saved" value="1" />}
+      <label class="relative block flex-1">
+        <Icon name="search" class="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-text-tertiary" />
+        <input
+          name="q"
+          type="search"
+          value={query}
+          placeholder={publicText('deals.searchPlaceholder')}
+          class="min-h-12 w-full rounded-xl border border-border/45 bg-card-bg py-3 pl-11 pr-4 text-sm font-bold text-secondary outline-none transition placeholder:text-text-tertiary focus:border-primary focus:ring-2 focus:ring-primary/15"
+        />
+      </label>
+      <button type="submit" class="btn btn-primary min-h-12 rounded-xl px-5 text-sm font-black whitespace-nowrap">{publicText('home.search')}</button>
+    </form>
+
+    <nav class="mt-5 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label={publicText('explore.categoryFilters')}>
+      <a href={makeListUrl({ category: 'all' })} class:list={['inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-black transition', activeCategory === 'all' ? 'border-primary bg-primary text-white shadow-sm shadow-primary/20' : 'border-border/40 bg-card-bg text-text-secondary hover:border-primary/30']}>
+        <Icon name="filter" class="h-3.5 w-3.5" /><span>{publicText('home.allCategories')}</span>
+      </a>
+      {SHOP_CATEGORIES.map((category) => (
+        <a href={makeListUrl({ category })} class:list={['inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-black transition', activeCategory === category ? 'border-primary bg-primary text-white shadow-sm shadow-primary/20' : 'border-border/40 bg-card-bg text-text-secondary hover:border-primary/30']}>
+          <span>{SHOP_CATEGORY_ICONS[category]}</span><span>{common(`category.${category}`)}</span>
+        </a>
+      ))}
+    </nav>
+
+    <div class="mt-4 flex flex-wrap items-center gap-2" aria-label={publicText('deals.discoveryFilters')}>
+      <button id="deals-use-location" type="button" data-nearby-url={makeListUrl({ sort: 'nearby' })} class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border/40 bg-card-bg px-4 text-xs font-black text-text-secondary transition hover:border-primary/35 hover:text-primary">
+        <Icon name="map-pin" class="h-4 w-4" />
+        <span>{publicText('deals.useMyLocation')}</span>
+      </button>
+      <a href={makeListUrl({ saved: savedOnly ? '0' : '1' })} aria-pressed={savedOnly ? 'true' : 'false'} class:list={['inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-xs font-black transition', savedOnly ? 'border-primary bg-primary text-white shadow-sm shadow-primary/20' : 'border-border/40 bg-card-bg text-text-secondary hover:border-primary/30 hover:text-primary']}>
+        <Icon name="heart" class="h-4 w-4" />
+        <span>{publicText('deals.savedOnly')}</span>
+      </a>
+      <a href={makeListUrl({ coupon: couponOnly ? '0' : '1' })} aria-pressed={couponOnly ? 'true' : 'false'} class:list={['inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-xs font-black transition', couponOnly ? 'border-primary bg-primary text-white shadow-sm shadow-primary/20' : 'border-border/40 bg-card-bg text-text-secondary hover:border-primary/30 hover:text-primary']}>
+        <Icon name="tag" class="h-4 w-4" />
+        <span>{publicText('deals.couponOnly')}</span>
+      </a>
+      {(activeCategory !== 'all' || activeSort !== 'latest' || couponOnly || savedOnly || query) && (
+        <a href={localizedPath('/deals')} class="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-black text-text-tertiary transition hover:text-primary">
+          <Icon name="x" class="h-3.5 w-3.5" />
+          <span>{publicText('deals.clearFilters')}</span>
+        </a>
+      )}
+    </div>
+    <p id="deals-location-status" class="mt-3 hidden text-xs font-bold text-text-secondary" aria-live="polite"></p>
+
+    <section class="mt-7" aria-labelledby="deals-results-title">
+      <div class="flex items-center justify-between gap-4 border-b border-border/25 pb-4">
+        <div>
+          <h2 id="deals-results-title" class="text-lg font-bold text-secondary">{publicText('deals.resultsTitle')}</h2>
+          <p id="deals-results-count" class="mt-1 text-xs font-bold text-text-tertiary">{publicText('deals.resultsCount', { count: matchingDeals.length })}</p>
+        </div>
+        <div class="flex rounded-full border border-border/40 bg-bg-secondary/60 p-1 shadow-inner" aria-label={publicText('deals.sortLabel')}>
+          <a href={makeListUrl({ sort: 'latest' })} class:list={['inline-flex min-h-9 items-center justify-center rounded-full px-4 text-xs font-bold transition-all duration-200 select-none cursor-pointer', activeSort === 'latest' ? 'bg-card-bg text-primary shadow-sm border border-border/10 font-extrabold scale-[1.02]' : 'text-text-secondary hover:text-text-primary']}>{publicText('deals.sortLatest')}</a>
+          <a href={makeListUrl({ sort: 'expiring' })} class:list={['inline-flex min-h-9 items-center justify-center rounded-full px-4 text-xs font-bold transition-all duration-200 select-none cursor-pointer', activeSort === 'expiring' ? 'bg-card-bg text-primary shadow-sm border border-border/10 font-extrabold scale-[1.02]' : 'text-text-secondary hover:text-text-primary']}>{publicText('deals.sortExpiring')}</a>
+          <a href={makeListUrl({ sort: 'nearby' })} class:list={['inline-flex min-h-9 items-center justify-center rounded-full px-4 text-xs font-bold transition-all duration-200 select-none cursor-pointer', activeSort === 'nearby' ? 'bg-card-bg text-primary shadow-sm border border-border/10 font-extrabold scale-[1.02]' : 'text-text-secondary hover:text-text-primary']}>{publicText('deals.sortNearby')}</a>
+        </div>
+      </div>
+
+      {matchingDeals.length > 0 ? (
+        <div id="deals-grid" class="mt-6 grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {matchingDeals.map(({ deal, shop }, index) => (
+            <div class="deal-list-item animate-fade-in" data-deal-id={deal.id} data-latitude={shop?.latitude ?? ''} data-longitude={shop?.longitude ?? ''} style={`animation-delay: ${Math.min(index, 8) * 0.04}s`}>
+              {shop && <ExploreDealCard deal={deal} shop={shop} />}
+              <p class="deal-distance mt-2 hidden px-1 text-[10px] font-black text-primary"></p>
+            </div>
+          ))}
+        </div>
+        <div id="deals-client-empty" class="hidden mx-auto mt-12 max-w-md border border-dashed border-border/80 bg-bg-secondary/40 p-10 text-center">
+          <Icon name="heart" class="mx-auto h-9 w-9 text-text-tertiary" />
+          <h3 class="mt-4 text-base font-bold text-secondary">{publicText('deals.noResults')}</h3>
+          <p id="deals-client-empty-description" class="mt-1 text-sm text-text-secondary"></p>
+          <a href={makeListUrl({ saved: '0' })} class="btn btn-secondary mt-6 min-h-11 rounded-xl px-5 text-xs font-black">{publicText('deals.clearFilters')}</a>
+        </div>
+      ) : (
+        <div class="mx-auto mt-12 max-w-md border border-dashed border-border/80 bg-bg-secondary/40 p-10 text-center">
+          <Icon name="search" class="mx-auto h-9 w-9 text-text-tertiary" />
+          <h3 class="mt-4 text-base font-bold text-secondary">{publicText('deals.noResults')}</h3>
+          <p class="mt-1 text-sm text-text-secondary">{publicText('deals.noResultsDescription')}</p>
+          <a href={localizedPath('/deals')} class="btn btn-secondary mt-6 min-h-11 rounded-xl px-5 text-xs font-black">{publicText('deals.clearFilters')}</a>
+        </div>
+      )}
+    </section>
+  </main>
+</BaseLayout>
+
+<script is:inline define:vars={{ dealsClientText, dealsDiscoveryState }}>
+  document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.getElementById('deals-grid');
+    const items = Array.from(document.querySelectorAll('.deal-list-item'));
+    const resultCount = document.getElementById('deals-results-count');
+    const clientEmpty = document.getElementById('deals-client-empty');
+    const clientEmptyDescription = document.getElementById('deals-client-empty-description');
+    const locationButton = document.getElementById('deals-use-location');
+    const locationStatus = document.getElementById('deals-location-status');
+    const locationSessionKey = 'dealdoor.explore.userLocation.v1';
+
+    const readSavedDeals = () => {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem('dealdoor_saved_deals') || '[]');
+        return new Set(Array.isArray(saved) ? saved.map(String) : []);
+      } catch {
+        return new Set();
+      }
+    };
+
+    const readStoredLocation = () => {
+      try {
+        const saved = JSON.parse(window.sessionStorage.getItem(locationSessionKey) || 'null');
+        const ageMs = Date.now() - Number(saved?.timestamp || 0);
+        if (!Number.isFinite(Number(saved?.lat)) || !Number.isFinite(Number(saved?.lng)) || ageMs > 30 * 60 * 1000) return null;
+        return { lat: Number(saved.lat), lng: Number(saved.lng) };
+      } catch {
+        return null;
+      }
+    };
+
+    const distanceFromUser = (item, location) => {
+      if (!location) return Number.POSITIVE_INFINITY;
+      const latitude = Number(item.getAttribute('data-latitude'));
+      const longitude = Number(item.getAttribute('data-longitude'));
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return Number.POSITIVE_INFINITY;
+      const radians = (value) => (value * Math.PI) / 180;
+      const dLat = radians(latitude - location.lat);
+      const dLng = radians(longitude - location.lng);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(radians(location.lat)) * Math.cos(radians(latitude)) * Math.sin(dLng / 2) ** 2;
+      return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const formatDistance = (distance) => distance < 1
+      ? `${Math.round(distance * 1000)} m`
+      : `${distance.toFixed(1)} km`;
+
+    function setLocationStatus(message, visible = true) {
+      if (!locationStatus) return;
+      locationStatus.textContent = message;
+      locationStatus.classList.toggle('hidden', !visible);
+    }
+
+    function applyDiscovery() {
+      const location = readStoredLocation();
+      const savedDeals = readSavedDeals();
+      const visibleItems = items.filter((item) => {
+        const visible = !dealsDiscoveryState.savedOnly || savedDeals.has(item.getAttribute('data-deal-id') || '');
+        item.classList.toggle('hidden', !visible);
+        return visible;
+      });
+
+      if (grid && dealsDiscoveryState.activeSort === 'nearby' && location) {
+        const sorted = [...visibleItems].sort((first, second) => distanceFromUser(first, location) - distanceFromUser(second, location));
+        grid.append(...sorted);
+      }
+
+      items.forEach((item) => {
+        const label = item.querySelector('.deal-distance');
+        const distance = distanceFromUser(item, location);
+        if (!label || !Number.isFinite(distance)) return;
+        label.textContent = dealsClientText.distanceAway.replace('{distance}', formatDistance(distance));
+        label.classList.remove('hidden');
+      });
+
+      if (resultCount) resultCount.textContent = dealsClientText.resultsCount.replace('{count}', String(visibleItems.length));
+      if (clientEmpty) clientEmpty.classList.toggle('hidden', visibleItems.length !== 0);
+      if (clientEmptyDescription) clientEmptyDescription.textContent = dealsDiscoveryState.savedOnly
+        ? dealsClientText.savedOnlyEmpty
+        : '';
+
+      if (dealsDiscoveryState.activeSort === 'nearby' && !location) {
+        setLocationStatus(dealsClientText.locationUnavailable);
+      } else if (location) {
+        setLocationStatus(dealsClientText.locationReady);
+      }
+    }
+
+    locationButton?.addEventListener('click', () => {
+      if (!navigator.geolocation || !window.isSecureContext) {
+        setLocationStatus(dealsClientText.locationUnavailable);
+        return;
+      }
+      locationButton.disabled = true;
+      locationButton.setAttribute('aria-busy', 'true');
+      setLocationStatus(dealsClientText.locationRequesting);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          try {
+            window.sessionStorage.setItem(locationSessionKey, JSON.stringify({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              timestamp: Date.now(),
+            }));
+          } catch {}
+          window.location.assign(new URL(locationButton.dataset.nearbyUrl || window.location.href, window.location.origin).toString());
+        },
+        () => {
+          locationButton.disabled = false;
+          locationButton.removeAttribute('aria-busy');
+          setLocationStatus(dealsClientText.locationUnavailable);
+        },
+        { enableHighAccuracy: true, maximumAge: 60_000, timeout: 8_000 }
+      );
+    });
+
+    window.addEventListener('dealdoor:saved-deals-change', applyDiscovery);
+    applyDiscovery();
+  });
+</script>
+
+<style>
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>

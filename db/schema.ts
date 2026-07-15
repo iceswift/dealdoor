@@ -132,6 +132,10 @@ export const deals = sqliteTable('deals', {
   imageUrl: text('image_url'),
   startDate: integer('start_date', { mode: 'timestamp' }),
   endDate: integer('end_date', { mode: 'timestamp' }).notNull(),
+  // Null means the deal has no redemption cap.
+  maxRedemptions: integer('max_redemptions'),
+  redemptionAvailabilityDisplay: text('redemption_availability_display').notNull().default('low_stock'),
+  lowStockThreshold: integer('low_stock_threshold').notNull().default(10),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

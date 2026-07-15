@@ -18,8 +18,12 @@ const { shop } = context;
 const dealRows = await listDashboardDeals(shop.id);
 const maxDeals = shop.maxActiveDeals ?? 6;
 const dealStatsRows = await getTopDeals(shop.id, Math.max(dealRows.length, 1));
+const statsByDealId = new Map(dealStatsRows.filter((row) => row.dealId).map((row) => [row.dealId, row]));
 const dealStats = Object.fromEntries(
-  dealStatsRows.filter((row) => row.dealId).map((row) => [row.dealId as string, { views: row.views, clicks: row.clicks }])
+  dealRows.map((deal) => {
+    const stats = statsByDealId.get(deal.id);
+    return [deal.id, { views: stats?.views ?? 0, clicks: stats?.clicks ?? 0, redemptions: stats?.redemptions ?? 0 }];
+  })
 );
 ---
 

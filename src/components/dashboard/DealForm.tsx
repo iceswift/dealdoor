@@ -61,6 +61,10 @@ export default function DealForm({ deal, shopName, shopLogoUrl, shopAddress, onS
     startDate: toInputDate(deal?.startDate),
     endDate: toInputDate(deal?.endDate),
     imageUrl: deal?.imageUrl || '',
+    limitRedemptions: typeof deal?.maxRedemptions === 'number',
+    maxRedemptions: deal?.maxRedemptions?.toString() || '',
+    redemptionAvailabilityDisplay: deal?.redemptionAvailabilityDisplay || 'low_stock',
+    lowStockThreshold: deal?.lowStockThreshold?.toString() || '10',
   });
 
   const previewExpiryLabel = useMemo(() => {
@@ -105,7 +109,7 @@ export default function DealForm({ deal, shopName, shopLogoUrl, shopAddress, onS
   const previewRingOffset = previewRingCircumference * (1 - previewRingPercent / 100);
   const previewAddressShort = getAddressShort(shopAddress);
 
-  function updateField(name: string, value: string) {
+  function updateField(name: string, value: string | boolean) {
     setFormData((current) => ({ ...current, [name]: value }));
   }
 
@@ -128,7 +132,10 @@ export default function DealForm({ deal, shopName, shopLogoUrl, shopAddress, onS
       const response = await fetch(deal ? `/api/deals/${deal.id}` : '/api/deals', {
         method: deal ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          maxRedemptions: formData.limitRedemptions ? formData.maxRedemptions : '',
+        }),
       });
 
       const payload = await response.json();
@@ -301,6 +308,77 @@ export default function DealForm({ deal, shopName, shopLogoUrl, shopAddress, onS
                 />
               </label>
             )}
+
+            <div className="rounded-2xl border border-border/40 bg-bg-secondary/45 p-4">
+              <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-black text-secondary">จำกัดจำนวนสิทธิ์</span>
+                  <span className="mt-0.5 block text-xs font-bold leading-relaxed text-text-tertiary">ปิดไว้หากต้องการให้รับสิทธิ์ได้ไม่จำกัดจนกว่าดีลจะหมดอายุ</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={formData.limitRedemptions}
+                  onChange={(event) => updateField('limitRedemptions', event.target.checked)}
+                  className="h-5 w-5 shrink-0 accent-primary"
+                />
+              </label>
+
+              {formData.limitRedemptions && (
+                <div className="mt-4 space-y-4 border-t border-border/30 pt-4">
+                  <label className="block">
+                    <span className="text-sm font-black text-secondary">จำนวนสิทธิ์ทั้งหมด</span>
+                    <span className="mt-0.5 block text-xs font-bold text-text-tertiary">ร้านจะยืนยันใช้สิทธิ์ได้สูงสุดตามจำนวนนี้</span>
+                    <div className="relative mt-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="100000"
+                        inputMode="numeric"
+                        value={formData.maxRedemptions}
+                        onChange={(event) => updateField('maxRedemptions', event.target.value)}
+                        placeholder="เช่น 50"
+                        required
+                        className="h-12 w-full rounded-2xl border border-border/40 bg-card-bg px-4 pr-16 text-sm font-black text-secondary outline-none focus:border-primary"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-xs font-black text-text-tertiary">สิทธิ์</span>
+                    </div>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-black text-secondary">แสดงความพร้อมบนหน้าสาธารณะ</span>
+                    <select
+                      value={formData.redemptionAvailabilityDisplay}
+                      onChange={(event) => updateField('redemptionAvailabilityDisplay', event.target.value)}
+                      className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-card-bg px-4 text-sm font-black text-secondary outline-none focus:border-primary"
+                    >
+                      <option value="hidden">ไม่แสดงจำนวนสิทธิ์</option>
+                      <option value="low_stock">แสดงเฉพาะเมื่อใกล้หมด</option>
+                      <option value="exact">แสดงจำนวนสิทธิ์คงเหลือ</option>
+                    </select>
+                  </label>
+
+                  {formData.redemptionAvailabilityDisplay === 'low_stock' && (
+                    <label className="block">
+                      <span className="text-sm font-black text-secondary">เริ่มแจ้งว่าใกล้หมดเมื่อเหลือ</span>
+                      <div className="relative mt-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="100000"
+                          inputMode="numeric"
+                          value={formData.lowStockThreshold}
+                          onChange={(event) => updateField('lowStockThreshold', event.target.value)}
+                          required
+                          className="h-12 w-full rounded-2xl border border-border/40 bg-card-bg px-4 pr-16 text-sm font-black text-secondary outline-none focus:border-primary"
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-xs font-black text-text-tertiary">สิทธิ์</span>
+                      </div>
+                      <span className="mt-1.5 block text-xs font-bold text-text-tertiary">ลูกค้าจะเห็นข้อความว่า “ใกล้หมด” แต่ไม่เห็นจำนวนจริง</span>
+                    </label>
+                  )}
+                </div>
+              )}
+            </div>
 
             <label className="block">
               <span className="text-sm font-black text-secondary">เงื่อนไข</span>

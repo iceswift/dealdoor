@@ -1,0 +1,1 @@
+ALTER TABLE "deals" ADD COLUMN "max_redemptions" integer;

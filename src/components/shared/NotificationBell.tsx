@@ -55,6 +55,8 @@ const Icons = {
 const TYPE_STYLES: Record<string, TypeStyle> = {
   deal_expiring: { colorClass: 'text-amber-500', bgClass: 'bg-amber-500/10', icon: Icons.clock },
   deal_expired: { colorClass: 'text-danger', bgClass: 'bg-danger/10', icon: Icons.clock },
+  deal_quota_low: { colorClass: 'text-amber-500', bgClass: 'bg-amber-500/10', icon: Icons.clock },
+  deal_quota_reached: { colorClass: 'text-danger', bgClass: 'bg-danger/10', icon: Icons.clock },
   milestone: { colorClass: 'text-emerald-500', bgClass: 'bg-emerald-500/10', icon: Icons.chart },
   report_created: { colorClass: 'text-blue-500', bgClass: 'bg-blue-500/10', icon: Icons.flag },
   report_resolved: { colorClass: 'text-blue-500', bgClass: 'bg-blue-500/10', icon: Icons.check },

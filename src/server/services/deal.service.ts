@@ -1,8 +1,10 @@
 import { createId } from '@paralleldrive/cuid2';
-import { eq } from 'drizzle-orm';
-import { deals, type Shop } from '../../lib/db-schema';
+import { and, eq, sql } from 'drizzle-orm';
+import { analyticsEvents, deals, type Shop } from '../../lib/db-schema';
 import { badRequest, unprocessable } from '../../lib/errors';
 import { db } from '../../lib/db';
+import { firstRow } from '../../lib/db-query';
+import { notifyDealQuotaStatus } from './notification.service';
 import { dealSchema, validateInput } from '../../lib/validations';
 import {
   deleteDealWithDashboardRelations,
@@ -51,6 +53,9 @@ export async function createDealForShop(shop: Shop, rawData: unknown) {
     imageUrl: data.imageUrl || null,
     startDate: data.startDate ? new Date(data.startDate) : null,
     endDate: new Date(data.endDate),
+    maxRedemptions: data.maxRedemptions ?? null,
+    redemptionAvailabilityDisplay: data.redemptionAvailabilityDisplay || 'low_stock',
+    lowStockThreshold: data.lowStockThreshold || 10,
     isActive: true,
   });
 
@@ -81,6 +86,9 @@ export async function updateDealForShop(dealId: string, shopId: string, rawData:
       imageUrl: data.imageUrl || null,
       startDate: data.startDate ? new Date(data.startDate) : null,
       endDate: new Date(data.endDate),
+      maxRedemptions: data.maxRedemptions ?? null,
+      redemptionAvailabilityDisplay: data.redemptionAvailabilityDisplay || existing.redemptionAvailabilityDisplay,
+      lowStockThreshold: data.lowStockThreshold || existing.lowStockThreshold,
       isActive: existing.isActive,
       updatedAt: new Date(),
     })
@@ -109,4 +117,66 @@ export async function setDealActiveForShop(dealId: string, shopId: string, rawDa
 export async function deleteDealForShop(dealId: string, shopId: string) {
   await getDealForShop(dealId, shopId);
   await deleteDealWithDashboardRelations(dealId);
+}
+
+export async function getDealRedemptionCount(dealId: string) {
+  const row = await firstRow(db
+    .select({ count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(and(eq(analyticsEvents.dealId, dealId), eq(analyticsEvents.type, 'redemption_confirmed')))
+    .limit(1));
+
+  return Number(row?.count || 0);
+}
+
+export async function confirmDealRedemptionForShop(dealId: string, shopId: string, metadata: { ip?: string; userAgent?: string }) {
+  const deal = await getDealForShop(dealId, shopId);
+
+  const summary = await db.transaction(async (tx) => {
+    const row = await firstRow(tx
+      .select({ count: sql<number>`count(*)` })
+      .from(analyticsEvents)
+      .where(and(eq(analyticsEvents.dealId, deal.id), eq(analyticsEvents.type, 'redemption_confirmed')))
+      .limit(1));
+    const current = Number(row?.count || 0);
+
+    if (deal.maxRedemptions !== null && current >= deal.maxRedemptions) {
+      throw unprocessable('REDEMPTION_LIMIT_REACHED', 'ดีลนี้ใช้สิทธิ์ครบตามจำนวนที่กำหนดแล้ว', {
+        current,
+        max: deal.maxRedemptions,
+      });
+    }
+
+    await tx.insert(analyticsEvents).values({
+      id: createId(),
+      type: 'redemption_confirmed',
+      shopId,
+      dealId: deal.id,
+      metadata: JSON.stringify({ source: 'merchant_dashboard' }),
+      ip: metadata.ip || null,
+      userAgent: metadata.userAgent || null,
+      createdAt: new Date(),
+    });
+
+    return {
+      redemptions: current + 1,
+      maxRedemptions: deal.maxRedemptions,
+    };
+  });
+
+  try {
+    await notifyDealQuotaStatus({
+      dealId: deal.id,
+      shopId,
+      title: deal.title,
+      maxRedemptions: deal.maxRedemptions,
+      lowStockThreshold: deal.lowStockThreshold,
+      redemptions: summary.redemptions,
+    });
+  } catch (error) {
+    // A confirmed redemption must not be rolled back in the user experience if alert delivery fails.
+    console.error('Deal quota notification error:', error);
+  }
+
+  return summary;
 }

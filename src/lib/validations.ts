@@ -234,6 +234,26 @@ export const dealSchema = z.object({
       return !isNaN(date.getTime()) && date > new Date();
     }, 'End date must be in the future'),
 
+  maxRedemptions: z.preprocess(
+    (value) => value === undefined || value === '' || value === null ? undefined : Number(value),
+    z.number()
+      .int('Redemption limit must be a whole number')
+      .min(1, 'Redemption limit must be at least 1')
+      .max(100000, 'Redemption limit must be 100,000 or less')
+      .optional(),
+  ),
+
+  redemptionAvailabilityDisplay: z.enum(['hidden', 'low_stock', 'exact']).optional(),
+
+  lowStockThreshold: z.preprocess(
+    (value) => value === undefined || value === '' || value === null ? undefined : Number(value),
+    z.number()
+      .int('Low stock threshold must be a whole number')
+      .min(1, 'Low stock threshold must be at least 1')
+      .max(100000, 'Low stock threshold must be 100,000 or less')
+      .optional(),
+  ),
+
   imageUrl: z.string().optional(),
   shopId: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -255,6 +275,14 @@ export const dealSchema = z.object({
         message: 'Start date must be before the end date',
       });
     }
+  }
+
+  if (data.maxRedemptions && data.lowStockThreshold && data.lowStockThreshold > data.maxRedemptions) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['lowStockThreshold'],
+      message: 'Low stock threshold cannot be greater than the redemption limit',
+    });
   }
 });
 

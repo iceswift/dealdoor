@@ -126,6 +126,10 @@ export const deals = pgTable('deals', {
   imageUrl: text('image_url'),
   startDate: timestamp('start_date', { mode: 'date' }),
   endDate: timestamp('end_date', { mode: 'date' }).notNull(),
+  // Null means the deal has no redemption cap.
+  maxRedemptions: integer('max_redemptions'),
+  redemptionAvailabilityDisplay: text('redemption_availability_display').notNull().default('low_stock'),
+  lowStockThreshold: integer('low_stock_threshold').notNull().default(10),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),

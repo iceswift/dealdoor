@@ -10,6 +10,8 @@ import { recordInAppDelivery } from './notification-outbox.service';
 export type NotificationType =
   | 'deal_expiring'
   | 'deal_expired'
+  | 'deal_quota_low'
+  | 'deal_quota_reached'
   | 'milestone'
   | 'report_created'
   | 'report_resolved'
@@ -37,7 +39,7 @@ const defaultPreferences: NotificationPreferenceInput = {
 };
 
 function preferenceKeyFor(type: NotificationType): keyof NotificationPreferenceInput {
-  if (type === 'deal_expiring' || type === 'deal_expired') return 'dealUpdates';
+  if (type === 'deal_expiring' || type === 'deal_expired' || type === 'deal_quota_low' || type === 'deal_quota_reached') return 'dealUpdates';
   if (type === 'milestone') return 'milestones';
   if (type === 'report_created' || type === 'report_resolved') return 'reports';
   return 'systemUpdates';
@@ -242,6 +244,66 @@ async function hasNotificationEvent(shopId: string, eventKey: string) {
       eq(notifications.shopId, shopId),
       jsonTextEquals(notifications.metadata, 'eventKey', eventKey),
     ),
+  });
+}
+
+export function getDealQuotaAlert(input: {
+  dealId: string;
+  title: string;
+  maxRedemptions: number | null;
+  lowStockThreshold: number | null;
+  redemptions: number;
+}) {
+  if (input.maxRedemptions === null) return null;
+
+  const remaining = Math.max(0, input.maxRedemptions - input.redemptions);
+  if (remaining === 0) {
+    return {
+      type: 'deal_quota_reached' as const,
+      eventKey: `deal-quota-reached:${input.dealId}`,
+      title: 'ดีลครบจำนวนสิทธิ์แล้ว',
+      message: `"${input.title}" ใช้สิทธิ์ครบ ${input.maxRedemptions.toLocaleString('th-TH')} สิทธิ์แล้ว`,
+    };
+  }
+
+  const threshold = Math.max(1, input.lowStockThreshold || 10);
+  if (remaining <= threshold) {
+    return {
+      type: 'deal_quota_low' as const,
+      eventKey: `deal-quota-low:${input.dealId}:${threshold}`,
+      title: 'ดีลใกล้ครบจำนวนสิทธิ์',
+      message: `"${input.title}" เหลืออีก ${remaining.toLocaleString('th-TH')} สิทธิ์`,
+    };
+  }
+
+  return null;
+}
+
+export async function notifyDealQuotaStatus(input: {
+  dealId: string;
+  shopId: string;
+  title: string;
+  maxRedemptions: number | null;
+  lowStockThreshold: number | null;
+  redemptions: number;
+}) {
+  const alert = getDealQuotaAlert(input);
+  if (!alert || await hasNotificationEvent(input.shopId, alert.eventKey)) return null;
+
+  const shop = await db.query.shops.findFirst({ where: eq(shops.id, input.shopId) });
+  if (!shop) return null;
+
+  return createShopNotification({
+    merchantId: shop.merchantId,
+    shopId: input.shopId,
+    type: alert.type,
+    title: alert.title,
+    message: alert.message,
+    metadata: {
+      dealId: input.dealId,
+      eventKey: alert.eventKey,
+      href: `/dashboard/deals/edit?id=${input.dealId}`,
+    },
   });
 }
 

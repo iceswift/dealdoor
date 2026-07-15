@@ -5,7 +5,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../lib/db';
 import { shops, deals, shopSpecialHours } from '../../lib/db-schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
-import { getLangFromRequest, t } from '../../i18n';
+import { getLangFromRequest, getLocalizedPath, t } from '../../i18n';
 import { SHOP_CATEGORY_LABELS, SHOP_CATEGORY_COLORS } from '../../lib/constants';
 import type { ShopCategory } from '../../lib/constants';
 import {
@@ -32,7 +32,9 @@ const initialSort = ['recommended', 'expiring', 'dealCount', 'nearby'].includes(
   : 'recommended';
 const initialUrgent = Astro.url.searchParams.get('urgent') === 'true';
 const initialOpen = Astro.url.searchParams.get('open') === 'true';
-const initialCoupon = Astro.url.searchParams.get('coupon') === 'true';
+const initialCouponParam = Astro.url.searchParams.get('coupon');
+const initialCoupon = initialCouponParam === 'true' || initialCouponParam === '1';
+const initialSaved = Astro.url.searchParams.get('saved') === '1';
 const initialRadiusParam = Astro.url.searchParams.get('radius');
 const initialRadius = ['all', '1', '3', '5', '10'].includes(initialRadiusParam || '')
   ? initialRadiusParam!
@@ -62,6 +64,7 @@ const categories = getExploreCategories().map((category) => ({
   ...category,
   label: category.id === 'all' ? publicText('explore.all') : common(`category.${category.id}`),
 }));
+const listUrl = getLocalizedPath('/deals', lang);
 ---
 
 <BaseLayout title={common('nav.explore')} hideFooter={true}>
@@ -97,6 +100,9 @@ const categories = getExploreCategories().map((category) => ({
     <div class="pointer-events-none absolute inset-x-0 bottom-0 z-[800] hidden lg:block" style="top: var(--header-h, 88px);">
       <div class="pointer-events-none absolute left-4 top-4 bottom-4 flex w-[380px] flex-col gap-3">
         <div class="glass pointer-events-auto flex shrink-0 items-center gap-2 rounded-2xl p-2.5 shadow-lg">
+          <a href={listUrl} class="explore-back-to-list flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/40 bg-bg text-text-secondary transition hover:border-primary/40 hover:text-primary" aria-label={publicText('explore.backToDeals')}>
+            <Icon name="chevron-left" class="h-4 w-4" />
+          </a>
           <label class="relative block flex-1">
             <Icon name="search" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
             <input
@@ -208,6 +214,9 @@ const categories = getExploreCategories().map((category) => ({
     {/* ── Mobile floating UI (< lg) ──────────────────────────── */}
     <div class="pointer-events-none absolute inset-x-0 z-[800] flex flex-col gap-2 p-3 lg:hidden" style="top: var(--header-h, 88px);">
       <div class="glass pointer-events-auto flex items-center gap-2 rounded-2xl p-2 shadow-lg">
+        <a href={listUrl} class="explore-back-to-list flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/40 bg-bg text-text-secondary" aria-label={publicText('explore.backToDeals')}>
+          <Icon name="chevron-left" class="h-4 w-4" />
+        </a>
         <label class="relative block flex-1">
           <Icon name="search" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
           <input
@@ -457,7 +466,7 @@ const categories = getExploreCategories().map((category) => ({
   </main>
 
   <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script is:inline define:vars={{ mapPins, initialCategory, initialSearchQuery, initialSort, initialUrgent, initialOpen, initialCoupon, initialRadius }}>
+  <script is:inline define:vars={{ mapPins, initialCategory, initialSearchQuery, initialSort, initialUrgent, initialOpen, initialCoupon, initialSaved, initialRadius, listUrl }}>
     document.addEventListener('DOMContentLoaded', () => {
       // Size the map shell to exactly "viewport minus header", tracking header size changes.
       const headerEl = document.querySelector('header');
@@ -489,6 +498,7 @@ const categories = getExploreCategories().map((category) => ({
       const locationHelper = document.getElementById('location-helper-text');
       const locationHelperMobile = document.getElementById('location-helper-text-mobile');
       const mapLoadingOverlay = document.getElementById('map-loading-overlay');
+      const listReturnLinks = document.querySelectorAll('.explore-back-to-list');
 
       // Mount the shared shop-list template into both the desktop panel and the
       // mobile sheet's list body; only one is visible at a time via CSS breakpoints,
@@ -716,6 +726,19 @@ const categories = getExploreCategories().map((category) => ({
         if (couponOnly) params.set('coupon', 'true');
         const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
         window.history.replaceState({}, '', nextUrl);
+        syncListReturnLinks();
+      };
+
+      const syncListReturnLinks = () => {
+        const params = new URLSearchParams();
+        if (activeCategory !== 'all') params.set('category', activeCategory);
+        if (searchQuery) params.set('q', searchQuery);
+        if (sortMode === 'expiring' || sortMode === 'nearby') params.set('sort', sortMode);
+        else if (urgentOnly) params.set('sort', 'expiring');
+        if (couponOnly) params.set('coupon', '1');
+        if (initialSaved) params.set('saved', '1');
+        const href = `${listUrl}${params.toString() ? `?${params.toString()}` : ''}`;
+        listReturnLinks.forEach((link) => link.setAttribute('href', href));
       };
 
       const updateLocationHelper = (message, tone = 'default') => {

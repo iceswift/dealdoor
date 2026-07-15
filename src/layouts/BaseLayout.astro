@@ -150,7 +150,7 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
         
         {/* Desktop Navigation */}
         <div class="hidden md:flex items-center gap-1">
-          <a href={localizedPath('/explore')} class="rounded-xl px-4 py-2 text-sm font-semibold text-text-secondary hover:text-primary hover:bg-bg-secondary transition-all">
+          <a href={localizedPath('/deals')} class="rounded-xl px-4 py-2 text-sm font-semibold text-text-secondary hover:text-primary hover:bg-bg-secondary transition-all">
             {common('nav.explore')}
           </a>
           <a href={localizedPath('/for-shops')} class="rounded-xl px-4 py-2 text-sm font-semibold text-text-secondary hover:text-primary hover:bg-bg-secondary transition-all">
@@ -159,23 +159,67 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
           <a href={localizedPath('/pricing')} class="rounded-xl px-4 py-2 text-sm font-semibold text-text-secondary hover:text-primary hover:bg-bg-secondary transition-all">
             {common('nav.pricing')}
           </a>
-          <a href={getLocalizedPath(Astro.url.pathname, alternateLanguage)} class="flex h-11 min-w-11 items-center justify-center rounded-xl px-2 text-xs font-black text-text-secondary transition hover:bg-bg-secondary hover:text-primary" aria-label={`${common('action.language')}: ${LANGUAGES[alternateLanguage].name}`}>
-            {alternateLanguage.toUpperCase()}
-          </a>
+          {/* Settings Dropdown Container */}
+          <div class="relative inline-block text-left" id="settings-dropdown-container">
+            <button
+              id="dropdown-settings-btn"
+              class="h-11 w-11 rounded-xl flex items-center justify-center text-text-secondary hover:bg-bg-secondary transition-all cursor-pointer h-11"
+              aria-expanded="false"
+              aria-haspopup="true"
+              aria-label={lang === 'en' ? 'Settings' : 'การตั้งค่า'}
+            >
+              <svg class="h-4.5 w-4.5 text-text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
 
-          {/* Theme Toggle Button */}
-          <button
-            id="theme-toggle"
-            class="h-11 w-11 rounded-xl flex items-center justify-center text-text-secondary hover:bg-bg-secondary transition-colors"
-            aria-label={lang === 'en' ? 'Toggle dark mode' : 'สลับโหมดมืด'}
-          >
-            <svg id="theme-icon-light" class="h-4.5 w-4.5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
-            <svg id="theme-icon-dark" class="h-4.5 w-4.5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          </button>
+            {/* Settings Dropdown Menu */}
+            <div
+              id="settings-dropdown-menu"
+              class="fixed w-56 origin-top-right rounded-2xl border border-border/50 bg-card-bg/95 backdrop-blur-md shadow-xl ring-1 ring-black/5 focus:outline-none transition-all duration-200 transform scale-95 opacity-0 pointer-events-none z-[2147483647] p-2"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="dropdown-settings-btn"
+            >
+              {/* Header Section inside Settings Dropdown */}
+              <div class="px-3 py-1.5 border-b border-border/30 mb-1.5">
+                <p class="text-[10px] text-text-tertiary font-bold uppercase tracking-wider">{lang === 'th' ? 'การตั้งค่า' : 'Settings'}</p>
+              </div>
+
+              {/* Language Selector Option */}
+              <a
+                href={getLocalizedPath(Astro.url.pathname, alternateLanguage)}
+                class="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold text-text-secondary hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                role="menuitem"
+              >
+                <div class="flex items-center gap-3">
+                  <svg class="h-4 w-4 text-text-tertiary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                  <span>{lang === 'th' ? 'เปลี่ยนภาษา' : 'Change Language'}</span>
+                </div>
+                <span class="rounded-md bg-bg-secondary px-1.5 py-0.5 text-[9px] font-black text-text-secondary border border-border/40">
+                  {alternateLanguage.toUpperCase()}
+                </span>
+              </a>
+
+              <div class="border-t border-border/30 my-1"></div>
+
+              {/* Theme Toggle Option */}
+              <div class="px-3 py-2" role="menuitem">
+                <div class="flex items-center gap-3 mb-2">
+                  <svg class="h-4 w-4 text-text-tertiary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <span class="text-xs font-semibold text-text-secondary">{lang === 'th' ? 'เปลี่ยนธีม' : 'Theme'}</span>
+                </div>
+                <div class="flex justify-center">
+                  <ThemeToggle />
+                </div>
+              </div>
+            </div>
+          </div>
           
           {user && <NotificationBell client:load />}
           
@@ -262,9 +306,6 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
         {/* Mobile Actions (Visible only on mobile: < md) */}
         <div class="flex md:hidden items-center gap-1.5">
           {user && <NotificationBell client:load />}
-          <a href={getLocalizedPath(Astro.url.pathname, alternateLanguage)} class="flex h-11 min-w-11 items-center justify-center rounded-xl px-2 text-xs font-black text-text-secondary transition hover:bg-bg-secondary hover:text-primary" aria-label={`${common('action.language')}: ${LANGUAGES[alternateLanguage].name}`}>
-            {alternateLanguage.toUpperCase()}
-          </a>
           
           <button
             id="mobile-menu-btn"
@@ -343,7 +384,7 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
         {/* 2. Navigation Grid Links */}
         <div class="grid grid-cols-2 gap-3.5">
           {/* Explore Card */}
-          <a href="/explore" class="rounded-2xl border border-border/30 bg-card-bg/30 p-4.5 flex flex-col justify-between min-h-[100px] hover:border-primary/30 transition-colors">
+          <a href={localizedPath('/deals')} class="rounded-2xl border border-border/30 bg-card-bg/30 p-4.5 flex flex-col justify-between min-h-[100px] hover:border-primary/30 transition-colors">
             <div class="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -410,6 +451,32 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
           </div>
           <ThemeToggle />
         </div>
+
+        {/* Language Switcher Card */}
+        <a 
+          href={getLocalizedPath(Astro.url.pathname, alternateLanguage)} 
+          class="rounded-2xl border border-border/30 bg-card-bg/30 p-4.5 flex items-center justify-between hover:border-primary/30 transition-colors"
+          aria-label={`${common('action.language')}: ${LANGUAGES[alternateLanguage].name}`}
+        >
+          <div class="flex items-center gap-3">
+            <div class="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-secondary">
+                {lang === 'th' ? 'เปลี่ยนภาษา' : 'Change Language'}
+              </p>
+              <p class="text-[9px] text-text-tertiary mt-0.5">
+                {lang === 'th' ? 'เลือกภาษาที่ต้องการ' : 'Choose your preferred language'}
+              </p>
+            </div>
+          </div>
+          <span class="flex h-8 min-w-8 items-center justify-center rounded-lg bg-bg-secondary px-2 text-xs font-black text-text-secondary border border-border/40">
+            {alternateLanguage.toUpperCase()}
+          </span>
+        </a>
       </div>
       
       {/* 3. Bottom Logout Action */}
@@ -514,6 +581,7 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
     }
 
     function openUserDropdownMenu() {
+      closeSettingsDropdownMenu();
       positionUserDropdownMenu();
       dropdownAvatarBtn?.setAttribute('aria-expanded', 'true');
       userDropdownMenu?.classList.remove('scale-95', 'opacity-0', 'pointer-events-none');
@@ -535,6 +603,52 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
         closeUserDropdownMenu();
       }
     });
+
+    // ─── SETTINGS DROP-DOWN MENU CONTROLLER ───
+    const dropdownSettingsBtn = document.getElementById('dropdown-settings-btn');
+    const settingsDropdownMenu = document.getElementById('settings-dropdown-menu');
+
+    function positionSettingsDropdownMenu() {
+      if (!dropdownSettingsBtn || !settingsDropdownMenu) return;
+      if (settingsDropdownMenu.parentElement !== document.body) {
+        document.body.appendChild(settingsDropdownMenu);
+      }
+
+      const triggerRect = dropdownSettingsBtn.getBoundingClientRect();
+      const menuWidth = settingsDropdownMenu.offsetWidth || 224;
+      const left = Math.min(window.innerWidth - menuWidth - 16, Math.max(16, triggerRect.right - menuWidth));
+      const top = triggerRect.bottom + 8;
+
+      settingsDropdownMenu.style.position = 'fixed';
+      settingsDropdownMenu.style.left = `${left}px`;
+      settingsDropdownMenu.style.right = 'auto';
+      settingsDropdownMenu.style.top = `${top}px`;
+      settingsDropdownMenu.style.zIndex = '2147483647';
+    }
+
+    function openSettingsDropdownMenu() {
+      closeUserDropdownMenu();
+      positionSettingsDropdownMenu();
+      dropdownSettingsBtn?.setAttribute('aria-expanded', 'true');
+      settingsDropdownMenu?.classList.remove('scale-95', 'opacity-0', 'pointer-events-none');
+      settingsDropdownMenu?.classList.add('scale-100', 'opacity-100', 'pointer-events-auto');
+    }
+
+    function closeSettingsDropdownMenu() {
+      dropdownSettingsBtn?.setAttribute('aria-expanded', 'false');
+      settingsDropdownMenu?.classList.remove('scale-100', 'opacity-100', 'pointer-events-auto');
+      settingsDropdownMenu?.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+    }
+    
+    dropdownSettingsBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isExpanded = dropdownSettingsBtn.getAttribute('aria-expanded') === 'true';
+      if (!isExpanded) {
+        openSettingsDropdownMenu();
+      } else {
+        closeSettingsDropdownMenu();
+      }
+    });
     
     // Close dropdown on outside click
     document.addEventListener('click', (e) => {
@@ -543,18 +657,31 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
           closeUserDropdownMenu();
         }
       }
+      if (settingsDropdownMenu && !settingsDropdownMenu.classList.contains('opacity-0')) {
+        if (!settingsDropdownMenu.contains(e.target) && !dropdownSettingsBtn?.contains(e.target)) {
+          closeSettingsDropdownMenu();
+        }
+      }
     });
     
     // Close dropdown on Escape key
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && userDropdownMenu && !userDropdownMenu.classList.contains('opacity-0')) {
-        closeUserDropdownMenu();
+      if (e.key === 'Escape') {
+        if (userDropdownMenu && !userDropdownMenu.classList.contains('opacity-0')) {
+          closeUserDropdownMenu();
+        }
+        if (settingsDropdownMenu && !settingsDropdownMenu.classList.contains('opacity-0')) {
+          closeSettingsDropdownMenu();
+        }
       }
     });
 
     window.addEventListener('resize', () => {
       if (userDropdownMenu && !userDropdownMenu.classList.contains('opacity-0')) {
         positionUserDropdownMenu();
+      }
+      if (settingsDropdownMenu && !settingsDropdownMenu.classList.contains('opacity-0')) {
+        positionSettingsDropdownMenu();
       }
     });
     // ───────────────────────────────────────

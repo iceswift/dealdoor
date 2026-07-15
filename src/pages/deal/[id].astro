@@ -8,6 +8,7 @@ import { firstRow } from '../../lib/db-query';
 import { eq, and, ne, gte } from 'drizzle-orm';
 import { getDealViewModel } from '../../lib/deals/view-model';
 import { getDealViewCount } from '../../lib/analytics';
+import { getDealRedemptionCount } from '../../server/services/deal.service';
 
 import Icon from '../../components/icons/index.astro';
 import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
@@ -37,7 +38,19 @@ if (!result?.deal || !result.shop) {
 const { deal, shop } = result;
 const vm = getDealViewModel(deal, shop, Astro.url.origin);
 
-const isClaimDisabled = vm.status === 'expired' || vm.status === 'inactive';
+const redemptionCount = await getDealRedemptionCount(deal.id);
+const quotaReached = typeof deal.maxRedemptions === 'number' && redemptionCount >= deal.maxRedemptions;
+const remainingRedemptions = typeof deal.maxRedemptions === 'number'
+  ? Math.max(0, deal.maxRedemptions - redemptionCount)
+  : null;
+const availabilityDisplay = deal.redemptionAvailabilityDisplay || 'low_stock';
+const isExactAvailabilityVisible = !quotaReached && availabilityDisplay === 'exact' && remainingRedemptions !== null;
+const isLowStockVisible = !quotaReached
+  && availabilityDisplay === 'low_stock'
+  && remainingRedemptions !== null
+  && remainingRedemptions <= (deal.lowStockThreshold || 10);
+const isClaimDisabled = vm.status === 'expired' || vm.status === 'inactive' || quotaReached;
+const claimDisabledLabel = quotaReached ? 'ครบสิทธิ์แล้ว' : 'หมดอายุแล้ว';
 const pageTitle = `${vm.title} | ${shop.name}`;
 const pageDescription = [vm.discountLabel, vm.summary].filter(Boolean).join(' - ');
 const pageImage = vm.imageUrl || shop.coverImage || shop.logoImage || '/og-default.png';
@@ -87,6 +100,13 @@ const relatedDeals = relatedRows.filter((row) => row.shop);
 // Share links
 const shareUrl = vm.urls.absoluteDeal || Astro.url.href;
 const shareText = vm.shareText || vm.title;
+const claimSteps = vm.claimType === 'copy_code'
+  ? ['คัดลอกโค้ดคูปอง', 'แจ้งโค้ดกับพนักงานก่อนชำระเงิน']
+  : vm.claimType === 'open_line'
+    ? ['เปิด LINE ของร้านจากปุ่มรับสิทธิ์', 'ส่งข้อความเพื่อรับสิทธิ์ตามที่ร้านกำหนด']
+    : vm.claimType === 'contact_shop'
+      ? ['กดติดต่อร้านจากปุ่มรับสิทธิ์', 'ยืนยันรายละเอียดและรับสิทธิ์กับร้าน']
+      : ['เปิดหน้านี้ไว้', 'แสดงดีลนี้กับพนักงานที่ร้าน'];
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription} image={pageImage} url={Astro.url.href} type="article">
@@ -120,13 +140,15 @@ const shareText = vm.shareText || vm.title;
         data-claim-type={vm.claimType}
         data-coupon={vm.couponCode || ''}
         data-line-url={vm.shop.lineUrl || ''}
+        data-phone-url={vm.shop.phoneUrl || ''}
+        data-shop-url={vm.urls.shop || ''}
         disabled={isClaimDisabled}
         class:list={[
           'h-9 px-5 rounded-xl text-xs font-black text-white shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5',
           isClaimDisabled ? 'cursor-not-allowed bg-text-tertiary opacity-70' : 'bg-primary hover:bg-primary-hover'
         ]}
       >
-        {isClaimDisabled ? 'หมดอายุแล้ว' : vm.claimLabel}
+        {isClaimDisabled ? claimDisabledLabel : vm.claimLabel}
       </button>
     </div>
   </div>
@@ -225,6 +247,56 @@ const shareText = vm.shareText || vm.title;
           <p class="text-sm font-semibold leading-relaxed text-text-secondary">{vm.summary}</p>
         </div>
 
+        {quotaReached && (
+          <section class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200">
+            <Icon name="clock" class="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <h2 class="text-sm font-black">ดีลนี้ครบจำนวนสิทธิ์แล้ว</h2>
+              <p class="mt-1 text-xs font-bold leading-relaxed">ร้านกำหนดจำนวนสิทธิ์ไว้ {deal.maxRedemptions.toLocaleString()} สิทธิ์ และมีผู้ใช้ครบแล้ว</p>
+            </div>
+          </section>
+        )}
+
+        {isExactAvailabilityVisible && (
+          <section class="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200">
+            <Icon name="clock" class="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <h2 class="text-sm font-black">เหลือ {remainingRedemptions.toLocaleString()} สิทธิ์</h2>
+              <p class="mt-1 text-xs font-bold leading-relaxed">จำนวนสิทธิ์อาจเปลี่ยนแปลงได้ก่อนถึงร้าน และยังไม่ถือเป็นการจองสิทธิ์</p>
+            </div>
+          </section>
+        )}
+
+        {isLowStockVisible && (
+          <section class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200">
+            <Icon name="clock" class="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <h2 class="text-sm font-black">สิทธิ์ใกล้หมดแล้ว</h2>
+              <p class="mt-1 text-xs font-bold leading-relaxed">รับสิทธิ์กับร้านได้จนกว่าจำนวนที่กำหนดจะครบ</p>
+            </div>
+          </section>
+        )}
+
+        <section class="rounded-2xl border border-primary/15 bg-primary/5 p-5" aria-labelledby="claim-steps-title">
+          <div class="flex items-center gap-2">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-card-bg text-primary shadow-sm">
+              <Icon name="rocket" class="h-4 w-4" />
+            </div>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-wider text-primary">วิธีรับสิทธิ์</p>
+              <h2 id="claim-steps-title" class="text-sm font-black text-secondary">{vm.claimLabel}</h2>
+            </div>
+          </div>
+          <ol class="mt-4 grid gap-2 sm:grid-cols-2">
+            {claimSteps.map((step, index) => (
+              <li class="flex min-h-11 items-center gap-2 rounded-xl border border-primary/10 bg-card-bg/75 px-3 text-xs font-bold text-text-secondary">
+                <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-black text-white">{index + 1}</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         {/* Description section */}
         {vm.description && (
           <div class="space-y-2.5">
@@ -317,10 +389,21 @@ const shareText = vm.shareText || vm.title;
             
             {/* Coupon copy block (if available) */}
             {vm.couponCode && (
-              <div class="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 text-center">
+              <button
+                type="button"
+                data-copy-coupon={vm.couponCode}
+                disabled={quotaReached}
+                class:list={[
+                  'w-full rounded-xl border border-dashed p-4 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                  quotaReached ? 'cursor-not-allowed border-border/40 bg-bg-secondary text-text-tertiary opacity-70' : 'border-primary/30 bg-primary/5 hover:border-primary/60 hover:bg-primary/10'
+                ]}
+              >
                 <p class="text-[10px] font-black uppercase tracking-widest text-text-tertiary">Coupon Code</p>
                 <p id="coupon-code" class="mt-1.5 break-all font-mono text-lg font-black tracking-wider text-secondary">{vm.couponCode}</p>
-              </div>
+                <span class:list={['mt-2 block text-[10px] font-black', quotaReached ? 'text-text-tertiary' : 'text-primary']}>
+                  {quotaReached ? 'สิทธิ์ครบแล้ว' : 'กดเพื่อคัดลอกโค้ด'}
+                </span>
+              </button>
             )}
 
             {/* Primary Action Button */}
@@ -329,13 +412,15 @@ const shareText = vm.shareText || vm.title;
               data-claim-type={vm.claimType}
               data-coupon={vm.couponCode || ''}
               data-line-url={vm.shop.lineUrl || ''}
+              data-phone-url={vm.shop.phoneUrl || ''}
+              data-shop-url={vm.urls.shop || ''}
               disabled={isClaimDisabled}
               class:list={[
                 'w-full py-3.5 px-4 rounded-xl text-xs font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5',
                 isClaimDisabled ? 'cursor-not-allowed bg-text-tertiary opacity-70' : 'bg-primary hover:bg-primary-hover shadow-primary/20 hover:shadow-primary/35'
               ]}
             >
-              {isClaimDisabled ? 'ดีลนี้หมดอายุแล้ว' : (
+              {isClaimDisabled ? `ดีลนี้${claimDisabledLabel}` : (
                 <>
                   <Icon name="rocket" class="h-4.5 w-4.5" />
                   <span>{vm.claimLabel}</span>
@@ -433,10 +518,11 @@ const shareText = vm.shareText || vm.title;
       
       {/* Coupon Code Block (if available) */}
       {vm.couponCode && (
-        <div class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 text-center">
+        <button type="button" data-copy-coupon={vm.couponCode} class="w-full rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 text-center transition hover:border-primary/60 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
           <p class="text-[10px] font-black uppercase tracking-widest text-text-tertiary">Coupon Code</p>
           <p class="mt-1.5 break-all font-mono text-lg font-black tracking-wider text-secondary">{vm.couponCode}</p>
-        </div>
+          <span class="mt-2 block text-[10px] font-black text-primary">กดเพื่อคัดลอกโค้ด</span>
+        </button>
       )}
 
       {/* Shop Profile Box */}
@@ -548,13 +634,15 @@ const shareText = vm.shareText || vm.title;
       data-claim-type={vm.claimType}
       data-coupon={vm.couponCode || ''}
       data-line-url={vm.shop.lineUrl || ''}
+      data-phone-url={vm.shop.phoneUrl || ''}
+      data-shop-url={vm.urls.shop || ''}
       disabled={isClaimDisabled}
       class:list={[
         'h-10 px-5 text-xs font-black text-white rounded-xl shadow-md flex items-center justify-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer',
         isClaimDisabled ? 'cursor-not-allowed bg-text-tertiary opacity-70' : 'bg-primary hover:bg-primary-hover shadow-primary/25'
       ]}
     >
-      {isClaimDisabled ? 'หมดอายุแล้ว' : (
+      {isClaimDisabled ? claimDisabledLabel : (
         <>
           <Icon name="rocket" class="h-4 w-4" />
           <span>{vm.claimLabel}</span>
@@ -600,6 +688,37 @@ const shareText = vm.shareText || vm.title;
       }
     }
 
+    async function copyText(value) {
+      if (!value) return false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(value);
+          return true;
+        }
+      } catch {}
+
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        return copied;
+      } catch {
+        return false;
+      }
+    }
+
+    function setClaimConfirmation(message) {
+      [claimButton, mobileClaimButton, stickyClaimButton].forEach((button) => {
+        if (button) button.innerHTML = `✓ ${message}`;
+      });
+    }
+
     trackDealEvent('deal_view', {
       source: 'direct_deal_page',
       path: window.location.pathname,
@@ -610,25 +729,46 @@ const shareText = vm.shareText || vm.title;
       const claimType = button.dataset.claimType;
       const coupon = button.dataset.coupon;
       const lineUrl = button.dataset.lineUrl;
+      const phoneUrl = button.dataset.phoneUrl;
+      const shopUrl = button.dataset.shopUrl;
 
       trackDealEvent('deal_click', {
         action: claimType || 'claim',
         source: 'direct_deal_page',
       });
+      trackDealEvent('claim_started', {
+        action: claimType || 'claim',
+        source: 'direct_deal_page',
+      });
 
       if (claimType === 'copy_code' && coupon) {
-        await navigator.clipboard.writeText(coupon);
-        button.innerHTML = '✓ คัดลอกโค้ดแล้ว';
-
-        // Sync button text across desktop, mobile, and sticky header triggers
-        [claimButton, mobileClaimButton, stickyClaimButton].forEach((other) => {
-          if (other && other !== button) other.innerHTML = '✓ คัดลอกโค้ดแล้ว';
-        });
+        if (await copyText(coupon)) {
+          setClaimConfirmation('คัดลอกโค้ดแล้ว');
+          trackDealEvent('coupon_copied', { source: 'primary_claim_action' });
+        }
         return;
       }
 
       if (claimType === 'open_line' && lineUrl) {
+        trackDealEvent('contact_started', { channel: 'line', source: 'primary_claim_action' });
         window.location.href = lineUrl;
+        return;
+      }
+
+      if (claimType === 'contact_shop') {
+        const contactTarget = phoneUrl || lineUrl || shopUrl;
+        if (contactTarget) {
+          trackDealEvent('contact_started', {
+            channel: phoneUrl ? 'phone' : lineUrl ? 'line' : 'shop_page',
+            source: 'primary_claim_action',
+          });
+          window.location.href = contactTarget;
+          return;
+        }
+      }
+
+      if (claimType === 'show_at_shop') {
+        setClaimConfirmation('เปิดหน้านี้ไว้เพื่อแสดงที่ร้าน');
       }
     }
 
@@ -638,23 +778,41 @@ const shareText = vm.shareText || vm.title;
 
     async function handleCopyLink(button) {
       if (!button) return;
-      await navigator.clipboard.writeText(window.location.href);
-      button.textContent = 'คัดลอกแล้ว';
-      trackDealEvent('deal_share', {
-        channel: 'copy_link',
-        source: 'direct_deal_page',
-      });
+      if (await copyText(window.location.href)) {
+        button.textContent = 'คัดลอกแล้ว';
+        trackDealEvent('deal_share', {
+          channel: 'copy_link',
+          source: 'direct_deal_page',
+        });
+      }
     }
 
     copyLinkButton?.addEventListener('click', () => handleCopyLink(copyLinkButton));
     mobileCopyLink?.addEventListener('click', () => handleCopyLink(mobileCopyLink));
 
+    document.querySelectorAll('[data-copy-coupon]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const coupon = button.dataset.copyCoupon;
+        if (await copyText(coupon)) {
+          button.querySelectorAll('span').forEach((label) => {
+            if (label.textContent.includes('กดเพื่อคัดลอก')) label.textContent = 'คัดลอกโค้ดแล้ว';
+          });
+          setClaimConfirmation('คัดลอกโค้ดแล้ว');
+          trackDealEvent('coupon_copied', { source: 'coupon_code' });
+        }
+      });
+    });
+
     document.querySelectorAll('.deal-contact-link').forEach((link) => {
       link.addEventListener('click', () => {
+        const channel = link.dataset.contactChannel || 'unknown';
         trackDealEvent('contact_click', {
-          channel: link.dataset.contactChannel || 'unknown',
+          channel,
           source: 'direct_deal_page',
         });
+        if (!channel.startsWith('share_')) {
+          trackDealEvent('contact_started', { channel, source: 'direct_deal_page' });
+        }
       });
     });
   </script>

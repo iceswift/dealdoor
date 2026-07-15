@@ -10,6 +10,10 @@ export type EventType =
   | 'page_view'
   | 'deal_view'
   | 'deal_click'
+  | 'claim_started'
+  | 'coupon_copied'
+  | 'contact_started'
+  | 'redemption_confirmed'
   | 'deal_share'
   | 'contact_click'
   | 'map_pin_click'
@@ -20,12 +24,18 @@ const EVENT_TYPES = new Set<EventType>([
   'page_view',
   'deal_view',
   'deal_click',
+  'claim_started',
+  'coupon_copied',
+  'contact_started',
+  'redemption_confirmed',
   'deal_share',
   'contact_click',
   'map_pin_click',
   'map_directions_click',
   'map_filter_change',
 ]);
+const EVENT_DEDUPE_WINDOW_MS = 2_000;
+const recentEventKeys = new Map<string, number>();
 
 export type TrackEventInput = {
   type: EventType;
@@ -49,7 +59,14 @@ export function normalizeTrackEventInput(raw: any, request?: Request): TrackEven
     type: raw.type,
     shopId: String(raw.shopId),
     dealId: raw.dealId ? String(raw.dealId) : undefined,
-    metadata: raw.metadata && typeof raw.metadata === 'object' ? raw.metadata : undefined,
+    metadata: raw.metadata && typeof raw.metadata === 'object'
+      ? Object.fromEntries(
+          Object.entries(raw.metadata)
+            .slice(0, 16)
+            .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
+            .map(([key, value]) => [String(key).slice(0, 64), typeof value === 'string' ? value.slice(0, 240) : value])
+        )
+      : undefined,
     ip: request?.headers.get('x-forwarded-for') || request?.headers.get('x-real-ip') || undefined,
     userAgent: request?.headers.get('user-agent') || undefined,
   };
@@ -57,6 +74,17 @@ export function normalizeTrackEventInput(raw: any, request?: Request): TrackEven
 
 export async function trackEvent(params: TrackEventInput): Promise<void> {
   try {
+    const now = Date.now();
+    const dedupeKey = `${params.ip || 'anonymous'}:${params.userAgent || 'unknown'}:${params.type}:${params.shopId}:${params.dealId || ''}`;
+    const lastSeenAt = recentEventKeys.get(dedupeKey) || 0;
+    if (now - lastSeenAt < EVENT_DEDUPE_WINDOW_MS) return;
+    recentEventKeys.set(dedupeKey, now);
+    if (recentEventKeys.size > 5_000) {
+      for (const [key, seenAt] of recentEventKeys) {
+        if (now - seenAt > EVENT_DEDUPE_WINDOW_MS) recentEventKeys.delete(key);
+      }
+    }
+
     await db.insert(analyticsEvents).values({
       id: createId(),
       type: params.type,
@@ -104,6 +132,10 @@ export async function getShopStats(shopId: string, days: number = 30) {
     pageViews: number;
     dealViews: number;
     dealClicks: number;
+    claimStarts: number;
+    couponCopies: number;
+    contactStarts: number;
+    redemptions: number;
     shares: number;
     contactClicks: number;
     uniqueVisitors: number;
@@ -119,6 +151,10 @@ export async function getShopStats(shopId: string, days: number = 30) {
       pageViews: 0,
       dealViews: 0,
       dealClicks: 0,
+      claimStarts: 0,
+      couponCopies: 0,
+      contactStarts: 0,
+      redemptions: 0,
       shares: 0,
       contactClicks: 0,
       uniqueVisitors: 0,
@@ -135,6 +171,10 @@ export async function getShopStats(shopId: string, days: number = 30) {
     if (row.type === 'page_view') day.pageViews += count;
     if (row.type === 'deal_view') day.dealViews += count;
     if (row.type === 'deal_click') day.dealClicks += count;
+    if (row.type === 'claim_started') day.claimStarts += count;
+    if (row.type === 'coupon_copied') day.couponCopies += count;
+    if (row.type === 'contact_started') day.contactStarts += count;
+    if (row.type === 'redemption_confirmed') day.redemptions += count;
     if (row.type === 'deal_share') day.shares += count;
     if (row.type === 'contact_click') day.contactClicks += count;
     day.uniqueVisitors = Math.max(day.uniqueVisitors, uniqueIps);
@@ -149,7 +189,14 @@ export async function getShopStats(shopId: string, days: number = 30) {
     .where(and(eq(dailyStats.shopId, shopId), gte(dailyStats.date, startDateStr)))
     .orderBy(dailyStats.date);
 
-  const stats = hasLiveEvents ? liveStats : storedStats;
+  const normalizedStoredStats = storedStats.map((day) => ({
+    ...day,
+    claimStarts: 0,
+    couponCopies: 0,
+    contactStarts: 0,
+    redemptions: 0,
+  }));
+  const stats = hasLiveEvents ? liveStats : normalizedStoredStats;
   const source = hasLiveEvents ? 'analytics_events' : 'daily_stats';
 
   const totals = stats.reduce(
@@ -157,10 +204,14 @@ export async function getShopStats(shopId: string, days: number = 30) {
       pageViews: acc.pageViews + (day.pageViews || 0),
       dealViews: acc.dealViews + (day.dealViews || 0),
       dealClicks: acc.dealClicks + (day.dealClicks || 0),
+      claimStarts: acc.claimStarts + (day.claimStarts || 0),
+      couponCopies: acc.couponCopies + (day.couponCopies || 0),
+      contactStarts: acc.contactStarts + (day.contactStarts || 0),
+      redemptions: acc.redemptions + (day.redemptions || 0),
       shares: acc.shares + (day.shares || 0),
       contactClicks: acc.contactClicks + (day.contactClicks || 0),
     }),
-    { pageViews: 0, dealViews: 0, dealClicks: 0, shares: 0, contactClicks: 0 }
+    { pageViews: 0, dealViews: 0, dealClicks: 0, claimStarts: 0, couponCopies: 0, contactStarts: 0, redemptions: 0, shares: 0, contactClicks: 0 }
   );
 
   return { stats, totals, source };
@@ -177,6 +228,7 @@ export async function getTopDeals(shopId: string, limit: number = 5, days: numbe
       category: deals.category,
       views: sql<number>`sum(case when ${analyticsEvents.type} = 'deal_view' then 1 else 0 end)`,
       clicks: sql<number>`sum(case when ${analyticsEvents.type} = 'deal_click' then 1 else 0 end)`,
+      redemptions: sql<number>`sum(case when ${analyticsEvents.type} = 'redemption_confirmed' then 1 else 0 end)`,
       shares: sql<number>`sum(case when ${analyticsEvents.type} = 'deal_share' then 1 else 0 end)`,
     })
     .from(analyticsEvents)
@@ -191,6 +243,107 @@ export async function getTopDeals(shopId: string, limit: number = 5, days: numbe
     .groupBy(analyticsEvents.dealId, deals.title, deals.category)
     .orderBy(desc(sql<number>`sum(case when ${analyticsEvents.type} = 'deal_view' then 1 else 0 end)`))
     .limit(limit);
+}
+
+type DealQuotaSource = {
+  dealId: string;
+  title: string;
+  maxRedemptions: number | null;
+  lowStockThreshold: number | null;
+  redemptions: number | null;
+};
+
+export type DealQuotaStat = {
+  dealId: string;
+  title: string;
+  maxRedemptions: number | null;
+  redemptions: number;
+  remaining: number | null;
+  fillRate: number | null;
+  status: 'unlimited' | 'available' | 'low_stock' | 'exhausted';
+};
+
+export type DealQuotaSummary = {
+  limitedDealCount: number;
+  unlimitedDealCount: number;
+  limitedCapacity: number;
+  redeemedCapacity: number;
+  remainingCapacity: number;
+  fillRate: number | null;
+  lowStockDealCount: number;
+  exhaustedDealCount: number;
+};
+
+export function normalizeDealQuotaAnalytics(rows: DealQuotaSource[]) {
+  const deals: DealQuotaStat[] = rows.map((row) => {
+    const redemptions = Number(row.redemptions) || 0;
+    const maxRedemptions = row.maxRedemptions === null ? null : Number(row.maxRedemptions);
+
+    if (maxRedemptions === null) {
+      return {
+        dealId: row.dealId,
+        title: row.title,
+        maxRedemptions: null,
+        redemptions,
+        remaining: null,
+        fillRate: null,
+        status: 'unlimited' as const,
+      };
+    }
+
+    const remaining = Math.max(0, maxRedemptions - redemptions);
+    const fillRate = Math.min(100, Math.round((redemptions / maxRedemptions) * 100));
+    const lowStockThreshold = Math.max(1, Number(row.lowStockThreshold) || 10);
+    const status = remaining === 0
+      ? 'exhausted' as const
+      : remaining <= lowStockThreshold
+        ? 'low_stock' as const
+        : 'available' as const;
+
+    return {
+      dealId: row.dealId,
+      title: row.title,
+      maxRedemptions,
+      redemptions,
+      remaining,
+      fillRate,
+      status,
+    };
+  });
+
+  const limitedDeals = deals.filter((deal) => deal.maxRedemptions !== null);
+  const limitedCapacity = limitedDeals.reduce((total, deal) => total + (deal.maxRedemptions || 0), 0);
+  const redeemedCapacity = limitedDeals.reduce((total, deal) => total + Math.min(deal.redemptions, deal.maxRedemptions || 0), 0);
+
+  const summary: DealQuotaSummary = {
+    limitedDealCount: limitedDeals.length,
+    unlimitedDealCount: deals.length - limitedDeals.length,
+    limitedCapacity,
+    redeemedCapacity,
+    remainingCapacity: Math.max(0, limitedCapacity - redeemedCapacity),
+    fillRate: limitedCapacity > 0 ? Math.round((redeemedCapacity / limitedCapacity) * 100) : null,
+    lowStockDealCount: limitedDeals.filter((deal) => deal.status === 'low_stock').length,
+    exhaustedDealCount: limitedDeals.filter((deal) => deal.status === 'exhausted').length,
+  };
+
+  return { deals, summary };
+}
+
+export async function getDealQuotaAnalytics(shopId: string) {
+  const rows = await db
+    .select({
+      dealId: deals.id,
+      title: deals.title,
+      maxRedemptions: deals.maxRedemptions,
+      lowStockThreshold: deals.lowStockThreshold,
+      redemptions: sql<number>`sum(case when ${analyticsEvents.type} = 'redemption_confirmed' then 1 else 0 end)`,
+    })
+    .from(deals)
+    .leftJoin(analyticsEvents, eq(analyticsEvents.dealId, deals.id))
+    .where(eq(deals.shopId, shopId))
+    .groupBy(deals.id, deals.title, deals.maxRedemptions, deals.lowStockThreshold);
+
+  return normalizeDealQuotaAnalytics(rows);
 }
 
 export async function getPreviousPeriodTotals(shopId: string, days: number) {
@@ -214,12 +367,16 @@ export async function getPreviousPeriodTotals(shopId: string, days: number) {
     )
     .groupBy(analyticsEvents.type);
 
-  const totals = { pageViews: 0, dealViews: 0, dealClicks: 0, shares: 0, contactClicks: 0 };
+  const totals = { pageViews: 0, dealViews: 0, dealClicks: 0, claimStarts: 0, couponCopies: 0, contactStarts: 0, redemptions: 0, shares: 0, contactClicks: 0 };
   rows.forEach((row) => {
     const count = Number(row.count) || 0;
     if (row.type === 'page_view') totals.pageViews += count;
     if (row.type === 'deal_view') totals.dealViews += count;
     if (row.type === 'deal_click') totals.dealClicks += count;
+    if (row.type === 'claim_started') totals.claimStarts += count;
+    if (row.type === 'coupon_copied') totals.couponCopies += count;
+    if (row.type === 'contact_started') totals.contactStarts += count;
+    if (row.type === 'redemption_confirmed') totals.redemptions += count;
     if (row.type === 'deal_share') totals.shares += count;
     if (row.type === 'contact_click') totals.contactClicks += count;
   });
@@ -322,10 +479,11 @@ export async function aggregateDailyStats(shopId: string, date: string): Promise
 
 export async function getDashboardAnalytics(shopId: string, days: number) {
   const { stats, totals, source } = await getShopStats(shopId, days);
-  const [topDeals, previousTotals, categoryBreakdown] = await Promise.all([
+  const [topDeals, previousTotals, categoryBreakdown, quota] = await Promise.all([
     getTopDeals(shopId, 5, days),
     getPreviousPeriodTotals(shopId, days),
     getCategoryBreakdown(shopId, days),
+    getDealQuotaAnalytics(shopId),
   ]);
-  return { stats, totals, topDeals, source, previousTotals, categoryBreakdown };
+  return { stats, totals, topDeals, source, previousTotals, categoryBreakdown, quota };
 }

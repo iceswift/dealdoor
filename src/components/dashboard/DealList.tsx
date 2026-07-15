@@ -8,6 +8,7 @@ import { DEAL_CATEGORY_COLORS, type DealCategory } from '../../lib/constants';
 interface DealStat {
   views: number;
   clicks: number;
+  redemptions: number;
 }
 
 interface DealListProps {
@@ -16,7 +17,7 @@ interface DealListProps {
   dealStats?: Record<string, DealStat>;
 }
 
-type Filter = 'all' | 'active' | 'scheduled' | 'paused' | 'expired';
+type Filter = 'all' | 'active' | 'scheduled' | 'paused' | 'expired' | 'used_up';
 
 const stateMeta: Record<Filter, { label: string; badge: string }> = {
   all: { label: 'ทั้งหมด', badge: '' },
@@ -24,6 +25,7 @@ const stateMeta: Record<Filter, { label: string; badge: string }> = {
   scheduled: { label: 'รอเริ่ม', badge: 'bg-blue-50 text-blue-700' },
   paused: { label: 'พักไว้', badge: 'bg-amber-50 text-amber-700' },
   expired: { label: 'หมดอายุ', badge: 'bg-bg-secondary text-text-tertiary' },
+  used_up: { label: 'ครบสิทธิ์แล้ว', badge: 'bg-rose-50 text-rose-700' },
 };
 
 function lifeRemainingPercent(startDate: Date | string | null, endDate: Date | string) {
@@ -77,6 +79,15 @@ function getDealState(deal: Deal): Filter {
   return 'active';
 }
 
+function hasReachedRedemptionLimit(deal: Deal, redemptions: number) {
+  return typeof deal.maxRedemptions === 'number' && redemptions >= deal.maxRedemptions;
+}
+
+function getDisplayState(deal: Deal, redemptions: number): Filter {
+  const state = getDealState(deal);
+  return state === 'active' && hasReachedRedemptionLimit(deal, redemptions) ? 'used_up' : state;
+}
+
 function formatDate(value: Date | string) {
   return new Date(value).toLocaleDateString('th-TH', {
     year: 'numeric',
@@ -104,17 +115,24 @@ async function copyToClipboard(text: string) {
 
 export default function DealList({ initialDeals, maxDeals, dealStats = {} }: DealListProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
+  const [redemptionCounts, setRedemptionCounts] = useState<Record<string, number>>(() =>
+    Object.fromEntries(Object.entries(dealStats).map(([dealId, stats]) => [dealId, stats.redemptions || 0])),
+  );
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
-  const activeCount = deals.filter((deal) => getDealState(deal) === 'active').length;
+  const activeCount = deals.filter((deal) => {
+    const redemptions = redemptionCounts[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0;
+    return getDisplayState(deal, redemptions) === 'active';
+  }).length;
 
   const filteredDeals = useMemo(() => {
     const q = query.trim().toLowerCase();
     return deals.filter((deal) => {
-      const state = getDealState(deal);
+      const redemptions = redemptionCounts[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0;
+      const state = getDisplayState(deal, redemptions);
       if (filter !== 'all' && state !== filter) return false;
       if (!q) return true;
       return [
@@ -187,12 +205,36 @@ export default function DealList({ initialDeals, maxDeals, dealStats = {} }: Dea
     }
   }
 
+  async function confirmRedemption(deal: Deal) {
+    if (!window.confirm(`ยืนยันว่าลูกค้าใช้สิทธิ์จากดีล "${deal.title}" แล้ว?`)) return;
+
+    setBusyId(deal.id);
+    try {
+      const response = await fetch(`/api/deals/${deal.id}/redemptions`, { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || 'บันทึกการใช้สิทธิ์ไม่สำเร็จ');
+      const nextCount = Number(payload.data?.redemptions);
+      setRedemptionCounts((current) => ({
+        ...current,
+        [deal.id]: Number.isFinite(nextCount)
+          ? nextCount
+          : (current[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0) + 1,
+      }));
+      showToast('บันทึกการใช้สิทธิ์แล้ว', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'บันทึกการใช้สิทธิ์ไม่สำเร็จ', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const filters: { id: Filter; label: string; count: number }[] = [
     { id: 'all', label: 'ทั้งหมด', count: deals.length },
-    { id: 'active', label: 'กำลังใช้', count: deals.filter((deal) => getDealState(deal) === 'active').length },
-    { id: 'scheduled', label: 'รอเริ่ม', count: deals.filter((deal) => getDealState(deal) === 'scheduled').length },
-    { id: 'paused', label: 'พักไว้', count: deals.filter((deal) => getDealState(deal) === 'paused').length },
-    { id: 'expired', label: 'หมดอายุ', count: deals.filter((deal) => getDealState(deal) === 'expired').length },
+    { id: 'active', label: 'กำลังใช้', count: deals.filter((deal) => getDisplayState(deal, redemptionCounts[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0) === 'active').length },
+    { id: 'used_up', label: 'ครบสิทธิ์', count: deals.filter((deal) => getDisplayState(deal, redemptionCounts[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0) === 'used_up').length },
+    { id: 'scheduled', label: 'รอเริ่ม', count: deals.filter((deal) => getDisplayState(deal, redemptionCounts[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0) === 'scheduled').length },
+    { id: 'paused', label: 'พักไว้', count: deals.filter((deal) => getDisplayState(deal, redemptionCounts[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0) === 'paused').length },
+    { id: 'expired', label: 'หมดอายุ', count: deals.filter((deal) => getDisplayState(deal, redemptionCounts[deal.id] ?? dealStats[deal.id]?.redemptions ?? 0) === 'expired').length },
   ];
 
   return (
@@ -258,9 +300,15 @@ export default function DealList({ initialDeals, maxDeals, dealStats = {} }: Dea
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredDeals.map((deal) => {
-            const state = getDealState(deal);
             const isBusy = busyId === deal.id;
             const stats = dealStats[deal.id];
+            const redemptions = redemptionCounts[deal.id] ?? stats?.redemptions ?? 0;
+            const state = getDisplayState(deal, redemptions);
+            const isQuotaLimited = typeof deal.maxRedemptions === 'number';
+            const redemptionsRemaining = isQuotaLimited ? Math.max(0, deal.maxRedemptions - redemptions) : null;
+            const redemptionPercent = isQuotaLimited
+              ? Math.min(100, Math.round((redemptions / deal.maxRedemptions) * 100))
+              : 0;
             const meta = stateMeta[state];
             const lifePercent = lifeRemainingPercent(deal.startDate, deal.endDate);
             const menuOpen = menuOpenId === deal.id;
@@ -319,11 +367,28 @@ export default function DealList({ initialDeals, maxDeals, dealStats = {} }: Dea
                       <span className="flex items-center gap-2 text-[11px] font-black text-text-tertiary">
                         <span>👁 {stats.views}</span>
                         <span>🔗 {stats.clicks}</span>
+                        <span>✓ {isQuotaLimited ? `${redemptions} / ${deal.maxRedemptions}` : redemptions}</span>
                       </span>
                     )}
                   </div>
                   <h3 className="truncate text-base font-black text-secondary">{deal.title}</h3>
                   <p className="text-sm font-bold text-primary">{deal.discountText}</p>
+                  {isQuotaLimited && (
+                    <div className="rounded-xl border border-border/35 bg-bg-secondary/55 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-3 text-[11px] font-black">
+                        <span className="text-text-secondary">ใช้สิทธิ์แล้ว {redemptions.toLocaleString()} จาก {deal.maxRedemptions.toLocaleString()}</span>
+                        <span className={redemptionsRemaining === 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                          {redemptionsRemaining === 0 ? 'ครบแล้ว' : `เหลือ ${redemptionsRemaining.toLocaleString()} สิทธิ์`}
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-card-bg">
+                        <div
+                          className={redemptionsRemaining === 0 ? 'h-full rounded-full bg-rose-500' : 'h-full rounded-full bg-emerald-500'}
+                          style={{ width: `${redemptionPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
                       <div
@@ -333,6 +398,22 @@ export default function DealList({ initialDeals, maxDeals, dealStats = {} }: Dea
                     </div>
                     <p className="text-xs font-bold text-text-tertiary">หมดอายุ {formatDate(deal.endDate)}</p>
                   </div>
+                  {state === 'active' && (
+                    <button
+                      type="button"
+                      onClick={() => confirmRedemption(deal)}
+                      disabled={isBusy}
+                      className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-400"
+                    >
+                      <span>✓</span>
+                      <span>ลูกค้าใช้สิทธิ์แล้ว</span>
+                    </button>
+                  )}
+                  {state === 'used_up' && (
+                    <div className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-500/20 bg-rose-50 px-3 text-xs font-black text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                      <span>ครบจำนวน {deal.maxRedemptions} สิทธิ์แล้ว</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 pt-1">
                     <a href={`/dashboard/deals/edit?id=${encodeURIComponent(deal.id)}`} className="flex min-h-[38px] flex-1 items-center justify-center rounded-xl bg-bg-secondary text-xs font-black text-secondary transition-colors hover:bg-bg-tertiary">
                       แก้ไข

@@ -7,6 +7,10 @@ type Totals = {
   pageViews: number;
   dealViews: number;
   dealClicks: number;
+  claimStarts: number;
+  couponCopies: number;
+  contactStarts: number;
+  redemptions: number;
   shares: number;
   contactClicks: number;
 };
@@ -28,6 +32,7 @@ type DealStat = {
   category: string | null;
   views: number;
   clicks: number;
+  redemptions: number;
   shares: number;
 };
 
@@ -37,12 +42,56 @@ type CategoryStat = {
   clicks: number;
 };
 
+type DealQuotaSummary = {
+  limitedDealCount: number;
+  unlimitedDealCount: number;
+  limitedCapacity: number;
+  redeemedCapacity: number;
+  remainingCapacity: number;
+  fillRate: number | null;
+  lowStockDealCount: number;
+  exhaustedDealCount: number;
+};
+
+type QuotaAnalytics = {
+  deals: DealQuotaStat[];
+  summary: DealQuotaSummary;
+};
+
+type DealQuotaStat = {
+  dealId: string;
+  title: string;
+  maxRedemptions: number | null;
+  redemptions: number;
+  remaining: number | null;
+  fillRate: number | null;
+  status: 'unlimited' | 'available' | 'low_stock' | 'exhausted';
+};
+
 const emptyTotals: Totals = {
   pageViews: 0,
   dealViews: 0,
   dealClicks: 0,
+  claimStarts: 0,
+  couponCopies: 0,
+  contactStarts: 0,
+  redemptions: 0,
   shares: 0,
   contactClicks: 0,
+};
+
+const emptyQuota: QuotaAnalytics = {
+  deals: [],
+  summary: {
+    limitedDealCount: 0,
+    unlimitedDealCount: 0,
+    limitedCapacity: 0,
+    redeemedCapacity: 0,
+    remainingCapacity: 0,
+    fillRate: null,
+    lowStockDealCount: 0,
+    exhaustedDealCount: 0,
+  },
 };
 
 const RANGE_OPTIONS = [
@@ -58,6 +107,10 @@ function activityTotal(day: Partial<Totals>) {
     (day.pageViews || 0) +
     (day.dealViews || 0) +
     (day.dealClicks || 0) +
+    (day.claimStarts || 0) +
+    (day.couponCopies || 0) +
+    (day.contactStarts || 0) +
+    (day.redemptions || 0) +
     (day.shares || 0) +
     (day.contactClicks || 0)
   );
@@ -118,6 +171,7 @@ const cardConfigs: Record<string, {
   pageViews: { label: 'เข้าชมหน้าร้าน', icon: 'eye', colorClass: 'text-primary', bgClass: 'bg-primary/10' },
   dealViews: { label: 'ดูดีล', icon: 'deal', colorClass: 'text-info', bgClass: 'bg-info/10' },
   dealClicks: { label: 'คลิกดีล', icon: 'click', colorClass: 'text-success', bgClass: 'bg-success/10' },
+  claimStarts: { label: 'เริ่มรับสิทธิ์', icon: 'click', colorClass: 'text-primary', bgClass: 'bg-primary/10' },
   shares: { label: 'แชร์', icon: 'share', colorClass: 'text-accent', bgClass: 'bg-accent/10' },
   contactClicks: { label: 'คลิกติดต่อ', icon: 'phone', colorClass: 'text-warning', bgClass: 'bg-warning/10' },
 };
@@ -129,6 +183,8 @@ export default function AnalyticsDashboard() {
   const [history, setHistory] = useState<DailyStat[]>([]);
   const [topDeals, setTopDeals] = useState<DealStat[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryStat[]>([]);
+  const [quota, setQuota] = useState<QuotaAnalytics>(emptyQuota);
+  const [performanceSort, setPerformanceSort] = useState<'views' | 'redemptions' | 'fillRate'>('views');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -152,6 +208,7 @@ export default function AnalyticsDashboard() {
         setHistory(payload.data.stats || []);
         setTopDeals(payload.data.topDeals || []);
         setCategoryBreakdown(payload.data.categoryBreakdown || []);
+        setQuota(payload.data.quota || emptyQuota);
         setError('');
       } catch (err: any) {
         if (!cancelled) setError(err.message || 'โหลดสถิติไม่สำเร็จ');
@@ -259,15 +316,15 @@ export default function AnalyticsDashboard() {
     { key: 'pageViews', label: 'เข้าชมหน้าร้าน', value: totals.pageViews, prev: previousTotals.pageViews, accent: 'bg-[#ff5a3c]' },
     { key: 'dealViews', label: 'ดูดีล', value: totals.dealViews, prev: previousTotals.dealViews, accent: 'bg-[#3b82f6]' },
     { key: 'dealClicks', label: 'คลิกดีล', value: totals.dealClicks, prev: previousTotals.dealClicks, accent: 'bg-[#10b981]' },
+    { key: 'claimStarts', label: 'เริ่มรับสิทธิ์', value: totals.claimStarts, prev: previousTotals.claimStarts, accent: 'bg-[#ff5a3c]' },
     { key: 'shares', label: 'แชร์', value: totals.shares, prev: previousTotals.shares, accent: 'bg-[#14b8a6]' },
     { key: 'contactClicks', label: 'คลิกติดต่อ', value: totals.contactClicks, prev: previousTotals.contactClicks, accent: 'bg-[#f59e0b]' },
   ];
 
   const funnelStages = [
-    { key: 'pageViews', label: 'เข้าชมหน้าร้าน', value: totals.pageViews },
     { key: 'dealViews', label: 'ดูดีล', value: totals.dealViews },
-    { key: 'dealClicks', label: 'คลิกดีล', value: totals.dealClicks },
-    { key: 'contactClicks', label: 'คลิกติดต่อ', value: totals.contactClicks },
+    { key: 'claimStarts', label: 'เริ่มรับสิทธิ์', value: totals.claimStarts },
+    { key: 'redemptions', label: 'ยืนยันใช้สิทธิ์', value: totals.redemptions },
   ];
   const funnelMax = Math.max(1, funnelStages[0].value);
 
@@ -287,6 +344,46 @@ export default function AnalyticsDashboard() {
     : null;
 
   const maxCategoryValue = Math.max(1, ...categoryBreakdown.map((c) => c.views));
+  const quotaSummary = quota.summary || emptyQuota.summary;
+  const hasLimitedDeals = quotaSummary.limitedDealCount > 0;
+  const performanceDeals = useMemo(() => {
+    const eventMetrics = new Map(topDeals.map((deal) => [deal.dealId, deal]));
+    const rows = quota.deals.map((deal) => {
+      const metrics = eventMetrics.get(deal.dealId);
+      return {
+        ...deal,
+        category: metrics?.category || null,
+        views: metrics?.views || 0,
+        clicks: metrics?.clicks || 0,
+        shares: metrics?.shares || 0,
+        periodRedemptions: metrics?.redemptions || 0,
+      };
+    });
+
+    for (const metrics of topDeals) {
+      if (rows.some((deal) => deal.dealId === metrics.dealId)) continue;
+      rows.push({
+        dealId: metrics.dealId,
+        title: metrics.title || 'ไม่มีชื่อดีล',
+        maxRedemptions: null,
+        redemptions: metrics.redemptions || 0,
+        remaining: null,
+        fillRate: null,
+        status: 'unlimited',
+        category: metrics.category,
+        views: metrics.views || 0,
+        clicks: metrics.clicks || 0,
+        shares: metrics.shares || 0,
+        periodRedemptions: metrics.redemptions || 0,
+      });
+    }
+
+    return rows.sort((a, b) => {
+      if (performanceSort === 'redemptions') return b.redemptions - a.redemptions || b.views - a.views;
+      if (performanceSort === 'fillRate') return (b.fillRate ?? -1) - (a.fillRate ?? -1) || b.redemptions - a.redemptions;
+      return b.views - a.views || b.redemptions - a.redemptions;
+    });
+  }, [quota.deals, topDeals, performanceSort]);
 
   if (loading && !hasActivity && history.length === 0) {
     return (
@@ -334,6 +431,62 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
+        <section className="rounded-2xl border border-border/40 bg-card-bg p-5" aria-labelledby="quota-overview-title">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wider text-primary">Deal capacity</p>
+              <h3 id="quota-overview-title" className="mt-1 text-base font-black text-secondary">ภาพรวมสิทธิ์ของดีล</h3>
+              <p className="mt-1 text-xs font-bold text-text-tertiary">นับจากยอดที่ร้านยืนยันใช้สิทธิ์สะสม ไม่ขึ้นกับช่วงวันที่ของกราฟ</p>
+            </div>
+            <span className="self-start rounded-full bg-bg-secondary px-3 py-1.5 text-[10px] font-black text-text-secondary">ตลอดอายุดีล</span>
+          </div>
+
+          {!hasLimitedDeals ? (
+            <div className="mt-5 rounded-xl border border-dashed border-border/50 bg-bg-secondary/45 p-4">
+              <p className="text-sm font-black text-secondary">ยังไม่มีดีลที่กำหนดจำนวนสิทธิ์</p>
+              <p className="mt-1 text-xs font-bold leading-relaxed text-text-tertiary">ดีลไม่จำกัดจำนวนจะไม่ถูกนำมาคำนวณโควตาหรือ fill rate</p>
+              <a href="/dashboard/deals" className="mt-3 inline-flex min-h-10 items-center rounded-xl bg-primary px-4 text-xs font-black text-white">จัดการดีล</a>
+            </div>
+          ) : (
+            <>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-border/30 bg-bg-secondary/55 p-3.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-text-tertiary">โควตารวม</p>
+                  <p className="mt-1 text-xl font-black text-secondary">{formatNumber(quotaSummary.limitedCapacity)} <span className="text-xs text-text-tertiary">สิทธิ์</span></p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">ยืนยันใช้แล้ว</p>
+                  <p className="mt-1 text-xl font-black text-secondary">{formatNumber(quotaSummary.redeemedCapacity)} <span className="text-xs text-text-tertiary">สิทธิ์</span></p>
+                </div>
+                <div className="rounded-xl border border-info/15 bg-info/5 p-3.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-info">เหลืออยู่</p>
+                  <p className="mt-1 text-xl font-black text-secondary">{formatNumber(quotaSummary.remainingCapacity)} <span className="text-xs text-text-tertiary">สิทธิ์</span></p>
+                </div>
+                <div className="rounded-xl border border-primary/15 bg-primary/5 p-3.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-primary">Fill rate</p>
+                  <p className="mt-1 text-xl font-black text-secondary">{quotaSummary.fillRate ?? 0}<span className="text-xs text-text-tertiary">%</span></p>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3 text-[11px] font-black text-text-tertiary">
+                  <span>ใช้สิทธิ์แล้ว {formatNumber(quotaSummary.redeemedCapacity)} จาก {formatNumber(quotaSummary.limitedCapacity)}</span>
+                  <span>{quotaSummary.fillRate ?? 0}%</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg-tertiary">
+                  <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${quotaSummary.fillRate ?? 0}%` }} />
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black">
+                {quotaSummary.lowStockDealCount > 0 && <span className="rounded-full bg-amber-500/10 px-3 py-1.5 text-amber-700 dark:text-amber-300">ใกล้ครบ {quotaSummary.lowStockDealCount} ดีล</span>}
+                {quotaSummary.exhaustedDealCount > 0 && <span className="rounded-full bg-rose-500/10 px-3 py-1.5 text-rose-700 dark:text-rose-300">ครบสิทธิ์แล้ว {quotaSummary.exhaustedDealCount} ดีล</span>}
+                {quotaSummary.unlimitedDealCount > 0 && <span className="rounded-full bg-bg-secondary px-3 py-1.5 text-text-secondary">ไม่จำกัด {quotaSummary.unlimitedDealCount} ดีล</span>}
+              </div>
+            </>
+          )}
+        </section>
+
         {!hasActivity ? (
           <div className="rounded-2xl border border-dashed border-border/50 p-8 text-center">
             <p className="text-sm font-black text-secondary">ยังไม่มีข้อมูลสถิติบันทึกไว้สำหรับช่วงนี้</p>
@@ -349,7 +502,7 @@ export default function AnalyticsDashboard() {
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               {cards.map((card) => {
                 const change = percentChange(card.value, card.prev);
                 const conf = cardConfigs[card.key];
@@ -425,6 +578,23 @@ export default function AnalyticsDashboard() {
                   );
                 })}
               </div>
+              <div className="mt-5 grid gap-3 border-t border-border/25 pt-4 sm:grid-cols-3">
+                <div className="rounded-xl bg-bg-secondary/70 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-text-tertiary">Coupon copied</p>
+                  <p className="mt-1 text-lg font-black text-secondary">{formatNumber(totals.couponCopies)}</p>
+                </div>
+                <div className="rounded-xl bg-bg-secondary/70 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-text-tertiary">Contact started</p>
+                  <p className="mt-1 text-lg font-black text-secondary">{formatNumber(totals.contactStarts)}</p>
+                </div>
+                <div className="rounded-xl bg-emerald-500/10 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Redeemed</p>
+                  <p className="mt-1 text-lg font-black text-secondary">{formatNumber(totals.redemptions)}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-[10px] font-bold leading-relaxed text-text-tertiary">
+                Redeemed คือยอดที่ร้านกดยืนยันเองหลังลูกค้าใช้สิทธิ์ ส่วน Coupon copied และ Contact started คือความตั้งใจรับสิทธิ์จากหน้าเว็บ
+              </p>
             </div>
 
             <div className="rounded-2xl border border-border/40 bg-card-bg">
@@ -749,13 +919,30 @@ export default function AnalyticsDashboard() {
             </svg>
           </div>
           <div>
-            <p className="text-xs font-black uppercase tracking-wider text-primary">Top Deals</p>
+            <p className="text-xs font-black uppercase tracking-wider text-primary">Deal Performance</p>
             <h2 className="text-xl font-black text-secondary">ดีลยอดนิยม</h2>
             <p className="mt-0.5 text-xs font-bold text-text-tertiary">จัดอันดับตามจำนวนเข้าชมและมีปฏิสัมพันธ์จริง</p>
           </div>
         </div>
 
-        {topDeals.length === 0 ? (
+        <div className="mb-4 flex rounded-xl border border-border/40 bg-bg p-1">
+          {[
+            { id: 'views', label: 'ความนิยม' },
+            { id: 'redemptions', label: 'ใช้สิทธิ์' },
+            { id: 'fillRate', label: 'Fill rate' },
+          ].map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setPerformanceSort(option.id as typeof performanceSort)}
+              className={`min-h-9 flex-1 rounded-lg px-3 text-[10px] font-black transition-colors ${performanceSort === option.id ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {performanceDeals.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/45 p-8 text-center">
             <p className="text-sm font-black text-secondary">ยังไม่มีข้อมูลดีลยอดนิยมในช่วงนี้</p>
             <p className="mt-1 text-xs font-bold text-text-tertiary">สร้างดีลใหม่และแชร์หน้าร้านเพื่อกระตุ้นสถิติแรกของคุณ</p>
@@ -768,11 +955,21 @@ export default function AnalyticsDashboard() {
           </div>
         ) : (
           <div className="grid gap-2.5">
-            {topDeals.map((deal, index) => {
+            {performanceDeals.map((deal, index) => {
               const color = DEAL_CATEGORY_COLORS[deal.category as DealCategory] || '#6B7280';
               const label = DEAL_CATEGORY_LABELS[deal.category as DealCategory] || deal.category || 'ทั่วไป';
-              const maxDealViews = Math.max(1, ...topDeals.map((d) => d.views));
+              const maxDealViews = Math.max(1, ...performanceDeals.map((d) => d.views));
               const proportion = Math.max(6, (deal.views / maxDealViews) * 100);
+              const quotaLabel = deal.maxRedemptions === null
+                ? `ใช้แล้ว ${formatNumber(deal.redemptions)} สิทธิ์`
+                : `ใช้แล้ว ${formatNumber(deal.redemptions)} / ${formatNumber(deal.maxRedemptions)} สิทธิ์`;
+              const statusMeta = deal.status === 'exhausted'
+                ? { label: 'ครบสิทธิ์แล้ว', className: 'bg-rose-500/10 text-rose-700 dark:text-rose-300' }
+                : deal.status === 'low_stock'
+                  ? { label: 'ใกล้ครบ', className: 'bg-amber-500/10 text-amber-700 dark:text-amber-300' }
+                  : deal.status === 'unlimited'
+                    ? { label: 'ไม่จำกัด', className: 'bg-bg-secondary text-text-secondary' }
+                    : { label: 'ยังรับสิทธิ์ได้', className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' };
 
               return (
                 <a
@@ -796,16 +993,29 @@ export default function AnalyticsDashboard() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold text-text-tertiary">
-                      <span>{formatNumber(deal.views || 0)} views</span>
-                      <span>{formatNumber(deal.clicks || 0)} clicks</span>
-                      <span>{formatNumber(deal.shares || 0)} shares</span>
+                      <span>{formatNumber(deal.views)} views</span>
+                      <span>{formatNumber(deal.clicks)} clicks</span>
+                      <span>{formatNumber(deal.shares)} shares</span>
                     </div>
                   </div>
-                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-bg-tertiary">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${proportion}%`, backgroundColor: color }}
-                    />
+                  <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${deal.fillRate ?? proportion}%`,
+                            backgroundColor: deal.maxRedemptions === null ? color : 'var(--color-primary)',
+                          }}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-[10px] font-black text-text-tertiary">
+                        {quotaLabel}{deal.fillRate !== null ? ` · ${deal.fillRate}% fill rate` : ''}
+                      </p>
+                    </div>
+                    <span className={`justify-self-start rounded-full px-2.5 py-1 text-[10px] font-black sm:justify-self-end ${statusMeta.className}`}>
+                      {statusMeta.label}
+                    </span>
                   </div>
                 </a>
               );

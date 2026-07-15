@@ -1,0 +1,2 @@
+ALTER TABLE "deals" ADD COLUMN "redemption_availability_display" text DEFAULT 'low_stock' NOT NULL;--> statement-breakpoint
+ALTER TABLE "deals" ADD COLUMN "low_stock_threshold" integer DEFAULT 10 NOT NULL;
