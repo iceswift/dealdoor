@@ -44,8 +44,8 @@ const tabs = [
         {user && (
           <section class="rounded-2xl border border-border/40 bg-card-bg/75 p-4 shadow-sm">
             <div class="flex items-center gap-3">
-              <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-sm font-black text-white">
-                {user.name.charAt(0).toUpperCase()}
+              <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary text-sm font-black text-white">
+                {shop?.logoImage ? <img src={shop.logoImage} alt={shop.name} class="h-full w-full bg-white object-contain" /> : (shop?.name || user.name).charAt(0).toUpperCase()}
               </div>
               <div class="min-w-0">
                 <p class="truncate text-sm font-black text-secondary">{shop?.name || user.name}</p>
@@ -91,7 +91,7 @@ const tabs = [
           <span class="text-xs font-black text-text-tertiary">เครื่องมือ</span>
           <div class="flex items-center gap-2">
             <ThemeToggle />
-            <NotificationBell client:load userId={user?.id} />
+            <NotificationBell client:load />
           </div>
         </div>
         <button
@@ -104,31 +104,115 @@ const tabs = [
       </div>
     </aside>
 
-    <header class="lg:hidden sticky top-0 z-50 border-b border-border/30 bg-bg/85 px-4 py-3 backdrop-blur-xl">
-      <div class="flex items-center justify-between">
-        <a href="/dashboard" class="flex items-center gap-2">
-          <img src="/icons/DealDoor_icon.png" alt="DealDoor" class="h-9 w-9 object-contain" />
-          <div class="leading-tight">
-            <p class="text-sm font-black text-secondary">DealDoor</p>
-            <p class="text-[10px] font-bold text-text-tertiary">Dashboard</p>
+    <header class="lg:hidden fixed top-0 inset-x-0 z-[1200] transition-all duration-300">
+      <div class="mx-auto max-w-4xl px-4 py-3">
+        <nav class="glass rounded-2xl px-6 py-3 flex items-center justify-between shadow-lg shadow-secondary/5 border border-border/40">
+          <a href="/dashboard" class="flex items-center gap-2 group">
+            <div class="h-9 w-9 flex items-center justify-center transform group-hover:scale-105 transition-transform duration-200 overflow-hidden">
+              <img src="/icons/DealDoor_icon.png" alt="DealDoor" class="h-full w-full object-contain" />
+            </div>
+            <div class="leading-tight">
+              <p class="text-sm font-black text-secondary tracking-tight">DealDoor</p>
+              <p class="text-[9px] font-bold text-text-tertiary">Dashboard</p>
+            </div>
+          </a>
+          <div class="flex items-center gap-1.5">
+            <NotificationBell client:load />
+            <button
+              id="mobile-menu-btn"
+              class="h-11 w-11 rounded-xl flex items-center justify-center text-text-secondary hover:bg-bg-secondary transition-all cursor-pointer"
+              aria-label="เปิดเมนู"
+              aria-expanded="false"
+            >
+              {/* Bento Icon */}
+              <svg class="h-5.5 w-5.5 text-text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
           </div>
-        </a>
-        <div class="flex items-center gap-2">
-          <ThemeToggle />
-          <NotificationBell client:load userId={user?.id} />
+        </nav>
+      </div>
+
+      {/* Mobile Slide Drawer Menu */}
+      <div id="mobile-menu" class="hidden lg:hidden fixed inset-0 z-[999] bg-bg/80 backdrop-blur-xl animate-fade-in flex flex-col pt-6 px-6 pb-8 overflow-y-auto">
+        {/* 1. Top Header Bar inside Menu */}
+        <div class="flex items-center justify-between pb-4 border-b border-border/30">
+          <a href="/dashboard" class="flex items-center gap-2 group">
+            <div class="h-9 w-9 flex items-center justify-center shadow-md shadow-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-primary to-orange-400">
+              <img src="/icons/DealDoor_icon.png" alt="DealDoor Logo" class="h-6 w-6 object-contain filter brightness-0 invert" />
+            </div>
+            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent">
+              DealDoor Dashboard
+            </span>
+          </a>
+          
+          {/* Close Button (X) */}
           <button
-            id="logout-btn-mobile"
-            class="flex h-11 w-11 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-bg-secondary"
-            aria-label="ออกจากระบบ"
+            id="mobile-menu-close-btn"
+            class="h-11 w-11 rounded-xl flex items-center justify-center text-text-secondary hover:bg-bg-secondary transition-all cursor-pointer"
+            aria-label="ปิดเมนู"
           >
-            <Icon name="logout" class="h-5 w-5" />
+            <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-6 mt-6">
+          {/* Back to Home Card */}
+          <a href="/" class="rounded-2xl border border-border/30 bg-card-bg/30 p-4.5 flex items-center justify-between hover:border-primary/30 transition-colors">
+            <div class="flex items-center gap-3">
+              <div class="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-secondary">กลับสู่หน้าหลัก</p>
+                <p class="text-[9px] text-text-tertiary mt-0.5">ไปยังหน้าแรกของเว็บไซต์ DealDoor</p>
+              </div>
+            </div>
+            <div class="text-text-tertiary/70 flex items-center justify-center">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </a>
+
+          {/* Theme Toggle Card */}
+          <div class="rounded-2xl border border-border/30 bg-card-bg/30 p-4.5 flex items-center justify-between hover:border-primary/30 transition-colors">
+            <div class="flex items-center gap-3">
+              <div class="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-secondary">เปลี่ยนธีม</p>
+                <p class="text-[9px] text-text-tertiary mt-0.5">เลือกโหมดสีที่ต้องการ</p>
+              </div>
+            </div>
+            <ThemeToggle />
+          </div>
+        </div>
+        
+        {/* 3. Bottom Logout Action */}
+        <div class="mt-auto pt-6 flex-shrink-0">
+          <button
+            id="logout-btn-mobile-drawer"
+            class="w-full flex items-center justify-center gap-2 rounded-2xl bg-danger-bg/20 border border-danger/20 py-3 text-xs font-bold text-danger hover:bg-danger-bg/30 transition-colors cursor-pointer"
+          >
+            <svg class="h-4.5 w-4.5 text-danger/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>ออกจากระบบบัญชีร้านค้า</span>
           </button>
         </div>
       </div>
     </header>
 
     <main class:list={[
-      'min-w-0 flex-1 overflow-y-auto bg-bg p-4 sm:p-6 lg:p-8',
+      'min-w-0 flex-1 overflow-y-auto bg-bg p-4 pt-24 sm:p-6 sm:pt-24 lg:p-8',
       hideMobileNav ? 'pb-6' : 'pb-24 lg:pb-8'
     ]}>
       <div class="mx-auto w-full max-w-7xl">
@@ -137,7 +221,7 @@ const tabs = [
     </main>
 
     {!hideMobileNav && (
-      <nav class="fixed bottom-4 inset-x-4 z-40 flex h-16 items-center justify-around rounded-2xl border border-border/40 bg-bg/90 px-3 shadow-xl backdrop-blur-xl lg:hidden">
+      <nav class="glass fixed bottom-4 inset-x-4 z-40 flex h-16 items-center justify-around rounded-2xl px-3 shadow-xl lg:hidden">
         {tabs.map((tab) => (
           <a
             href={tab.href}
@@ -158,7 +242,7 @@ const tabs = [
 <script>
   const logoutButtons = [
     document.getElementById('logout-btn-sidebar'),
-    document.getElementById('logout-btn-mobile'),
+    document.getElementById('logout-btn-mobile-drawer'),
   ].filter(Boolean);
 
   async function performLogout() {
@@ -173,4 +257,30 @@ const tabs = [
   }
 
   logoutButtons.forEach((button) => button?.addEventListener('click', performLogout));
+
+  // Mobile drawer toggles
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const mobileMenuCloseBtn = document.getElementById('mobile-menu-close-btn');
+  
+  mobileMenuBtn?.addEventListener('click', () => {
+    if (!mobileMenu) return;
+    mobileMenu.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+  });
+
+  mobileMenuCloseBtn?.addEventListener('click', () => {
+    if (!mobileMenu) return;
+    mobileMenu.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  });
+  
+  // Close mobile menu on clicking links, excluding theme switcher clicks
+  mobileMenu?.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('a') || (target.closest('button') && !target.closest('.theme-toggle'))) {
+      mobileMenu.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+  });
 </script>

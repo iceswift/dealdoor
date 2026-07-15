@@ -8,6 +8,41 @@
       "when": 1783512179253,
       "tag": "0000_perpetual_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783691486924,
+      "tag": "0001_same_pete_wisdom",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783692520535,
+      "tag": "0002_dapper_talisman",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1783693064324,
+      "tag": "0003_naive_vapor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1783697209065,
+      "tag": "0004_right_dazzler",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1783697488760,
+      "tag": "0005_wide_maria_hill",
+      "breakpoints": true
     }
   ]
 }

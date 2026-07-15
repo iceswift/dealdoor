@@ -3,14 +3,18 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { handleApiError } from '../../../../lib/errors';
-import { json } from '../../../../lib/dashboard/server';
-import { markNotificationReadFromRequest } from '../../../../server/services/notification.service';
+import { handleApiError, unauthorized } from '../../../../lib/errors';
+import { getDashboardContext, json } from '../../../../lib/dashboard/server';
+import { markNotificationRead } from '../../../../server/services/notification.service';
 
-export const POST: APIRoute = async ({ params, request }) => {
+export const POST: APIRoute = async ({ params, locals }) => {
   try {
-    const body = params.id === 'all' ? await request.json() : undefined;
-    await markNotificationReadFromRequest(params.id, body);
+    if (!locals.user) throw unauthorized();
+    const context = await getDashboardContext(locals.user);
+    await markNotificationRead(params.id, {
+      userId: locals.user.id,
+      shopId: context?.shop?.id,
+    });
     return json({ success: true });
   } catch (error) {
     return handleApiError(error);

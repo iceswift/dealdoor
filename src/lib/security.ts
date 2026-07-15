@@ -57,7 +57,7 @@ export function checkRateLimit(
 }
 
 // Predefined rate limiters
-export const apiLimiter = (ip: string) => checkRateLimit(`api:${ip}`, 100, 60000);
+export const apiLimiter = (ip: string, route: string) => checkRateLimit(`api:${ip}:${route}`, 120, 60000);
 export const authLimiter = (ip: string) => checkRateLimit(`auth:${ip}`, 20, 60000); // 20 per minute (more lenient)
 export const uploadLimiter = (ip: string) => checkRateLimit(`upload:${ip}`, 10, 60000);
 
@@ -136,10 +136,11 @@ export function getSecurityHeaders(): Record<string, string> {
 
 // ─── Request Validation ──────────────────────────────────
 
-export function getClientIp(request: Request): string {
+export function getClientIp(request: Request, fallbackAddress?: string): string {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
+    fallbackAddress ||
     'unknown'
   );
 }

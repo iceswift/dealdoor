@@ -5,7 +5,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../lib/db';
 import { shops, deals, shopSpecialHours } from '../../lib/db-schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
-import { getLangFromUrl, t } from '../../i18n';
+import { getLangFromRequest, t } from '../../i18n';
 import { SHOP_CATEGORY_LABELS, SHOP_CATEGORY_COLORS } from '../../lib/constants';
 import type { ShopCategory } from '../../lib/constants';
 import {
@@ -18,8 +18,9 @@ import {
 } from '../../lib/explore/map-view-model';
 import Icon from '../../components/icons/index.astro';
 
-const lang = getLangFromUrl(Astro.url);
+const lang = getLangFromRequest(Astro.request);
 const common = (key: string) => t(lang, 'common', key);
+const publicText = (key: string, params?: Record<string, string | number>) => t(lang, 'public', key, params);
 const now = new Date();
 const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 const initialCategoryParam = Astro.url.searchParams.get('category');
@@ -57,7 +58,10 @@ const specialHoursByShop = specialHoursRows.reduce((map, item) => {
 }, new Map<string, typeof shopSpecialHours.$inferSelect[]>());
 
 const { expiringSoon, mappedShops, unmappedShops, mapPins } = getExploreMapData(activeDeals, now, specialHoursByShop);
-const categories = getExploreCategories();
+const categories = getExploreCategories().map((category) => ({
+  ...category,
+  label: category.id === 'all' ? publicText('explore.all') : common(`category.${category.id}`),
+}));
 ---
 
 <BaseLayout title={common('nav.explore')} hideFooter={true}>
@@ -71,7 +75,7 @@ const categories = getExploreCategories();
       id="explore-map"
       class="absolute inset-0 h-full w-full bg-bg-secondary"
       role="application"
-      aria-label="แผนที่หมุดโปรโมชันและร้านค้า"
+      aria-label={publicText('explore.mapLabel')}
     ></div>
 
     <div id="map-loading-overlay" class="absolute inset-0 z-[850] overflow-hidden bg-bg-secondary">
@@ -84,7 +88,7 @@ const categories = getExploreCategories();
       <div class="absolute inset-x-0 bottom-6 flex justify-center">
         <div class="flex items-center gap-2 rounded-full border border-border/35 bg-card-bg px-4 py-2 shadow-lg">
           <div class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"></div>
-          <p class="text-xs font-black text-secondary">กำลังเตรียมแผนที่...</p>
+          <p class="text-xs font-black text-secondary">{publicText('explore.loadingMap')}</p>
         </div>
       </div>
     </div>
@@ -99,13 +103,13 @@ const categories = getExploreCategories();
               id="explore-map-search"
               type="search"
               value={initialSearchQuery}
-              placeholder="ค้นหาชื่อร้าน ดีล หรือย่าน..."
+              placeholder={publicText('explore.searchPlaceholder')}
               class="h-10 w-full rounded-xl border border-border/40 bg-bg pl-9 pr-3 text-sm font-bold text-secondary outline-none transition focus:border-primary"
             />
           </label>
           <button
             type="button"
-            aria-label="ตัวกรอง"
+            aria-label={publicText('explore.filters')}
             class="filters-toggle-btn relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/40 bg-bg text-text-secondary transition hover:border-primary/40 hover:text-primary"
           >
             <Icon name="filter" class="h-4 w-4" />
@@ -113,7 +117,7 @@ const categories = getExploreCategories();
           </button>
         </div>
 
-        <div class="glass pointer-events-auto flex shrink-0 gap-2 overflow-x-auto rounded-2xl p-2 no-scrollbar" aria-label="ตัวกรองประเภท">
+        <div class="glass pointer-events-auto flex shrink-0 gap-2 overflow-x-auto rounded-2xl p-2 no-scrollbar" aria-label={publicText('explore.categoryFilters')}>
           {categories.map((cat) => (
             <button
               type="button"
@@ -135,15 +139,15 @@ const categories = getExploreCategories();
             data-urgent="true"
           >
             <span class="mr-1">⏳</span>
-            <span>ใกล้หมดอายุ</span>
+            <span>{publicText('explore.expiringSoon')}</span>
           </button>
         </div>
 
         <div id="desktop-list-panel" class="glass-card pointer-events-auto flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl shadow-xl">
           <div class="flex items-center justify-between gap-2 border-b border-border/20 p-3">
             <div class="min-w-0">
-              <p id="explore-map-count" class="truncate text-xs font-black text-secondary">แสดง {mapPins.length} ร้านบนแผนที่</p>
-              <p id="location-helper-text" class="mt-0.5 truncate text-[10px] font-bold text-text-tertiary">กด "ใกล้ฉัน" เพื่อเรียงและกรองตามระยะทาง</p>
+              <p id="explore-map-count" class="truncate text-xs font-black text-secondary">{publicText('explore.showingOnMap', { count: mapPins.length })}</p>
+              <p id="location-helper-text" class="mt-0.5 truncate text-[10px] font-bold text-text-tertiary">{publicText('explore.nearMeHint')}</p>
             </div>
             <div class="flex shrink-0 items-center gap-1.5">
               <button
@@ -151,12 +155,12 @@ const categories = getExploreCategories();
                 type="button"
                 class="near-me-btn min-h-[36px] rounded-xl border border-border/45 bg-card-bg px-2.5 text-[11px] font-black text-secondary shadow-sm transition hover:border-primary/35 hover:text-primary"
               >
-                ใกล้ฉัน
+                {publicText('explore.nearMe')}
               </button>
               <button
                 id="list-panel-collapse-btn"
                 type="button"
-                aria-label="ย่อรายการร้านค้า"
+                aria-label={publicText('explore.collapseList')}
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/40 bg-card-bg text-text-secondary transition hover:text-primary"
               >
                 <Icon name="chevron-left" class="h-4 w-4" />
@@ -169,7 +173,7 @@ const categories = getExploreCategories();
         <button
           id="list-panel-expand-btn"
           type="button"
-          aria-label="แสดงรายการร้านค้า"
+          aria-label={publicText('explore.expandList')}
           class="glass pointer-events-auto hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-lg"
         >
           <Icon name="chevron-right" class="h-4 w-4 text-text-secondary" />
@@ -179,16 +183,16 @@ const categories = getExploreCategories();
       <button
         id="near-me-fab"
         type="button"
-        aria-label="ใช้ตำแหน่งของฉัน"
+        aria-label={publicText('explore.useMyLocation')}
         class="near-me-btn glass pointer-events-auto absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl shadow-lg text-text-secondary transition hover:text-primary"
       >
         <Icon name="map-pin" class="h-4.5 w-4.5" />
       </button>
 
       <div class="glass-card pointer-events-auto absolute right-4 bottom-4 w-[340px] rounded-2xl p-4 shadow-xl">
-        <p class="text-[10px] font-black uppercase tracking-wider text-text-tertiary">Selected</p>
+        <p class="text-[10px] font-black uppercase tracking-wider text-text-tertiary">{publicText('explore.selected')}</p>
         <div id="selected-pin-card" class="mt-2 text-sm font-bold text-secondary">
-          เลือกหมุดหรือร้านค้าเพื่อดูรายละเอียด
+          {publicText('explore.selectHint')}
         </div>
       </div>
 
@@ -197,7 +201,7 @@ const categories = getExploreCategories();
         type="button"
         class="pointer-events-auto absolute left-1/2 top-4 hidden min-h-[40px] -translate-x-1/2 rounded-2xl border border-primary/20 bg-card-bg/95 px-4 text-xs font-black text-primary shadow-lg backdrop-blur-md transition hover:bg-primary hover:text-white"
       >
-        ค้นหาในพื้นที่แผนที่นี้
+        {publicText('explore.searchThisArea')}
       </button>
     </div>
 
@@ -210,13 +214,13 @@ const categories = getExploreCategories();
             id="explore-map-search-mobile"
             type="search"
             value={initialSearchQuery}
-            placeholder="ค้นหาชื่อร้าน ดีล หรือย่าน..."
+            placeholder={publicText('explore.searchPlaceholder')}
             class="h-10 w-full rounded-xl border border-border/40 bg-bg pl-9 pr-3 text-sm font-bold text-secondary outline-none transition focus:border-primary"
           />
         </label>
         <button
           type="button"
-          aria-label="ตัวกรอง"
+          aria-label={publicText('explore.filters')}
           class="filters-toggle-btn relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/40 bg-bg text-text-secondary"
         >
           <Icon name="filter" class="h-4 w-4" />
@@ -225,14 +229,14 @@ const categories = getExploreCategories();
         <button
           id="near-me-btn-mobile"
           type="button"
-          aria-label="ใช้ตำแหน่งของฉัน"
+          aria-label={publicText('explore.useMyLocation')}
           class="near-me-btn flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/40 bg-bg text-text-secondary"
         >
           <Icon name="map-pin" class="h-4 w-4" />
         </button>
       </div>
 
-      <div class="glass pointer-events-auto flex gap-2 overflow-x-auto rounded-2xl p-2 no-scrollbar" aria-label="ตัวกรองประเภท">
+      <div class="glass pointer-events-auto flex gap-2 overflow-x-auto rounded-2xl p-2 no-scrollbar" aria-label={publicText('explore.categoryFilters')}>
         {categories.map((cat) => (
           <button
             type="button"
@@ -254,7 +258,7 @@ const categories = getExploreCategories();
           data-urgent="true"
         >
           <span class="mr-1">⏳</span>
-          <span>ใกล้หมดอายุ</span>
+          <span>{publicText('explore.expiringSoon')}</span>
         </button>
       </div>
     </div>
@@ -269,19 +273,19 @@ const categories = getExploreCategories();
       <div id="mobile-sheet-handle" class="flex shrink-0 cursor-grab touch-none flex-col items-center gap-2 px-4 pb-2 pt-3 active:cursor-grabbing">
         <div class="h-1.5 w-12 rounded-full bg-border"></div>
         <div id="mobile-sheet-list-header" class="flex w-full items-center justify-between gap-2">
-          <p id="explore-map-count-mobile" class="text-xs font-black text-secondary">แสดง {mapPins.length} ร้าน</p>
-          <p id="location-helper-text-mobile" class="text-[10px] font-bold text-text-tertiary">ลากขึ้นเพื่อดูรายการ</p>
+          <p id="explore-map-count-mobile" class="text-xs font-black text-secondary">{publicText('explore.showing', { count: mapPins.length })}</p>
+          <p id="location-helper-text-mobile" class="text-[10px] font-bold text-text-tertiary">{publicText('explore.dragToList')}</p>
         </div>
         <div id="mobile-sheet-detail-header" class="hidden w-full items-center gap-2">
           <button
             id="mobile-sheet-back-btn"
             type="button"
-            aria-label="กลับไปที่รายการ"
+            aria-label={publicText('explore.backToList')}
             class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/40 bg-card-bg text-text-secondary"
           >
             <Icon name="chevron-left" class="h-4 w-4" />
           </button>
-          <p class="text-xs font-black text-secondary">รายละเอียดร้านค้า</p>
+          <p class="text-xs font-black text-secondary">{publicText('explore.shopDetails')}</p>
         </div>
       </div>
       <div id="mobile-sheet-list-body" class="flex-1 overflow-y-auto px-3 pb-6"></div>
@@ -292,25 +296,25 @@ const categories = getExploreCategories();
     <div id="filters-drawer-backdrop" class="pointer-events-none fixed inset-0 z-[820] hidden bg-secondary/20 backdrop-blur-[2px]"></div>
     <div id="filters-drawer" class="glass-card fixed left-1/2 top-24 z-[830] hidden w-[92vw] max-w-sm -translate-x-1/2 rounded-2xl p-4 shadow-2xl">
       <div class="mb-3 flex items-center justify-between">
-        <h3 class="text-sm font-black text-secondary">ตัวกรอง</h3>
-        <button id="filters-drawer-close" type="button" aria-label="ปิดตัวกรอง" class="flex h-8 w-8 items-center justify-center rounded-full border border-border/40 text-text-secondary">
+        <h3 class="text-sm font-black text-secondary">{publicText('explore.filters')}</h3>
+        <button id="filters-drawer-close" type="button" aria-label={publicText('explore.closeFilters')} class="flex h-8 w-8 items-center justify-center rounded-full border border-border/40 text-text-secondary">
           <Icon name="x" class="h-3.5 w-3.5" />
         </button>
       </div>
       <div class="space-y-3">
         <label class="flex min-h-[44px] items-center justify-between gap-2 rounded-2xl border border-border/40 bg-bg px-3 text-xs font-black text-text-secondary">
-          <span>เรียงตาม</span>
+          <span>{publicText('explore.sortBy')}</span>
           <select id="explore-sort" class="min-h-[32px] rounded-xl border border-border/40 bg-card-bg px-2 text-xs font-black text-secondary outline-none focus:border-primary">
-            <option value="recommended" selected={initialSort === 'recommended'}>แนะนำ</option>
-            <option value="expiring" selected={initialSort === 'expiring'}>ใกล้หมดอายุ</option>
-            <option value="dealCount" selected={initialSort === 'dealCount'}>ดีลเยอะสุด</option>
-            <option value="nearby" selected={initialSort === 'nearby'}>ใกล้ฉัน</option>
+            <option value="recommended" selected={initialSort === 'recommended'}>{publicText('explore.recommended')}</option>
+            <option value="expiring" selected={initialSort === 'expiring'}>{publicText('explore.expiringSoon')}</option>
+            <option value="dealCount" selected={initialSort === 'dealCount'}>{publicText('explore.mostDeals')}</option>
+            <option value="nearby" selected={initialSort === 'nearby'}>{publicText('explore.nearMe')}</option>
           </select>
         </label>
         <label class="flex min-h-[44px] items-center justify-between gap-2 rounded-2xl border border-border/40 bg-bg px-3 text-xs font-black text-text-secondary">
-          <span>รัศมี</span>
+          <span>{publicText('explore.radius')}</span>
           <select id="explore-radius" class="min-h-[32px] rounded-xl border border-border/40 bg-card-bg px-2 text-xs font-black text-secondary outline-none focus:border-primary">
-            <option value="all" selected={initialRadius === 'all'}>ทั้งหมด</option>
+            <option value="all" selected={initialRadius === 'all'}>{publicText('explore.all')}</option>
             <option value="1" selected={initialRadius === '1'}>1 กม.</option>
             <option value="3" selected={initialRadius === '3'}>3 กม.</option>
             <option value="5" selected={initialRadius === '5'}>5 กม.</option>
@@ -319,14 +323,14 @@ const categories = getExploreCategories();
         </label>
         <div class="flex flex-wrap gap-2">
           <button id="open-now-filter" type="button" class="explore-toggle-filter min-h-[44px] flex-1 rounded-2xl border border-border/40 bg-bg px-4 text-xs font-black text-text-secondary transition-all hover:border-emerald-400/50 hover:text-secondary">
-            เปิดอยู่
+            {publicText('explore.openNow')}
           </button>
           <button id="coupon-filter" type="button" class="explore-toggle-filter min-h-[44px] flex-1 rounded-2xl border border-border/40 bg-bg px-4 text-xs font-black text-text-secondary transition-all hover:border-primary/40 hover:text-secondary">
-            มีโค้ด/คูปอง
+            {publicText('explore.hasCoupon')}
           </button>
         </div>
         <button id="reset-filters-btn" type="button" class="min-h-[44px] w-full rounded-2xl border border-border/40 bg-card-bg px-4 text-xs font-black text-text-tertiary transition-all hover:border-primary/30 hover:text-secondary">
-          ล้างตัวกรองทั้งหมด
+          {publicText('explore.resetFilters')}
         </button>
       </div>
     </div>
@@ -341,8 +345,6 @@ const categories = getExploreCategories();
           const categoryColor = SHOP_CATEGORY_COLORS[category] || '#6B7280';
           const hasCouponCode = shopDeals.some((deal) => !!deal.couponCode);
           const bestDealEndTime = bestDeal ? new Date(bestDeal.endDate).getTime() : Number.MAX_SAFE_INTEGER;
-          const bestDealDaysLeft = bestDeal ? Math.ceil((bestDealEndTime - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
-          const bestDealLifePercent = bestDealDaysLeft !== null ? Math.max(0, Math.min(100, (bestDealDaysLeft / 7) * 100)) : 0;
           const displayOpeningHours = formatOpeningHours(shop.openingHours);
           return (
             <button
@@ -358,7 +360,7 @@ const categories = getExploreCategories();
               data-search={`${shop.name} ${shop.address || ''} ${displayOpeningHours} ${(shop as any).nearbyBts || ''} ${(shop as any).nearbyMrt || ''} ${(shop as any).accessibilityNotes || ''} ${(shop as any).parkingNotes || ''} ${(shop as any).petNotes || ''} ${(shop as any).familyNotes || ''} ${shopDeals.map((deal) => `${deal.title} ${deal.description || ''} ${deal.discountText || ''}`).join(' ')}`.toLowerCase()}
             >
               <div class="flex gap-3">
-                <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-lg font-black text-primary">
+                <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-base font-black text-primary">
                   {shop.logoImage ? (
                     <img src={shop.logoImage} alt={shop.name} class="h-full w-full object-cover" />
                   ) : (
@@ -369,16 +371,7 @@ const categories = getExploreCategories();
                   <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
                       <h3 class="truncate text-sm font-black text-secondary group-hover:text-primary">{shop.name}</h3>
-                      <p class="mt-0.5 truncate text-[11px] font-bold text-text-tertiary">
-                        {shop.address || ''}
-                      </p>
-                      <div class="mt-2 flex flex-wrap gap-1.5">
-                        <span
-                          class="rounded-full px-2 py-1 text-[9px] font-black text-white"
-                          style={`background-color:${categoryColor};`}
-                        >
-                          {SHOP_CATEGORY_LABELS[category] || shop.category}
-                        </span>
+                      <div class="mt-1 flex flex-wrap items-center gap-1.5">
                         <span class:list={[
                           'rounded-full px-2 py-1 text-[9px] font-black',
                           (shop.isOpen ?? true)
@@ -387,38 +380,50 @@ const categories = getExploreCategories();
                         ]}>
                           {(shop.isOpen ?? true) ? 'เปิดอยู่' : 'ปิดชั่วคราว'}
                         </span>
-                        {displayOpeningHours && (
-                          <span class="rounded-full bg-bg px-2 py-1 text-[9px] font-black text-text-tertiary">
-                            {displayOpeningHours}
-                          </span>
-                        )}
+                        <span
+                          class="rounded-full px-2 py-1 text-[9px] font-black text-white"
+                          style={`background-color:${categoryColor};`}
+                        >
+                          {SHOP_CATEGORY_LABELS[category] || shop.category}
+                        </span>
                       </div>
                     </div>
-                    {urgentDealCount > 0 && (
-                      <span class="rounded-full bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-400">
-                        ใกล้หมด
-                      </span>
-                    )}
+                    <span class="map-distance-label flex-shrink-0 text-[10px] font-black text-text-tertiary" data-distance-for={shop.id}>กดใกล้ฉัน</span>
                   </div>
+                  {(shop.address || displayOpeningHours) && (
+                    <p class="mt-1.5 line-clamp-1 text-[10px] font-bold text-text-tertiary">
+                      {displayOpeningHours ? `วันนี้ ${displayOpeningHours}` : shop.address}
+                      {displayOpeningHours && shop.address ? ` · ${shop.address}` : ''}
+                    </p>
+                  )}
                   {bestDeal && (
-                    <div class="mt-3 rounded-xl bg-bg-secondary/70 p-2">
-                      <p class="line-clamp-1 text-xs font-black text-secondary">{bestDeal.title}</p>
-                      <div class="mt-1 flex items-center justify-between gap-2">
-                        <span class="truncate text-[10px] font-bold text-primary">{bestDeal.discountText || 'ดูรายละเอียดดีล'}</span>
-                        <span class="flex-shrink-0 text-[10px] font-bold text-text-tertiary">{getExpiryLabel(new Date(bestDeal.endDate))}</span>
+                    <div class="mt-3 flex items-center gap-2.5 rounded-xl bg-bg-secondary/70 p-2">
+                      <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[9px] font-black text-primary">
+                        {bestDeal.imageUrl ? (
+                          <img src={bestDeal.imageUrl} alt="" class="h-full w-full object-cover" />
+                        ) : (
+                          'ดีล'
+                        )}
                       </div>
-                      <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-bg-tertiary">
-                        <div
-                          class:list={['h-full rounded-full', bestDealLifePercent <= 15 ? 'bg-warning' : 'bg-primary']}
-                          style={`width: ${bestDealLifePercent}%`}
-                        ></div>
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-start justify-between gap-2">
+                          <p class="line-clamp-1 text-xs font-black text-secondary">{bestDeal.title}</p>
+                          {urgentDealCount > 0 && (
+                            <span class="flex-shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-black text-amber-600 dark:text-amber-400">ใกล้หมด</span>
+                          )}
+                        </div>
+                        <div class="mt-1 flex items-center justify-between gap-2">
+                          <span class="truncate text-[10px] font-black text-primary">{bestDeal.discountText || 'ดูรายละเอียดดีล'}</span>
+                          <span class="flex-shrink-0 text-[10px] font-bold text-text-tertiary">{getExpiryLabel(new Date(bestDeal.endDate))}</span>
+                        </div>
                       </div>
                     </div>
                   )}
-                  <div class="mt-3 flex items-center justify-between gap-2">
-                    <span class="text-[10px] font-black text-text-tertiary">{shopDeals.length} ดีลที่ใช้ได้</span>
-                    <span class="map-distance-label text-[10px] font-bold text-text-tertiary" data-distance-for={shop.id}>กดใกล้ฉันเพื่อดูระยะทาง</span>
-                    <span class="text-[10px] font-black text-primary">ดูบนแผนที่</span>
+                  <div class="mt-3 flex items-center justify-between gap-2 border-t border-border/30 pt-2.5">
+                    <span class="text-[10px] font-black text-text-tertiary">
+                      {shopDeals.length > 1 ? `อีก ${shopDeals.length - 1} ดีล` : '1 ดีลพร้อมใช้'}
+                    </span>
+                    <span class="text-[10px] font-black text-primary">เลือกบนแผนที่ →</span>
                   </div>
                 </div>
               </div>
@@ -653,6 +658,31 @@ const categories = getExploreCategories();
       const clusterMarkers = [];
 
       const pins = Array.isArray(mapPins) ? mapPins.filter((pin) => pin.latitude && pin.longitude) : [];
+      const USER_LOCATION_SESSION_KEY = 'dealdoor.explore.userLocation.v1';
+      let isLocatingUser = false;
+
+      const isLikelyMobile = () => window.matchMedia('(max-width: 1023px), (pointer: coarse)').matches;
+
+      const readStoredUserLocation = () => {
+        try {
+          const raw = window.sessionStorage?.getItem(USER_LOCATION_SESSION_KEY);
+          if (!raw) return null;
+          const saved = JSON.parse(raw);
+          const ageMs = Date.now() - Number(saved.timestamp || 0);
+          if (!Number.isFinite(saved.lat) || !Number.isFinite(saved.lng) || ageMs > 30 * 60 * 1000) return null;
+          return saved;
+        } catch {
+          return null;
+        }
+      };
+
+      const saveUserLocation = (location) => {
+        try {
+          window.sessionStorage?.setItem(USER_LOCATION_SESSION_KEY, JSON.stringify(location));
+        } catch {}
+      };
+
+      userLocation = readStoredUserLocation();
 
       const trackMapEvent = (type, pin, metadata = {}) => {
         if (!pin?.shopId) return;
@@ -706,11 +736,114 @@ const categories = getExploreCategories();
           && mapEl.clientHeight > 0
       );
 
+      const setNearMeButtonsLoading = (loading) => {
+        nearMeBtns.forEach((button) => {
+          if (!button.dataset.idleHtml) button.dataset.idleHtml = button.innerHTML;
+          button.disabled = loading;
+          button.setAttribute('aria-busy', loading ? 'true' : 'false');
+          button.classList.toggle('opacity-70', loading);
+          button.classList.toggle('cursor-wait', loading);
+          if (loading) button.textContent = 'กำลังหา...';
+          else button.innerHTML = button.dataset.idleHtml || '';
+        });
+      };
+
+      const setUserLocationMarker = (focusMap = true) => {
+        if (!map || !userLocation || typeof L === 'undefined') return;
+        const latlng = [userLocation.lat, userLocation.lng];
+        if (userMarker?.setLatLng) {
+          userMarker.setLatLng(latlng);
+        } else {
+          userMarker = L.circleMarker(latlng, {
+            radius: 9,
+            color: '#2563EB',
+            weight: 3,
+            fillColor: '#3B82F6',
+            fillOpacity: 0.25,
+          }).addTo(map).bindPopup('ตำแหน่งปัจจุบันของคุณ');
+        }
+        if (focusMap) map.flyTo(latlng, 14, { duration: 0.8 });
+      };
+
+      const applyUserLocation = (position, options = {}) => {
+        const { focusMap = true, source = 'button' } = options;
+        userLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: Date.now(),
+        };
+        saveUserLocation(userLocation);
+        setUserLocationMarker(focusMap);
+        sortMode = 'nearby';
+        if (sortSelect) sortSelect.value = 'nearby';
+        updateDistanceLabels();
+        updateLocationHelper('ใช้ตำแหน่งปัจจุบันของคุณในการคำนวณระยะทางแล้ว', 'primary');
+        applyFilters();
+        const pin = getVisiblePins()[0];
+        trackMapEvent('map_filter_change', pin, { filter: 'nearby', value: true, source });
+      };
+
+      const getGeolocationFailureMessage = (error) => {
+        if (error?.code === 1) {
+          return 'ยังไม่ได้รับพิกัดจากอุปกรณ์ ตรวจสอบ Site permission และ Windows Location Services แล้วลองกดใกล้ฉันอีกครั้ง';
+        }
+        if (error?.code === 2) {
+          return 'อุปกรณ์หาตำแหน่งปัจจุบันไม่ได้ ลองเปิด Location/GPS หรือเชื่อมต่อ Wi-Fi';
+        }
+        if (error?.code === 3) {
+          return 'การหาตำแหน่งใช้เวลานานเกินไป ลองกดใกล้ฉันอีกครั้ง';
+        }
+        return 'หาตำแหน่งปัจจุบันไม่ได้ ลองเปิด Location/GPS หรือเลือกย่านจากคำค้นแทนได้';
+      };
+
+      const ensureUserLocation = (options = {}) => {
+        const { focusMap = true, source = 'button', force = false } = options;
+        if (userLocation && !force) {
+          setUserLocationMarker(focusMap);
+          sortMode = 'nearby';
+          if (sortSelect) sortSelect.value = 'nearby';
+          updateLocationHelper('ใช้ตำแหน่งล่าสุดของคุณในการคำนวณระยะทางแล้ว', 'primary');
+          applyFilters();
+          return Promise.resolve(true);
+        }
+
+        if (!navigator.geolocation || !window.isSecureContext) {
+          updateLocationHelper('เบราว์เซอร์ต้องใช้ HTTPS หรือ localhost เพื่อขอตำแหน่งปัจจุบัน', 'warning');
+          return Promise.resolve(false);
+        }
+
+        if (isLocatingUser) return Promise.resolve(false);
+        isLocatingUser = true;
+        setNearMeButtonsLoading(true);
+        updateLocationHelper('กำลังขอสิทธิ์ตำแหน่งจากอุปกรณ์...', 'primary');
+
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              isLocatingUser = false;
+              setNearMeButtonsLoading(false);
+              applyUserLocation(position, { focusMap, source });
+              resolve(true);
+            },
+            (error) => {
+              isLocatingUser = false;
+              setNearMeButtonsLoading(false);
+              updateLocationHelper(getGeolocationFailureMessage(error), 'warning');
+              resolve(false);
+            },
+            { enableHighAccuracy: true, maximumAge: 60_000, timeout: 8_000 }
+          );
+        });
+      };
+
       if (searchInput) searchInput.value = searchQuery;
       if (searchInputMobile) searchInputMobile.value = searchQuery;
       if (sortSelect) sortSelect.value = sortMode;
       if (radiusSelect) radiusSelect.value = radiusKm;
-      if (sortMode === 'nearby' || radiusKm !== 'all') {
+      if (userLocation) {
+        updateLocationHelper('ใช้ตำแหน่งล่าสุดของคุณในการคำนวณระยะทางแล้ว', 'primary');
+      } else if (sortMode === 'nearby' || radiusKm !== 'all') {
         updateLocationHelper('กด "ใกล้ฉัน" เพื่อเปิดใช้ระยะทางจากตำแหน่งคุณ', 'warning');
       }
 
@@ -781,7 +914,11 @@ const categories = getExploreCategories();
         const urgentClass = pin.urgentDealCount > 0 ? ' is-urgent' : '';
         const label = escapeHtml((pin.shopName || '?').charAt(0).toUpperCase());
         const color = escapeHtml(pin.categoryColor || '#F97316');
-        return `<div class="dealdoor-map-marker${urgentClass}" style="background:${color};"><span>${label}</span><small>${pin.activeDealCount}</small></div>`;
+        const logo = pin.logoImage
+          ? `<img src="${escapeHtml(pin.logoImage)}" alt="" style="display:block;width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.style.background='transparent'; this.style.display='none'; this.nextElementSibling.style.display='flex';" /><span class="dealdoor-map-marker-fallback" style="display:none">${label}</span>`
+          : `<span class="dealdoor-map-marker-fallback">${label}</span>`;
+        const avatarBackground = pin.logoImage ? '#fff' : 'transparent';
+        return `<div class="dealdoor-map-marker${urgentClass}" style="background:${color};"><div class="dealdoor-map-marker-avatar" style="position:absolute;inset:0;overflow:hidden;border-radius:9999px;clip-path:circle(50%);background:${avatarBackground};isolation:isolate;">${logo}</div><small>${pin.activeDealCount}</small></div>`;
       };
 
       const makeClusterHtml = (group) => {
@@ -863,25 +1000,48 @@ const categories = getExploreCategories();
 
       const makeSelectedHtml = (pin) => {
         const deal = pin.bestDeal;
+        const distance = formatDistance(getDistanceKm(pin));
+        const todayHours = pin.specialHourLabel || pin.openingHours || '';
         const tagHtml = Array.isArray(pin.amenityTags) && pin.amenityTags.length
-          ? `<div class="mt-2 flex flex-wrap gap-1">${pin.amenityTags.slice(0, 3).map((tag) => `<span class="rounded-full bg-bg-secondary px-2 py-1 text-[9px] font-black text-text-tertiary">${escapeHtml(tag)}</span>`).join('')}</div>`
+          ? `<div class="mt-3 flex flex-wrap gap-1.5">${pin.amenityTags.slice(0, 2).map((tag) => `<span class="rounded-full bg-bg-secondary px-2 py-1 text-[9px] font-black text-text-tertiary">${escapeHtml(tag)}</span>`).join('')}${pin.amenityTags.length > 2 ? `<span class="rounded-full bg-bg-secondary px-2 py-1 text-[9px] font-black text-text-tertiary">+${pin.amenityTags.length - 2}</span>` : ''}</div>`
           : '';
+        const actionColumns = deal ? 'grid-cols-3' : 'grid-cols-2';
         return `
-          <div class="flex items-start gap-3">
-            <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10 text-sm font-black text-primary">
+          <div>
+            <div class="flex items-start gap-3">
+              <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-sm font-black text-primary">
               ${pin.logoImage ? `<img src="${escapeHtml(pin.logoImage)}" alt="" class="h-full w-full object-cover" />` : escapeHtml(pin.shopName.charAt(0))}
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-black text-secondary">${escapeHtml(pin.shopName)}</p>
-              <p class="mt-0.5 truncate text-[10px] font-bold text-text-tertiary">${escapeHtml(pin.categoryLabel)}${pin.address ? ` • ${escapeHtml(pin.address)}` : ''}</p>
-              <p class="mt-1 text-[10px] font-black ${pin.isOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-text-tertiary'}">${pin.isOpen ? 'เปิดอยู่' : 'ปิดชั่วคราว'}${pin.specialHourLabel ? ` • ${escapeHtml(pin.specialHourLabel)}` : pin.openingHours ? ` • ${escapeHtml(pin.openingHours)}` : ''}</p>
-              ${tagHtml}
-              ${deal ? `<p class="mt-2 line-clamp-1 text-xs font-black text-primary">${escapeHtml(deal.title)}</p>` : ''}
-              <div class="mt-3 grid grid-cols-3 gap-2">
-                ${deal ? `<a href="${escapeHtml(deal.href)}" class="rounded-lg bg-primary px-2 py-2 text-center text-[10px] font-black text-white">ดูดีล</a>` : ''}
-                <a href="${escapeHtml(pin.shopHref)}" class="rounded-lg bg-bg-secondary px-2 py-2 text-center text-[10px] font-black text-secondary">ร้าน</a>
-                <a href="${escapeHtml(pin.directionsHref)}" data-map-action="directions" data-shop-id="${escapeHtml(pin.shopId)}" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-orange-500/10 px-2 py-2 text-center text-[10px] font-black text-orange-700 dark:text-orange-400">นำทาง</a>
               </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-black text-secondary">${escapeHtml(pin.shopName)}</p>
+                    <p class="mt-0.5 truncate text-[10px] font-bold text-text-tertiary">${escapeHtml(pin.categoryLabel)}${pin.address ? ` · ${escapeHtml(pin.address)}` : ''}</p>
+                  </div>
+                  <span class="flex-shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${pin.isOpen ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-bg-secondary text-text-tertiary'}">${pin.isOpen ? 'เปิดอยู่' : 'ปิดชั่วคราว'}</span>
+                </div>
+                ${(distance || todayHours) ? `<p class="mt-1.5 truncate text-[10px] font-bold text-text-tertiary">${distance ? `<span class="text-primary">${escapeHtml(distance)}</span>${todayHours ? ' · ' : ''}` : ''}${todayHours ? escapeHtml(todayHours) : ''}</p>` : ''}
+              </div>
+            </div>
+            ${deal ? `
+              <div class="mt-3 flex items-center gap-2.5 rounded-xl bg-bg-secondary/75 p-2">
+                <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[9px] font-black text-primary">
+                  ${deal.imageUrl ? `<img src="${escapeHtml(deal.imageUrl)}" alt="" class="h-full w-full object-cover" />` : 'ดีล'}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="line-clamp-1 text-xs font-black text-secondary">${escapeHtml(deal.title)}</p>
+                  <div class="mt-1 flex items-center justify-between gap-2">
+                    <span class="truncate text-[10px] font-black text-primary">${escapeHtml(deal.discountText || 'ดูรายละเอียดดีล')}</span>
+                    <span class="flex-shrink-0 text-[10px] font-bold text-text-tertiary">${escapeHtml(deal.expiryLabel)}</span>
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+            ${tagHtml}
+            <div class="mt-3 grid ${actionColumns} gap-2 border-t border-border/30 pt-3">
+              ${deal ? `<a href="${escapeHtml(deal.href)}" class="rounded-xl bg-primary px-2 py-2.5 text-center text-[10px] font-black text-white">ดูดีล</a>` : ''}
+              <a href="${escapeHtml(pin.shopHref)}" class="rounded-xl bg-bg-secondary px-2 py-2.5 text-center text-[10px] font-black text-secondary">หน้าร้าน</a>
+              <a href="${escapeHtml(pin.directionsHref)}" data-map-action="directions" data-shop-id="${escapeHtml(pin.shopId)}" target="_blank" rel="noopener noreferrer" class="rounded-xl bg-orange-500/10 px-2 py-2.5 text-center text-[10px] font-black text-orange-700 dark:text-orange-400">นำทาง</a>
             </div>
           </div>
         `;
@@ -1044,10 +1204,26 @@ const categories = getExploreCategories();
         const center = pins.length > 0 ? [pins[0].latitude, pins[0].longitude] : [13.7563, 100.5018];
         map = L.map(mapEl, { zoomControl: false, scrollWheelZoom: true }).setView(center, 13);
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap',
+        const isDark = document.documentElement.classList.contains('dark');
+        const mapTileUrl = isDark
+          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+        const tileLayer = L.tileLayer(mapTileUrl, {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
           maxZoom: 19,
         }).addTo(map);
+
+        const themeObserver = new MutationObserver(() => {
+          const currentlyDark = document.documentElement.classList.contains('dark');
+          const nextUrl = currentlyDark
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+          tileLayer.setUrl(nextUrl);
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+        setUserLocationMarker(false);
 
         pins.forEach((pin) => {
           const marker = L.marker([pin.latitude, pin.longitude], {
@@ -1080,6 +1256,12 @@ const categories = getExploreCategories();
         mapLoadingOverlay?.classList.add('hidden');
         setSheetHeight();
         snapSheetTo('peek');
+
+        if (!userLocation && (sortMode === 'nearby' || radiusKm !== 'all') && isLikelyMobile()) {
+          setTimeout(() => {
+            ensureUserLocation({ focusMap: false, source: 'initial-mobile' });
+          }, 450);
+        }
 
         // Guard against a race where the map container isn't measurable yet
         // on the very first paint, which would skip marker rendering.
@@ -1135,7 +1317,13 @@ const categories = getExploreCategories();
       sortSelect?.addEventListener('change', (event) => {
         sortMode = event.target.value || 'recommended';
         if (sortMode === 'nearby' && !userLocation) {
-          updateLocationHelper('กด "ใกล้ฉัน" เพื่ออนุญาตตำแหน่งก่อนเรียงตามระยะทาง', 'warning');
+          ensureUserLocation({ focusMap: true, source: 'sort' }).then((ok) => {
+            if (ok) return;
+            sortMode = 'recommended';
+            if (sortSelect) sortSelect.value = 'recommended';
+            applyFilters();
+          });
+          return;
         }
         applyFilters();
         const pin = getVisiblePins()[0];
@@ -1145,7 +1333,13 @@ const categories = getExploreCategories();
       radiusSelect?.addEventListener('change', (event) => {
         radiusKm = event.target.value || 'all';
         if (radiusKm !== 'all' && !userLocation) {
-          updateLocationHelper('กด "ใกล้ฉัน" ก่อนใช้ตัวกรองรัศมี', 'warning');
+          ensureUserLocation({ focusMap: true, source: 'radius' }).then((ok) => {
+            if (ok) return;
+            radiusKm = 'all';
+            if (radiusSelect) radiusSelect.value = 'all';
+            applyFilters();
+          });
+          return;
         }
         applyFilters();
         const pin = getVisiblePins()[0];
@@ -1234,33 +1428,7 @@ const categories = getExploreCategories();
 
       nearMeBtns.forEach((nearMeBtn) => {
         nearMeBtn.addEventListener('click', () => {
-          if (!navigator.geolocation || !map) {
-            updateLocationHelper('เบราว์เซอร์นี้ไม่รองรับการหาตำแหน่ง', 'warning');
-            return;
-          }
-          const originalLabel = nearMeBtn.innerHTML;
-          nearMeBtn.textContent = 'กำลังหา...';
-          updateLocationHelper('กำลังขอสิทธิ์ตำแหน่งจากเบราว์เซอร์...', 'primary');
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const latlng = [position.coords.latitude, position.coords.longitude];
-              userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-              if (userMarker) userMarker.remove();
-              userMarker = L.marker(latlng).addTo(map).bindPopup('ตำแหน่งของคุณ');
-              map.flyTo(latlng, 14, { duration: 0.8 });
-              sortMode = 'nearby';
-              if (sortSelect) sortSelect.value = 'nearby';
-              updateDistanceLabels();
-              updateLocationHelper('ใช้ตำแหน่งของคุณในการคำนวณระยะทางแล้ว', 'primary');
-              applyFilters();
-              nearMeBtn.innerHTML = originalLabel;
-            },
-            () => {
-              nearMeBtn.innerHTML = originalLabel;
-              updateLocationHelper('ยังไม่ได้รับสิทธิ์ตำแหน่ง เลือกย่านจากคำค้นหรือกดอนุญาตอีกครั้งได้', 'warning');
-            },
-            { timeout: 5000 }
-          );
+          ensureUserLocation({ focusMap: true, source: 'button', force: true });
         });
       });
 
@@ -1310,6 +1478,22 @@ const categories = getExploreCategories();
     transform: scale(1.18);
     box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.9), 0 14px 28px rgba(15, 23, 42, 0.35);
     z-index: 1000;
+  }
+
+  :global(.dealdoor-map-marker-avatar) {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    background: white;
+  }
+
+  :global(.dealdoor-map-marker-fallback) {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
   }
 
   :global(.dealdoor-map-marker small) {

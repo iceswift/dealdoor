@@ -3,7 +3,11 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { handleApiError } from '../../../lib/errors';
+import { eq } from 'drizzle-orm';
+import { db } from '../../../lib/db';
+import { deals, shops } from '../../../lib/db-schema';
+import { firstRow } from '../../../lib/db-query';
+import { handleApiError, notFound } from '../../../lib/errors';
 import { json, requireDashboardShop } from '../../../lib/dashboard/server';
 import {
   deleteDealForShop,
@@ -14,9 +18,29 @@ import {
 
 export const GET: APIRoute = async ({ params, locals }) => {
   try {
-    const { shop } = await requireDashboardShop(locals.user);
-    const deal = await getDealForShop(params.id!, shop.id);
-    return json({ success: true, data: deal });
+    const row = await firstRow(db
+      .select({
+        deal: deals,
+        shop: shops,
+      })
+      .from(deals)
+      .leftJoin(shops, eq(deals.shopId, shops.id))
+      .where(eq(deals.id, params.id!))
+      .limit(1));
+
+    if (!row?.deal || !row.shop) {
+      throw notFound('ไม่พบดีลนี้');
+    }
+
+    return json({
+      success: true,
+      data: {
+        ...row.deal,
+        shop: row.shop,
+        shopSlug: row.shop.slug,
+        shopName: row.shop.name,
+      },
+    });
   } catch (error) {
     return handleApiError(error);
   }

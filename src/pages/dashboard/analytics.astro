@@ -2,8 +2,7 @@
 // src/pages/dashboard/analytics.astro
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import StatsOverview from '../../components/dashboard/analytics/StatsOverview.tsx';
-import TopDeals from '../../components/dashboard/analytics/TopDeals.tsx';
+import AnalyticsDashboard from '../../components/dashboard/analytics/AnalyticsDashboard.tsx';
 import Icon from '../../components/icons/index.astro';
 import { requireDashboardShop } from '../../lib/dashboard/server';
 
@@ -16,27 +15,36 @@ try {
 ---
 
 <DashboardLayout title="สถิติร้านค้า" activeTab="analytics">
-  <div class="space-y-6">
-    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
-      <div class="flex items-start gap-3">
-        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Icon name="chart" class="h-5 w-5" />
-        </div>
-        <div>
-          <p class="text-xs font-black uppercase tracking-wider text-primary">Analytics</p>
-          <h1 class="text-2xl font-black text-secondary">สถิติของ {context.shop.name}</h1>
-          <p class="mt-1 text-sm font-bold text-text-secondary">วัดผลจากหน้าร้าน ดีล การแชร์ และการคลิกติดต่อ</p>
+  <div class="relative flex flex-col gap-6 overflow-hidden">
+    {/* Page background decorative ambient meshes */}
+    <div class="pointer-events-none absolute -left-12 top-60 h-56 w-56 rounded-full bg-accent/5 blur-3xl"></div>
+
+    <section class="relative overflow-hidden rounded-3xl border border-border/40 bg-card-bg/75 p-6 shadow-sm backdrop-blur-md">
+      <div class="relative flex items-center justify-between gap-4">
+        <div class="flex items-start gap-4">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary/20 to-primary/10 text-primary shadow-inner">
+            <Icon name="chart" class="h-6 w-6" />
+          </div>
+          <div>
+            <p class="text-xs font-black uppercase tracking-widest text-primary">Analytics Platform</p>
+            <h1 class="text-2xl font-black tracking-tight text-secondary">สถิติของ {context.shop.name}</h1>
+            <p class="mt-1 text-sm font-bold text-text-secondary leading-relaxed">
+              วัดและติดตามความสนใจของลูกค้าจากหน้าร้าน การเข้าดูดีล การกดแชร์ และช่องทางติดต่อสื่อสาร
+            </p>
+          </div>
         </div>
       </div>
     </section>
 
-    <StatsOverview client:load days={30} />
-    <TopDeals client:load />
+    <AnalyticsDashboard client:load />
 
-    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
-      <p class="text-sm font-black text-secondary">หมายเหตุข้อมูล</p>
-      <p class="mt-1 text-sm font-bold leading-6 text-text-secondary">
-        API analytics อ่านข้อมูลของร้านที่ผูกกับบัญชีปัจจุบันเท่านั้น จึงไม่สามารถส่ง shopId จาก browser เพื่อดูข้อมูลร้านอื่นได้
+    <section class="relative overflow-hidden rounded-3xl border border-border/40 bg-card-bg/60 p-5 shadow-sm backdrop-blur-md">
+      <div class="flex items-center gap-2">
+        <div class="h-1.5 w-1.5 rounded-full bg-text-tertiary"></div>
+        <p class="text-xs font-black uppercase tracking-wider text-text-secondary">หมายเหตุข้อมูลระบบ</p>
+      </div>
+      <p class="mt-2 text-xs font-bold leading-5 text-text-tertiary max-w-3xl">
+        ระบบบันทึกและแสดงสถิติแบบปลอดภัยตามบัญชีผู้ค้าปัจจุบัน (Merchant Account Boundary) ข้อมูลทั้งหมดจะประมวลผลแบบเป็นส่วนตัวและเฉพาะเจาะจงเพื่อร้านค้าของคุณเท่านั้น
       </p>
     </section>
   </div>

@@ -3,16 +3,31 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getUserFromRequest } from './lib/auth';
 import { getSecurityHeaders, getClientIp, apiLimiter, authLimiter } from './lib/security';
+import { getLangFromRequest, getLocalizedPath, LOCALE_COOKIE, stripLocalePrefix } from './i18n';
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const clientIp = getClientIp(context.request);
+  const clientIp = getClientIp(context.request, context.clientAddress);
   const method = context.request.method;
-  const path = context.url.pathname;
+  const requestedPath = context.url.pathname;
+  const language = getLangFromRequest(context.request);
+  const path = stripLocalePrefix(requestedPath);
   const requestId = crypto.randomUUID();
 
-  // Rate limiting for API routes
-  if (path.startsWith('/api/')) {
-    const { allowed, remaining, resetAt } = apiLimiter(clientIp);
+  context.locals.language = language;
+
+  // Public localized URLs are rendered by the existing routes. The rewrite keeps
+  // the visible /en/... URL while allowing Phase 2 to translate routes gradually.
+  const needsLocaleRewrite = requestedPath !== path && !path.startsWith('/api/');
+  if (needsLocaleRewrite) {
+    context.cookies.set(LOCALE_COOKIE, language, { path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 });
+  }
+
+  // Rate-limit each endpoint independently. A busy dashboard request must not
+  // consume the budget for saving special hours or another unrelated action.
+  // The notification stream is a long-lived connection, so it has no request
+  // burst to throttle after its initial connection.
+  if (path.startsWith('/api/') && path !== '/api/notifications/stream') {
+    const { allowed, remaining, resetAt } = apiLimiter(clientIp, path);
     
     if (!allowed) {
       return new Response(
@@ -72,17 +87,21 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Protect dashboard routes
   if (path.startsWith('/dashboard')) {
     if (!user) {
-      return context.redirect('/auth/login');
+      return context.redirect('/auth/login?redirect=' + encodeURIComponent(getLocalizedPath(path, language)));
+    }
+    if (user.role === 'admin') {
+      return context.redirect('/admin/moderation');
     }
   }
 
   // Protect admin routes (require admin role)
   if (path.startsWith('/admin')) {
     if (!user) {
-      return context.redirect('/auth/login');
+      return context.redirect('/auth/login?redirect=' + encodeURIComponent(getLocalizedPath(path, language)));
     }
-    // For MVP, any authenticated user can access admin
-    // In production, check for admin role: if (user.role !== 'admin') return context.redirect('/');
+    if (user.role !== 'admin') {
+      return context.redirect('/dashboard');
+    }
   }
 
   // Protect dashboard API routes
@@ -98,7 +117,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Process request
   let response: Response;
   try {
-    response = await next();
+    if (needsLocaleRewrite) {
+      const internalUrl = new URL(context.request.url);
+      internalUrl.pathname = path;
+      const headers = new Headers(context.request.headers);
+      headers.set('x-dealdoor-locale', language);
+      response = await context.rewrite(new Request(internalUrl, { method, headers }));
+    } else {
+      response = await next();
+    }
   } catch (error) {
     console.error('Request error:', error);
     // Return a proper error response instead of throwing

@@ -586,6 +586,15 @@ html {
   animation: pulseDanger 2s ease-in-out infinite;
 }
 
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Skeleton Loading Shimmer */
 .skeleton {
   background: linear-gradient(90deg, var(--color-skeleton) 25%, var(--color-skeleton-highlight) 50%, var(--color-skeleton) 75%);
@@ -659,4 +668,118 @@ html {
 
 .skip-link:focus {
   top: 16px;
+}
+
+/* Custom Checkbox Universal Design */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.25rem; /* 20px */
+  height: 1.25rem; /* 20px */
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-bg);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  position: relative;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(255, 90, 54, 0.15);
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  width: 0.65rem;
+  height: 0.65rem;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em white;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform-origin: center;
+}
+
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+input[type="checkbox"]:disabled {
+  border-color: var(--color-border-disabled);
+  background-color: var(--color-bg-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Custom Time Input Styling */
+input[type="time"] {
+  position: relative;
+  text-align: center;
+  font-family: inherit;
+  font-feature-settings: "tnum"; /* Tabular numbers */
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  min-width: 170px; /* Prevent AM/PM truncation */
+}
+
+/* Custom Clock Icon for Webkit browsers */
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ff5a3c' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(255, 90, 54, 0.1);
+}
+
+/* Clean focus and values highlight */
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+input[type="time"]::-webkit-datetime-edit-text {
+  color: var(--color-text-tertiary);
+  padding: 0 4px;
+  font-weight: bold;
+}
+
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field,
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: all 0.2s;
+}
+
+input[type="time"]::-webkit-datetime-edit-hour-field:focus,
+input[type="time"]::-webkit-datetime-edit-minute-field:focus,
+input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
+  background-color: var(--color-primary);
+  color: white;
+  outline: none;
 }

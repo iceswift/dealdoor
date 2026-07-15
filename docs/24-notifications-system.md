@@ -411,35 +411,7 @@ export default function NotificationBell({ shopId }: { shopId: string }) {
 
 ---
 
-## 9. LINE Notification (Future)
-
-```typescript
-// src/lib/line-notify.ts
-
-export async function sendLineNotification(
-  lineId: string,
-  message: string
-): Promise<void> {
-  // Using LINE Messaging API
-  const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      to: lineId,
-      messages: [{ type: 'text', text: message }],
-    }),
-  });
-}
-```
-
----
-
-## 10. Job Scheduler
+## 9. Job Scheduler
 
 ```typescript
 // src/jobs/scheduler.ts
@@ -480,13 +452,12 @@ function scheduleWeekly(job: (shopId: string) => Promise<void>, day: number, hou
 
 ---
 
-## 11. File Structure
+## 10. File Structure
 
 ```
 src/
 ├── lib/
 │   ├── notifications.ts        # Notification service
-│   ├── line-notify.ts          # LINE integration
 │   └── email/
 │       ├── templates/          # Email templates
 │       └── sender.ts           # Email sending

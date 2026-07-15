@@ -5,6 +5,7 @@ import type { Deal, Shop } from '../../lib/db-schema';
 import { getDealViewModel } from '../../lib/deals/view-model';
 import SaveButton from '../shared/SaveButton.tsx';
 import Icon from '../icons/index.astro';
+import { getLangFromRequest, t } from '../../i18n';
 
 interface Props {
   deal: Deal;
@@ -13,6 +14,8 @@ interface Props {
 }
 
 const { deal, shop, highlighted = false } = Astro.props;
+const lang = getLangFromRequest(Astro.request);
+const publicText = (key: string, params?: Record<string, string | number>) => t(lang, 'public', key, params);
 const view = getDealViewModel(deal, shop);
 const isExpired = view.urgency === 'expired';
 ---
@@ -24,7 +27,7 @@ const isExpired = view.urgency === 'expired';
     highlighted && 'ring-2 ring-primary/70 border-primary/60 shadow-lg shadow-primary/10',
   ]}
   data-deal-id={deal.id}
-  aria-label={`ดีล: ${view.title}`}
+  aria-label={`${publicText('deal.viewDeal')}: ${view.title}`}
 >
   <div class="h-1.5 w-full" style={`background-color: ${view.categoryColor}`} />
 
@@ -82,7 +85,7 @@ const isExpired = view.urgency === 'expired';
         <div class="flex items-start gap-3">
           <Icon name="tag" class="mt-0.5 h-5 w-5 flex-shrink-0" style={`color: ${view.categoryColor}`} />
           <div>
-            <p class="text-[11px] font-bold uppercase tracking-wide text-text-tertiary">สิทธิพิเศษ</p>
+            <p class="text-[11px] font-bold uppercase tracking-wide text-text-tertiary">{publicText('deal.specialOffer')}</p>
             <p class="text-base font-extrabold" style={`color: ${view.categoryColor}`}>{view.discountLabel}</p>
           </div>
         </div>
@@ -91,7 +94,7 @@ const isExpired = view.urgency === 'expired';
 
     {isExpired && (
       <div class="mt-4 rounded-xl bg-bg-secondary p-3 text-sm font-bold text-text-tertiary">
-        ดีลนี้หมดอายุแล้ว ยังดูรายละเอียดได้แต่ไม่สามารถรับสิทธิ์ได้
+        {publicText('deal.expiredNotice')}
       </div>
     )}
   </div>
@@ -140,7 +143,7 @@ const isExpired = view.urgency === 'expired';
           class="btn btn-secondary min-h-[44px] rounded-xl px-4 py-2.5 text-xs font-bold open-deal-detail-btn"
           data-deal-url={view.urls.deal}
         >
-          ดูรายละเอียด
+          {publicText('deal.viewDetails')}
         </button>
       </div>
 

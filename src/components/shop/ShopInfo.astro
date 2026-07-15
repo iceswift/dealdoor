@@ -203,9 +203,23 @@ const dayLabels: Record<string, string> = {
           scrollWheelZoom: false
         }).setView([lat, lng], 16);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap'
+        const isDark = document.documentElement.classList.contains('dark');
+        const mapTileUrl = isDark
+          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+        const tileLayer = L.tileLayer(mapTileUrl, {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
         }).addTo(map);
+
+        const themeObserver = new MutationObserver(() => {
+          const currentlyDark = document.documentElement.classList.contains('dark');
+          const nextUrl = currentlyDark
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+          tileLayer.setUrl(nextUrl);
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
         L.marker([lat, lng]).addTo(map)
           .bindPopup(`<b>${name}</b>`)

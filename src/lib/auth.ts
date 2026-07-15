@@ -148,23 +148,22 @@ export async function createUser(data: {
   // Hash password
   const passwordHash = await hashPassword(data.password);
 
-  // Create user
   const userId = createId();
-  await db.insert(users).values({
-    id: userId,
-    email: data.email,
-    passwordHash,
-    name: data.name,
-    role: 'merchant',
-  });
-
-  // Create merchant record
   const merchantId = createId();
-  await db.insert(merchants).values({
-    id: merchantId,
-    userId,
-    email: data.email,
-    name: data.name,
+  await db.transaction(async (transaction) => {
+    await transaction.insert(users).values({
+      id: userId,
+      email: data.email,
+      passwordHash,
+      name: data.name,
+      role: 'merchant',
+    });
+    await transaction.insert(merchants).values({
+      id: merchantId,
+      userId,
+      email: data.email,
+      name: data.name,
+    });
   });
 
   const user = await db.query.users.findFirst({ where: eq(users.id, userId) });

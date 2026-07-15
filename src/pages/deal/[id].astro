@@ -1,4 +1,4 @@
----
+﻿---
 // src/pages/deal/[id].astro
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
@@ -11,6 +11,8 @@ import { getDealViewCount } from '../../lib/analytics';
 
 import Icon from '../../components/icons/index.astro';
 import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
+import ReportButton from '../../components/shared/ReportButton.tsx';
+import SaveButton from '../../components/shared/SaveButton.tsx';
 
 const { id } = Astro.params;
 
@@ -169,6 +171,13 @@ const shareText = vm.shareText || vm.title;
               <span class="text-sm font-black tracking-wider text-white">-{priceMatch.percent}%</span>
             </div>
           )}
+
+          <SaveButton
+            client:visible
+            dealId={deal.id}
+            variant="icon"
+            className="absolute right-4 top-16 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/45 p-0 text-white shadow-sm backdrop-blur-md transition-all hover:scale-105 hover:bg-black/60 active:scale-95"
+          />
 
           {/* Category badge - color-coded by deal category */}
           <span
@@ -335,13 +344,19 @@ const shareText = vm.shareText || vm.title;
             </button>
 
             {/* Secondary actions */}
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-3 gap-2">
               <button
                 id="copy-deal-link"
                 class="py-2.5 px-3 rounded-lg border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center justify-center gap-1 cursor-pointer"
               >
                 คัดลอกลิงก์
               </button>
+              <SaveButton
+                client:visible
+                dealId={deal.id}
+                showLabel
+                className="py-2.5 px-3 rounded-lg border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center justify-center gap-1"
+              />
               <a
                 href={vm.urls.shop || '#'}
                 data-contact-channel="shop_page"
@@ -376,6 +391,12 @@ const shareText = vm.shareText || vm.title;
               </a>
             </div>
 
+            <ReportButton
+              client:load
+              targetType="deal"
+              targetId={deal.id}
+              className="w-full rounded-lg border border-danger/15 bg-danger-bg/10 px-3 py-2 text-[10px] font-black text-danger hover:border-danger/30 hover:bg-danger-bg/20"
+            />
             {/* Shop Profile panel inside ticket */}
             <div class="rounded-xl border border-border/15 bg-bg-secondary/40 p-3.5 flex items-center gap-3">
               {shop.logoImage ? (
@@ -470,7 +491,7 @@ const shareText = vm.shareText || vm.title;
           </a>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border/10">
+        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-border/10">
           <a
             href={vm.urls.shop || '#'}
             data-contact-channel="shop_page"
@@ -478,12 +499,24 @@ const shareText = vm.shareText || vm.title;
           >
             ดูหน้าร้านหลัก
           </a>
+          <SaveButton
+            client:visible
+            dealId={deal.id}
+            showLabel
+            className="py-2.5 px-3 rounded-xl border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center justify-center gap-1"
+          />
           <button
             class="mobile-copy-link py-2.5 px-3 rounded-xl border border-border/30 bg-card-bg text-[10px] font-extrabold text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center justify-center gap-1"
           >
             คัดลอกลิงก์ดีล
           </button>
         </div>
+        <ReportButton
+          client:load
+          targetType="deal"
+          targetId={deal.id}
+          className="w-full rounded-xl border border-danger/15 bg-danger-bg/10 px-3 py-2.5 text-[10px] font-black text-danger hover:border-danger/30 hover:bg-danger-bg/20"
+        />
       </div>
 
     </div>
@@ -626,3 +659,4 @@ const shareText = vm.shareText || vm.title;
     });
   </script>
 </BaseLayout>
+

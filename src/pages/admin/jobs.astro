@@ -1,0 +1,42 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getRecentJobRuns } from '../../server/services/job.service';
+
+const user = Astro.locals.user;
+if (!user || user.role !== 'admin') return Astro.redirect('/auth/login?redirect=/admin/jobs');
+const jobs = await getRecentJobRuns();
+---
+
+<BaseLayout title="Background Jobs | DealDoor">
+  <main class="mx-auto max-w-6xl px-4 py-10">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-xs font-black uppercase tracking-[0.16em] text-primary">Admin</p>
+        <h1 class="mt-1 text-3xl font-black text-secondary">Background jobs</h1>
+        <p class="mt-2 text-sm text-text-secondary">ตรวจสอบงาน scheduled ล่าสุดและสถานะการทำงาน</p>
+      </div>
+      <a href="/admin/monitor" class="min-h-11 rounded-xl border border-border/60 px-4 py-3 text-sm font-black text-text-secondary hover:bg-bg-secondary">System monitor</a>
+    </div>
+
+    <section class="mt-7 overflow-hidden rounded-2xl border border-border/40 bg-card-bg shadow-sm">
+      {jobs.length === 0 ? <p class="px-6 py-14 text-center text-sm font-semibold text-text-tertiary">ยังไม่มีประวัติการทำงาน</p> : (
+        <div class="overflow-x-auto">
+          <table class="min-w-[760px] w-full text-left text-sm">
+            <thead class="border-b border-border/40 bg-bg-secondary/45 text-xs font-black uppercase tracking-wide text-text-secondary">
+              <tr><th class="px-5 py-4">Job</th><th class="px-5 py-4">Status</th><th class="px-5 py-4">Started</th><th class="px-5 py-4">Duration</th><th class="px-5 py-4">Detail</th></tr>
+            </thead>
+            <tbody class="divide-y divide-border/35">
+              {jobs.map((job) => <tr>
+                <td class="px-5 py-4 font-black text-secondary">{job.name}</td>
+                <td class="px-5 py-4"><span class:list={["rounded-full px-2.5 py-1 text-xs font-black", job.status === 'succeeded' ? 'bg-success/10 text-success' : job.status === 'failed' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning']}>{job.status}</span></td>
+                <td class="px-5 py-4 text-text-secondary">{new Date(job.startedAt).toLocaleString('th-TH')}</td>
+                <td class="px-5 py-4 text-text-secondary">{job.durationMs == null ? '-' : `${job.durationMs}ms`}</td>
+                <td class="max-w-sm truncate px-5 py-4 text-text-secondary" title={job.error || job.output || ''}>{job.error || job.output || '-'}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </main>
+</BaseLayout>

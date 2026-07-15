@@ -1,0 +1,34 @@
+---
+// src/pages/dashboard/menu/edit.astro
+
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import MenuFormEditWrapper from '../../../components/dashboard/MenuFormEditWrapper.tsx';
+import Icon from '../../../components/icons/index.astro';
+import { requireDashboardShop } from '../../../lib/dashboard/server';
+
+let shop;
+try {
+  ({ shop } = await requireDashboardShop(Astro.locals.user));
+} catch {
+  return Astro.redirect('/dashboard');
+}
+---
+
+<DashboardLayout title="แก้ไขเมนู" activeTab="menu">
+  <div class="space-y-6">
+    <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+      <div class="flex items-start gap-3">
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
+          <Icon name="pencil" class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-xs font-black uppercase tracking-wider text-primary">Edit Menu Item</p>
+          <h1 class="text-2xl font-black text-secondary">แก้ไขเมนู</h1>
+          <p class="mt-1 text-sm font-bold text-text-secondary">แก้ไขข้อมูลรายการสินค้าแนะนำในแคตตาล็อกหน้าร้านของ {shop.name}</p>
+        </div>
+      </div>
+    </section>
+
+    <MenuFormEditWrapper client:load />
+  </div>
+</DashboardLayout>

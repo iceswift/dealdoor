@@ -1,6 +1,6 @@
 // db/schema.ts
 
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
@@ -37,7 +37,10 @@ export const merchants = sqliteTable('merchants', {
   phone: text('phone'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  // Null is allowed for sample/imported shops. A claimed merchant can belong to one user only.
+  userIdx: uniqueIndex('merchants_user_idx').on(table.userId),
+}));
 
 // ─── Shops ───────────────────────────────────────────────
 
@@ -273,6 +276,69 @@ export const notifications = sqliteTable('notifications', {
   readIdx: index('notifications_read_idx').on(table.read),
 }));
 
+export const notificationDeliveries = sqliteTable('notification_deliveries', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  notificationId: text('notification_id').notNull().references(() => notifications.id),
+  channel: text('channel').notNull(), // in_app | email | web_push
+  status: text('status').notNull().default('queued'), // queued | processing | delivered | failed | skipped
+  attempts: integer('attempts').notNull().default(0),
+  availableAt: integer('available_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  lastAttemptAt: integer('last_attempt_at', { mode: 'timestamp' }),
+  deliveredAt: integer('delivered_at', { mode: 'timestamp' }),
+  providerMessageId: text('provider_message_id'),
+  lastError: text('last_error'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  notificationIdx: index('notification_deliveries_notification_idx').on(table.notificationId),
+  queueIdx: index('notification_deliveries_queue_idx').on(table.status, table.availableAt),
+}));
+
+export const notificationPreferences = sqliteTable('notification_preferences', {
+  userId: text('user_id').primaryKey().references(() => users.id),
+  inAppEnabled: integer('in_app_enabled', { mode: 'boolean' }).default(true),
+  dealUpdates: integer('deal_updates', { mode: 'boolean' }).default(true),
+  milestones: integer('milestones', { mode: 'boolean' }).default(true),
+  reports: integer('reports', { mode: 'boolean' }).default(true),
+  systemUpdates: integer('system_updates', { mode: 'boolean' }).default(true),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const jobLocks = sqliteTable('job_locks', {
+  name: text('name').primaryKey(),
+  ownerToken: text('owner_token').notNull(),
+  lockedUntil: integer('locked_until', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const jobRuns = sqliteTable('job_runs', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  name: text('name').notNull(),
+  status: text('status').notNull(), // running | succeeded | failed | skipped
+  startedAt: integer('started_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  finishedAt: integer('finished_at', { mode: 'timestamp' }),
+  durationMs: integer('duration_ms'),
+  output: text('output'),
+  error: text('error'),
+}, (table) => ({
+  nameStartedIdx: index('job_runs_name_started_idx').on(table.name, table.startedAt),
+  statusStartedIdx: index('job_runs_status_started_idx').on(table.status, table.startedAt),
+}));
+
+export const adminAuditLogs = sqliteTable('admin_audit_logs', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  actorUserId: text('actor_user_id').notNull().references(() => users.id),
+  action: text('action').notNull(),
+  targetType: text('target_type').notNull(),
+  targetId: text('target_id').notNull(),
+  metadata: text('metadata'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  actorCreatedIdx: index('admin_audit_logs_actor_created_idx').on(table.actorUserId, table.createdAt),
+  targetCreatedIdx: index('admin_audit_logs_target_created_idx').on(table.targetType, table.targetId, table.createdAt),
+  actionCreatedIdx: index('admin_audit_logs_action_created_idx').on(table.action, table.createdAt),
+}));
+
 // ─── Reports ─────────────────────────────────────────────
 
 export const reports = sqliteTable('reports', {
@@ -302,4 +368,8 @@ export type Merchant = typeof merchants.$inferSelect;
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type DailyStats = typeof dailyStats.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type JobRun = typeof jobRuns.$inferSelect;
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type Report = typeof reports.$inferSelect;

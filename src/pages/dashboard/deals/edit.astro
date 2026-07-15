@@ -3,6 +3,7 @@
 
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import DealFormEditWrapper from '../../../components/dashboard/DealFormEditWrapper.tsx';
+import Icon from '../../../components/icons/index.astro';
 import { requireDashboardShop } from '../../../lib/dashboard/server';
 
 let shop;
@@ -16,9 +17,16 @@ try {
 <DashboardLayout title="แก้ไขดีล" activeTab="deals">
   <div class="space-y-6">
     <section class="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
-      <p class="text-xs font-black uppercase tracking-wider text-primary">Edit Deal</p>
-      <h1 class="text-2xl font-black text-secondary">แก้ไขดีล</h1>
-      <p class="mt-1 text-sm font-bold text-text-secondary">โหลดข้อมูลจาก id ใน URL และตรวจสิทธิ์ผ่าน API ของร้านคุณ</p>
+      <div class="flex items-start gap-3">
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
+          <Icon name="pencil" class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-xs font-black uppercase tracking-wider text-primary">Edit Deal</p>
+          <h1 class="text-2xl font-black text-secondary">แก้ไขดีล</h1>
+          <p class="mt-1 text-sm font-bold text-text-secondary">โหลดข้อมูลจาก id ใน URL และตรวจสิทธิ์ผ่าน API ของร้านคุณ</p>
+        </div>
+      </div>
     </section>
 
     <DealFormEditWrapper client:load shopName={shop.name} shopLogoUrl={shop.logoImage} shopAddress={shop.address} />

@@ -103,6 +103,7 @@ export default function ReportButton({ targetType, targetId, className = '' }: R
         onClick={() => setIsOpen(true)}
         className={`text-xs text-text-tertiary hover:text-red-500 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${className}`}
         aria-label={`Report ${targetType}`}
+        title="ส่งรายงานให้ทีมผู้ดูแล DealDoor ตรวจสอบ"
       >
         รายงาน
       </button>
@@ -117,7 +118,7 @@ export default function ReportButton({ targetType, targetId, className = '' }: R
             role="dialog"
             aria-modal="true"
             aria-labelledby="report-modal-title"
-            className="w-full max-w-md rounded-t-2xl bg-bg sm:rounded-2xl max-h-[85vh] overflow-y-auto"
+            className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-bg sm:rounded-2xl"
             onClick={e => e.stopPropagation()}
             tabIndex={-1}
           >
@@ -150,12 +151,18 @@ export default function ReportButton({ targetType, targetId, className = '' }: R
                 </div>
 
                 {/* Content */}
-                <div className="p-4">
+                <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-28">
                   {error && (
                     <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600" role="alert">
                       {error}
                     </div>
                   )}
+
+                  <div className="mb-4 rounded-2xl border border-primary/15 bg-primary/5 p-3">
+                    <p className="text-sm font-bold leading-6 text-text-secondary">
+                      รายงานนี้จะถูกส่งเข้าคิวตรวจสอบของทีมผู้ดูแล DealDoor ที่หน้า /admin/moderation
+                    </p>
+                  </div>
 
                   {/* Reasons */}
                   <fieldset>
@@ -202,22 +209,23 @@ export default function ReportButton({ targetType, targetId, className = '' }: R
                     />
                   </div>
 
-                  {/* Actions */}
-                  <div className="mt-4 flex gap-3">
-                    <button
-                      onClick={() => setIsOpen(false)}
-                      className="flex-1 rounded-lg border border-border px-4 py-3 text-sm font-medium text-text-secondary hover:bg-bg-secondary min-h-[44px]"
-                    >
-                      ยกเลิก
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={!reason || loading}
-                      className="flex-1 rounded-lg bg-red-500 px-4 py-3 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50 min-h-[44px]"
-                    >
-                      {loading ? 'กำลังส่ง...' : 'ส่งรายงาน'}
-                    </button>
-                  </div>
+                </div>
+
+                {/* Sticky actions */}
+                <div className="sticky bottom-0 flex gap-3 border-t border-border bg-bg/95 p-4 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="min-h-[44px] flex-1 rounded-lg border border-border px-4 py-3 text-sm font-medium text-text-secondary hover:bg-bg-secondary"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!reason || loading}
+                    className="min-h-[44px] flex-1 rounded-lg bg-red-500 px-4 py-3 text-sm font-medium text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading ? 'กำลังส่ง...' : 'ส่งรายงาน'}
+                  </button>
                 </div>
               </>
             )}

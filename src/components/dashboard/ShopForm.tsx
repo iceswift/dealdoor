@@ -1,13 +1,15 @@
 // src/components/dashboard/ShopForm.tsx
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Shop } from '../../lib/db-schema';
 import ImageUpload from '../shared/ImageUpload.tsx';
+import LocationPicker from './LocationPicker.tsx';
 
 interface ShopFormProps {
   shop: Shop | null;
   onSuccess: (shop: Shop) => void;
   onChange?: (data: ShopFormState) => void;
+  isCollapsed?: boolean;
 }
 
 type SectionId = 'identity' | 'location' | 'hours' | 'contact' | 'facilities' | 'brand';
@@ -289,9 +291,22 @@ function SectionIcon({ id }: { id: SectionId }) {
   );
 }
 
-export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
+export default function ShopForm({ shop, onSuccess, onChange, isCollapsed }: ShopFormProps) {
   const [activeSection, setActiveSection] = useState<SectionId>(getInitialSection);
   const [formData, setFormData] = useState<ShopFormState>(() => initialState(shop));
+  const [isMobileFormOpen, setIsMobileFormOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).has('section');
+  });
+
+  function closeMobileForm() {
+    setIsMobileFormOpen(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('section');
+      window.history.replaceState({}, '', url);
+    }
+  }
   const [operatingDays, setOperatingDays] = useState<OperatingDay[]>(() => parseOperatingHours(shop?.openingHours));
   const [specialHours, setSpecialHours] = useState<SpecialHour[]>([]);
   const [specialHourForm, setSpecialHourForm] = useState<SpecialHourFormState>(defaultSpecialHourForm);
@@ -299,6 +314,10 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
   const [specialHoursError, setSpecialHoursError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [autoSaveState, setAutoSaveState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
+  const lastSavedSnapshot = useRef(JSON.stringify(initialState(shop)));
+  const savingRef = useRef(false);
+  const queuedSave = useRef<ShopFormState | null>(null);
 
   useEffect(() => {
     if (!shop) return;
@@ -432,6 +451,7 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
 
   function selectSection(section: SectionId) {
     setActiveSection(section);
+    setIsMobileFormOpen(true);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('section', section);
@@ -439,33 +459,63 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
     }
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setError('');
-
-    if (!formData.name.trim() || !formData.category) {
-      setError('กรุณากรอกชื่อร้านและประเภทร้าน');
+  async function persistShop(data: ShopFormState, mode: 'auto' | 'manual') {
+    if (!data.name.trim() || !data.category) {
+      if (mode === 'manual') setError('กรุณากรอกชื่อร้านและประเภทร้าน');
       return;
     }
 
-    setLoading(true);
+    if (savingRef.current) {
+      queuedSave.current = data;
+      return;
+    }
+
+    savingRef.current = true;
+    setError('');
+    setLoading(mode === 'manual');
+    setAutoSaveState('saving');
     try {
       const response = await fetch(shop ? `/api/shops/${shop.id}` : '/api/shops', {
         method: shop ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(data),
       });
       const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error?.message || 'บันทึกข้อมูลร้านไม่สำเร็จ');
-      }
-      onSuccess(payload.data);
+      if (!response.ok) throw new Error(payload.error?.message || 'บันทึกข้อมูลร้านไม่สำเร็จ');
+
+      lastSavedSnapshot.current = JSON.stringify(data);
+      setAutoSaveState('saved');
+      if (mode === 'manual') onSuccess(payload.data);
     } catch (err: any) {
-      setError(err.message || 'บันทึกข้อมูลร้านไม่สำเร็จ');
+      const message = err.message || 'บันทึกข้อมูลร้านไม่สำเร็จ';
+      setAutoSaveState('error');
+      if (mode === 'manual') setError(message);
     } finally {
+      savingRef.current = false;
       setLoading(false);
+      const queued = queuedSave.current;
+      queuedSave.current = null;
+      if (queued && JSON.stringify(queued) !== lastSavedSnapshot.current) {
+        void persistShop(queued, 'auto');
+      }
     }
   }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    await persistShop(formData, 'manual');
+  }
+
+  useEffect(() => {
+    if (!shop) return;
+    const snapshot = JSON.stringify(formData);
+    if (snapshot === lastSavedSnapshot.current) return;
+    if (!formData.name.trim() || !formData.category) return;
+
+    setAutoSaveState('pending');
+    const timer = window.setTimeout(() => void persistShop(formData, 'auto'), 1_200);
+    return () => window.clearTimeout(timer);
+  }, [formData, shop]);
 
   const sections: { id: SectionId; label: string; hint: string }[] = [
     { id: 'identity', label: 'ตัวตนร้าน', hint: 'ชื่อ ประเภท คำอธิบาย' },
@@ -477,8 +527,53 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
   ];
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[280px_1fr]">
-      <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Shop Profile Header Card */}
+      <section className="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wider text-primary">Shop Profile</p>
+            <h1 className="text-2xl font-black text-secondary">{shop ? 'แก้ไขข้อมูลร้านค้า' : 'สร้างร้านค้า'}</h1>
+            <p className="mt-1 text-sm font-bold text-text-secondary">ข้อมูลนี้ถูกใช้กับหน้าร้าน การ์ดดีล หน้า Explore และ Pin Map</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {shop && (
+            <p
+              className={`text-xs font-bold ${
+                autoSaveState === 'error'
+                  ? 'text-danger'
+                  : autoSaveState === 'saved'
+                    ? 'text-success'
+                    : 'text-text-tertiary'
+              }`}
+              role="status"
+              aria-live="polite"
+            >
+              {autoSaveState === 'pending' && 'รอการบันทึกอัตโนมัติ...'}
+              {autoSaveState === 'saving' && 'กำลังบันทึกอัตโนมัติ...'}
+              {autoSaveState === 'saved' && 'บันทึกอัตโนมัติแล้ว'}
+              {autoSaveState === 'error' && 'บันทึกอัตโนมัติไม่สำเร็จ'}
+              {autoSaveState === 'idle' && 'บันทึกอัตโนมัติ'}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex min-h-[46px] items-center justify-center rounded-2xl bg-primary px-6 text-sm font-black text-white shadow-lg shadow-primary/20 hover:bg-primary-hover disabled:opacity-60 transition shrink-0 cursor-pointer"
+          >
+            {loading ? 'กำลังบันทึก...' : shop ? 'บันทึกตอนนี้' : 'สร้างร้านค้า'}
+          </button>
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
+        <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
         <section className="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
           <p className="text-xs font-black uppercase tracking-wider text-primary">Explore Readiness</p>
           <div className="mt-2 flex items-end justify-between">
@@ -523,7 +618,40 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
         </nav>
       </aside>
 
-      <div className="space-y-5">
+      <div className={
+        isMobileFormOpen
+          ? "fixed inset-0 z-[1300] bg-bg overflow-y-auto p-4 pt-20 pb-8 xl:static xl:z-auto xl:bg-transparent xl:p-0 xl:overflow-visible xl:space-y-5"
+          : "hidden xl:block xl:space-y-5"
+      }>
+        {isMobileFormOpen && (
+          <div className="fixed top-0 inset-x-0 z-[1310] h-14 bg-card-bg/90 backdrop-blur-md border-b border-border/40 px-4 flex items-center justify-between xl:hidden">
+            <button
+              type="button"
+              onClick={closeMobileForm}
+              className="flex items-center gap-1 text-sm font-bold text-text-secondary hover:text-primary transition-colors cursor-pointer"
+            >
+              <svg className="h-5 w-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>ย้อนกลับ</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
+                <SectionIcon id={activeSection} />
+              </span>
+              <span className="text-sm font-black text-secondary">
+                {sections.find((s) => s.id === activeSection)?.label}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={closeMobileForm}
+              className="flex h-8 items-center justify-center rounded-full bg-primary px-4 text-xs font-black text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition cursor-pointer"
+            >
+              เสร็จสิ้น
+            </button>
+          </div>
+        )}
         {error && (
           <div className="rounded-2xl border border-danger/20 bg-danger-bg/20 p-4 text-sm font-bold text-danger" role="alert">
             {error}
@@ -565,16 +693,21 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
                 <span className="text-sm font-black text-secondary">ที่อยู่</span>
                 <textarea value={formData.address} onChange={(e) => setField('address', e.target.value)} rows={3} className="mt-2 w-full rounded-2xl border border-border/40 bg-bg p-4 text-sm font-bold outline-none focus:border-primary" />
               </label>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label>
-                  <span className="text-sm font-black text-secondary">Latitude</span>
-                  <input value={formData.latitude} onChange={(e) => setField('latitude', e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold outline-none focus:border-primary" placeholder="13.7563" />
-                </label>
-                <label>
-                  <span className="text-sm font-black text-secondary">Longitude</span>
-                  <input value={formData.longitude} onChange={(e) => setField('longitude', e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold outline-none focus:border-primary" placeholder="100.5018" />
-                </label>
-              </div>
+              <LocationPicker
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onChange={(latitude, longitude) => {
+                  setField('latitude', latitude);
+                  setField('longitude', longitude);
+                }}
+              />
+              <details className="rounded-xl border border-border/35 bg-bg-secondary/35 p-4">
+                <summary className="cursor-pointer text-sm font-black text-text-secondary">กรอกพิกัดเอง (เฉพาะกรณีตั้งร้านจากระยะไกล)</summary>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label><span className="text-xs font-black text-text-secondary">Latitude</span><input value={formData.latitude} onChange={(e) => setField('latitude', e.target.value)} className="mt-2 h-11 w-full rounded-xl border border-border/40 bg-bg px-3 text-sm font-bold outline-none focus:border-primary" placeholder="13.7563" /></label>
+                  <label><span className="text-xs font-black text-text-secondary">Longitude</span><input value={formData.longitude} onChange={(e) => setField('longitude', e.target.value)} className="mt-2 h-11 w-full rounded-xl border border-border/40 bg-bg px-3 text-sm font-bold outline-none focus:border-primary" placeholder="100.5018" /></label>
+                </div>
+              </details>
             </div>
           </section>
         )}
@@ -586,7 +719,7 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
               แยกเวลาทำการปกติออกจากโหมดหยุดพักร้าน เพื่อให้ลูกค้าเข้าใจสถานะร้านได้ชัดเจน
             </p>
             <div className="mt-5 grid gap-4">
-              <OpeningHoursEditor days={operatingDays} onChange={setOperatingSchedule} />
+              <OpeningHoursEditor days={operatingDays} onChange={setOperatingSchedule} isCollapsed={isCollapsed} />
               <SpecialHoursEditor
                 items={specialHours}
                 form={specialHourForm}
@@ -596,6 +729,7 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
                 onSave={saveSpecialHour}
                 onDelete={deleteSpecialHour}
                 onImportThaiHolidays={importThaiPublicHolidays}
+                isCollapsed={isCollapsed}
               />
               <label className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-border/40 bg-bg px-4">
                 <input type="checkbox" checked={formData.isOpen} onChange={(e) => setField('isOpen', e.target.checked)} />
@@ -651,7 +785,11 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
         {activeSection === 'contact' && (
           <section className="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
             <h2 className="text-xl font-black text-secondary">ช่องทางติดต่อ</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className={`mt-5 grid gap-4 ${
+              isCollapsed === false
+                ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2'
+                : 'grid-cols-1 sm:grid-cols-2'
+            }`}>
               {[
                 ['phone', 'เบอร์โทร'],
                 ['lineId', 'LINE ID'],
@@ -679,7 +817,7 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
                 ['acceptsCreditCard', 'บัตรเครดิต'],
                 ['acceptsTrueMoney', 'TrueMoney'],
                 ['acceptsRabbitLinePay', 'Rabbit LINE Pay'],
-              ]} formData={formData} setField={setField} />
+              ]} formData={formData} setField={setField} isCollapsed={isCollapsed} />
               <CheckboxGroup title="การเดินทางและการเข้าถึง" items={[
                 ['freeParking', 'ที่จอดรถฟรี'],
                 ['paidParking', 'ที่จอดรถเสียเงิน'],
@@ -687,7 +825,7 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
                 ['evCharging', 'EV Charging'],
                 ['wheelchairAccessible', 'Wheelchair Accessible'],
                 ['strollerAccessible', 'รถเข็นเด็กเข้าได้'],
-              ]} formData={formData} setField={setField} />
+              ]} formData={formData} setField={setField} isCollapsed={isCollapsed} />
               <CheckboxGroup title="ครอบครัวและสัตว์เลี้ยง" items={[
                 ['kidsMenu', 'เมนูเด็ก'],
                 ['highChairs', 'เก้าอี้เด็ก'],
@@ -695,8 +833,12 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
                 ['babyChanging', 'ที่เปลี่ยนผ้าอ้อม'],
                 ['petFriendly', 'นำสัตว์เลี้ยงเข้าได้'],
                 ['petWaterBowl', 'มีน้ำสำหรับสัตว์เลี้ยง'],
-              ]} formData={formData} setField={setField} />
-              <div className="grid gap-4 sm:grid-cols-2">
+              ]} formData={formData} setField={setField} isCollapsed={isCollapsed} />
+              <div className={`grid gap-4 ${
+                isCollapsed === false
+                  ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2'
+                  : 'grid-cols-1 sm:grid-cols-2'
+              }`}>
                 <label>
                   <span className="text-sm font-black text-secondary">BTS ใกล้เคียง</span>
                   <input value={formData.nearbyBts} onChange={(e) => setField('nearbyBts', e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border/40 bg-bg px-4 text-sm font-bold outline-none focus:border-primary" />
@@ -720,11 +862,7 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
           </section>
         )}
 
-        <div className="sticky bottom-20 z-10 rounded-3xl border border-border/40 bg-card-bg/90 p-3 shadow-xl backdrop-blur lg:bottom-4">
-          <button type="submit" disabled={loading} className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-primary px-5 text-sm font-black text-white shadow-lg shadow-primary/20 disabled:opacity-60">
-            {loading ? 'กำลังบันทึก...' : shop ? 'บันทึกข้อมูลร้าน' : 'สร้างร้านค้า'}
-          </button>
-        </div>
+      </div>
       </div>
     </form>
   );
@@ -733,10 +871,14 @@ export default function ShopForm({ shop, onSuccess, onChange }: ShopFormProps) {
 function OpeningHoursEditor({
   days,
   onChange,
+  isCollapsed,
 }: {
   days: OperatingDay[];
   onChange: (days: OperatingDay[]) => void;
+  isCollapsed?: boolean;
 }) {
+  const isSqueezed = isCollapsed === false;
+
   function updateDay(key: DayKey, patch: Partial<OperatingDay>) {
     onChange(days.map((day) => (day.key === key ? { ...day, ...patch } : day)));
   }
@@ -797,11 +939,15 @@ function OpeningHoursEditor({
         {days.map((day) => (
           <div
             key={day.key}
-            className={`grid gap-3 rounded-2xl border p-3 transition sm:grid-cols-[128px_1fr] sm:items-center ${
+            className={`flex flex-col gap-3 rounded-2xl border p-3.5 transition ${
+              isSqueezed
+                ? 'sm:flex-row sm:items-center sm:justify-between xl:flex-col xl:items-stretch'
+                : 'sm:flex-row sm:items-center sm:justify-between'
+            } ${
               day.isOpen ? 'border-primary/20 bg-card-bg' : 'border-border/40 bg-bg-secondary/50'
             }`}
           >
-            <label className="flex min-h-[44px] items-center gap-3">
+            <label className="flex items-center gap-3 shrink-0 cursor-pointer">
               <input
                 type="checkbox"
                 checked={day.isOpen}
@@ -814,20 +960,36 @@ function OpeningHoursEditor({
             </label>
 
             {day.isOpen ? (
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div
+                className={`flex flex-col items-center gap-2 w-full ${
+                  isSqueezed
+                    ? 'sm:flex-row sm:w-auto xl:flex-col xl:w-full'
+                    : 'sm:flex-row sm:w-auto'
+                }`}
+              >
                 <input
                   type="time"
                   value={day.openTime}
                   onChange={(event) => updateDay(day.key, { openTime: event.target.value })}
-                  className="h-11 min-w-0 rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary"
+                  className={`h-11 w-full shrink-0 rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary ${
+                    isSqueezed ? 'sm:w-36 xl:w-full' : 'sm:w-36'
+                  }`}
                   aria-label={`${day.label} เวลาเปิด`}
                 />
-                <span className="text-xs font-black text-text-tertiary">ถึง</span>
+                <span
+                  className={`text-xs font-black text-text-tertiary py-0.5 ${
+                    isSqueezed ? 'sm:py-0 xl:py-0.5' : 'sm:py-0'
+                  }`}
+                >
+                  ถึง
+                </span>
                 <input
                   type="time"
                   value={day.closeTime}
                   onChange={(event) => updateDay(day.key, { closeTime: event.target.value })}
-                  className="h-11 min-w-0 rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary"
+                  className={`h-11 w-full shrink-0 rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary ${
+                    isSqueezed ? 'sm:w-36 xl:w-full' : 'sm:w-36'
+                  }`}
                   aria-label={`${day.label} เวลาปิด`}
                 />
               </div>
@@ -852,6 +1014,7 @@ function SpecialHoursEditor({
   onSave,
   onDelete,
   onImportThaiHolidays,
+  isCollapsed,
 }: {
   items: SpecialHour[];
   form: SpecialHourFormState;
@@ -861,7 +1024,9 @@ function SpecialHoursEditor({
   onSave: () => void;
   onDelete: (id: string) => void;
   onImportThaiHolidays: () => void;
+  isCollapsed?: boolean;
 }) {
+  const isSqueezed = isCollapsed === false;
   const sortedItems = [...items].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
@@ -891,19 +1056,25 @@ function SpecialHoursEditor({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 rounded-2xl border border-border/40 bg-card-bg p-3 lg:grid-cols-[150px_1fr]">
-        <label>
-          <span className="text-xs font-black text-text-tertiary">วันที่</span>
-          <input
-            type="date"
-            value={form.date}
-            onChange={(event) => onFormChange({ ...form, date: event.target.value })}
-            className="mt-1 h-11 w-full rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary"
-          />
-        </label>
+      <div className="mt-4 grid gap-4 rounded-2xl border border-border/40 bg-card-bg p-4">
+        <div className={`grid gap-4 ${
+          isSqueezed
+            ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2'
+            : 'grid-cols-1 sm:grid-cols-2'
+        }`}>
+          <label className="block">
+            <span className="text-xs font-black text-text-tertiary">วันที่</span>
+            <input
+              type="date"
+              value={form.date}
+              onChange={(event) => onFormChange({ ...form, date: event.target.value })}
+              className="mt-1 h-11 w-full rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary"
+            />
+          </label>
 
-        <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
-          <label className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-border/40 bg-bg px-4">
+          <label className={`flex h-11 items-center gap-3 rounded-2xl border border-border/40 bg-bg px-4 cursor-pointer ${
+            isSqueezed ? 'mt-0 sm:mt-5 xl:mt-0 2xl:mt-5' : 'mt-5'
+          }`}>
             <input
               type="checkbox"
               checked={form.isClosed}
@@ -911,33 +1082,41 @@ function SpecialHoursEditor({
             />
             <span className="text-sm font-black text-secondary">ปิดทั้งวัน</span>
           </label>
+        </div>
 
-          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-            <label>
-              <span className="text-xs font-black text-text-tertiary">เปิด</span>
+        {!form.isClosed ? (
+          <div className={`flex flex-col gap-2 w-full ${
+            isSqueezed
+              ? 'sm:flex-row sm:items-center sm:gap-2.5 xl:flex-col xl:items-stretch xl:gap-2'
+              : 'sm:flex-row sm:items-center sm:gap-2.5'
+          }`}>
+            <label className="w-full sm:flex-1 sm:min-w-0">
+              <span className="text-xs font-black text-text-tertiary">เวลาเปิด</span>
               <input
                 type="time"
                 value={form.openTime}
-                disabled={form.isClosed}
                 onChange={(event) => onFormChange({ ...form, openTime: event.target.value })}
-                className="mt-1 h-11 w-full rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary disabled:opacity-40"
+                className="mt-1 h-11 w-full rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary"
               />
             </label>
-            <span className="pb-3 text-xs font-black text-text-tertiary">ถึง</span>
-            <label>
-              <span className="text-xs font-black text-text-tertiary">ปิด</span>
+            <span className="text-center sm:mt-5 shrink-0 text-xs font-black text-text-tertiary">ถึง</span>
+            <label className="w-full sm:flex-1 sm:min-w-0">
+              <span className="text-xs font-black text-text-tertiary">เวลาปิด</span>
               <input
                 type="time"
                 value={form.closeTime}
-                disabled={form.isClosed}
                 onChange={(event) => onFormChange({ ...form, closeTime: event.target.value })}
-                className="mt-1 h-11 w-full rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary disabled:opacity-40"
+                className="mt-1 h-11 w-full rounded-2xl border border-border/40 bg-bg px-3 text-sm font-black text-secondary outline-none focus:border-primary"
               />
             </label>
           </div>
-        </div>
+        ) : (
+          <div className="flex h-11 items-center rounded-2xl bg-bg-secondary/40 px-4 text-sm font-black text-text-tertiary">
+            ปิดทำการทั้งวัน
+          </div>
+        )}
 
-        <label className="lg:col-span-2">
+        <label className="block">
           <span className="text-xs font-black text-text-tertiary">หมายเหตุที่ลูกค้าเห็น</span>
           <input
             value={form.note}
@@ -947,7 +1126,7 @@ function SpecialHoursEditor({
           />
         </label>
 
-        <div className="flex flex-wrap gap-2 lg:col-span-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={onSave}
@@ -1024,16 +1203,23 @@ function CheckboxGroup({
   items,
   formData,
   setField,
+  isCollapsed,
 }: {
   title: string;
   items: [keyof ShopFormState, string][];
   formData: ShopFormState;
   setField: <K extends keyof ShopFormState>(key: K, value: ShopFormState[K]) => void;
+  isCollapsed?: boolean;
 }) {
+  const isSqueezed = isCollapsed === false;
   return (
     <div>
       <h3 className="text-sm font-black text-secondary">{title}</h3>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`mt-2 grid gap-2 ${
+        isSqueezed
+          ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3'
+          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+      }`}>
         {items.map(([key, label]) => (
           <label key={String(key)} className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-border/40 bg-bg px-4">
             <input

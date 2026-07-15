@@ -1,6 +1,6 @@
 // src/components/shared/ImageUpload.tsx
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ImageUploadProps {
   type: 'cover' | 'logo' | 'deal' | 'menu';
@@ -11,17 +11,17 @@ interface ImageUploadProps {
 }
 
 const MAX_SIZES = {
-  cover: '2MB',
-  logo: '500KB',
-  deal: '1MB',
-  menu: '500KB',
+  cover: '3MB',
+  logo: '1MB',
+  deal: '3MB',
+  menu: '1MB',
 };
 
 const DIMENSIONS = {
-  cover: '1200×400',
-  logo: '200×200',
-  deal: '800×600',
-  menu: '400×400',
+  cover: '1280×720',
+  logo: '512×512',
+  deal: '1280×720',
+  menu: '512×512',
 };
 
 export default function ImageUpload({
@@ -35,6 +35,14 @@ export default function ImageUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setPreview(currentUrl || null);
+    setError('');
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, [currentUrl]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

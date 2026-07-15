@@ -5,14 +5,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { db } from '../lib/db';
 import { shops, deals } from '../lib/db-schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
-import { getLangFromUrl, t } from '../i18n';
+import { getLangFromRequest, getLocalizedPath, t } from '../i18n';
 import { SHOP_CATEGORIES, SHOP_CATEGORY_ICONS, SHOP_CATEGORY_LABELS } from '../lib/constants';
 import type { ShopCategory } from '../lib/constants';
 import ExploreDealCard from '../components/explore/ExploreDealCard.astro';
 import Icon from '../components/icons/index.astro';
 
-const lang = getLangFromUrl(Astro.url);
+const lang = getLangFromRequest(Astro.request);
 const common = (key: string) => t(lang, 'common', key);
+const publicText = (key: string, params?: Record<string, string | number>) => t(lang, 'public', key, params);
+const localizedPath = (path: string) => getLocalizedPath(path, lang);
 
 // ─── BACKEND WORKFLOW: FETCH ALL ACTIVE DEALS FOR CONSUMER FEED ───
 const now = new Date();
@@ -43,10 +45,10 @@ activeDeals.forEach(({ deal, shop }) => {
 
 // Categories match the Explore page shop-category filter.
 const categories = [
-  { id: 'all', label: 'ทั้งหมด', emoji: '✨' },
+  { id: 'all', label: publicText('home.allCategories'), emoji: '✨' },
   ...SHOP_CATEGORIES.map((cat) => ({
     id: cat,
-    label: SHOP_CATEGORY_LABELS[cat],
+    label: common(`category.${cat}`),
     emoji: SHOP_CATEGORY_ICONS[cat],
   })),
 ];
@@ -59,13 +61,13 @@ const categories = [
       {/* Hero Header & Airbnb-Style Multi-Input Search Capsule */}
       <section class="text-center pt-16 max-w-3xl mx-auto space-y-5 px-4">
         <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-wider animate-fade-in shadow-sm">
-          <span>✨ พอร์ทัลรวมดีลโปรโมชันที่ใหญ่ที่สุด</span>
+          <span>✨ {publicText('home.eyebrow')}</span>
         </div>
         <h1 class="text-3xl font-extrabold text-secondary tracking-tight md:text-5xl leading-tight">
-          ค้นหาดีลและคูปองสุดพิเศษ <span class="text-gradient">รอบตัวคุณ</span> <span class="animate-tag-swing">🏷️</span>
+          {publicText('home.title')} <span class="text-gradient">{publicText('home.titleAccent')}</span> <span class="animate-tag-swing">🏷️</span>
         </h1>
         <p class="text-xs sm:text-sm text-text-secondary font-bold max-w-xl mx-auto leading-relaxed">
-          แจกโค้ดส่วนลด โปรโมชัน คาเฟ่ ร้านอาหาร บริการยอดฮิต รวบรวมหน้าร้านของคุณฟรี
+          {publicText('home.description')}
         </p>
 
         {/* Floating Airbnb Search capsule */}
@@ -76,8 +78,8 @@ const categories = [
             <div class="flex-1 w-full flex items-center px-4 py-2.5 gap-2.5 text-left min-w-0">
               <Icon name="map-pin" class="h-4.5 w-4.5 text-primary flex-shrink-0" />
               <div class="min-w-0">
-                <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider leading-none">พิกัดร้าน</p>
-                <p class="text-xs font-bold text-secondary truncate mt-0.5 select-none">กรุงเทพฯ และปริมณฑล</p>
+                <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider leading-none">{publicText('home.locationLabel')}</p>
+                <p class="text-xs font-bold text-secondary truncate mt-0.5 select-none">{publicText('home.locationValue')}</p>
               </div>
             </div>
 
@@ -85,8 +87,8 @@ const categories = [
             <div class="flex-1 w-full flex items-center px-4 py-2.5 gap-2.5 text-left min-w-0">
               <Icon name="tag" class="h-4.5 w-4.5 text-primary flex-shrink-0" />
               <div class="min-w-0">
-                <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider leading-none">ประเภทดีล</p>
-                <p class="text-xs font-bold text-secondary truncate mt-0.5 select-none" id="search-cat-label">ทุกประเภท</p>
+                <p class="text-[9px] font-black text-text-tertiary uppercase tracking-wider leading-none">{publicText('home.categoryLabel')}</p>
+                <p class="text-xs font-bold text-secondary truncate mt-0.5 select-none" id="search-cat-label">{publicText('home.allCategories')}</p>
               </div>
             </div>
 
@@ -96,11 +98,11 @@ const categories = [
               <input 
                 type="text" 
                 id="search-input" 
-                placeholder="พิมพ์ชื่อดีล หรือชื่อร้าน..." 
+                placeholder={publicText('home.searchPlaceholder')} 
                 class="w-full bg-transparent border-none text-xs focus:ring-0 focus:outline-none text-secondary font-bold placeholder:text-text-tertiary/70 pl-0 py-0 leading-none"
               />
               <button class="h-9 px-6 bg-gradient-to-r from-primary to-orange-500 hover:from-primary/95 hover:to-orange-500/95 text-white rounded-full text-xs font-black shadow-md shadow-primary/20 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0">
-                <span>ค้นหา</span>
+                <span>{publicText('home.search')}</span>
               </button>
             </div>
 
@@ -134,15 +136,15 @@ const categories = [
           <div class="space-y-1.5 z-10 text-center md:text-left">
             <h3 class="text-sm font-black text-secondary flex items-center justify-center md:justify-start gap-2">
               <span class="text-base select-none">👑</span>
-              <span>คุณคือเจ้าของร้านค้าใช่ไหม?</span>
+              <span>{publicText('home.merchantTitle')}</span>
             </h3>
             <p class="text-[11px] text-text-secondary font-bold">
-              สร้างหน้าโปรโมชันและดีลคูปองแบบรวมลิงก์เดียวเหมือน Linktree ฟรีใน 2 นาที แชร์ลงโซเชียลปังๆ ได้ทันที!
+              {publicText('home.merchantDescription')}
             </p>
           </div>
-          <a href="/for-shops" class="btn btn-primary py-2.5 px-6 rounded-xl text-xs font-black shadow-md hover:scale-[1.02] active:scale-95 transition-all shrink-0 z-10">
+          <a href={localizedPath('/for-shops')} class="btn btn-primary py-2.5 px-6 rounded-xl text-xs font-black shadow-md hover:scale-[1.02] active:scale-95 transition-all shrink-0 z-10">
             <Icon name="rocket" class="h-4.5 w-4.5" />
-            <span>สร้างหน้าลิงก์ร้านฟรี</span>
+            <span>{publicText('home.merchantAction')}</span>
           </a>
         </div>
       </section>
@@ -155,10 +157,10 @@ const categories = [
               <div class="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
                 <Icon name="clock" class="h-5 w-5" />
               </div>
-              <h2 class="text-lg font-bold text-secondary">ดีลที่ใกล้หมดอายุ (ภายใน 7 วัน)</h2>
+              <h2 class="text-lg font-bold text-secondary">{publicText('home.expiringTitle')}</h2>
             </div>
             <span class="badge border-none bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold" id="expiring-count">
-              {expiringSoon.length} คูปอง
+              {publicText('home.expiringCount', { count: expiringSoon.length })}
             </span>
           </div>
 
@@ -178,7 +180,7 @@ const categories = [
           </div>
 
           <div class="home-empty-state hidden border border-dashed border-border/80 p-8 text-center rounded-2xl bg-bg-secondary/40">
-            <p class="text-sm font-bold text-secondary">ไม่มีดีลใกล้หมดอายุในประเภทนี้</p>
+            <p class="text-sm font-bold text-secondary">{publicText('home.noExpiringDeals')}</p>
           </div>
         </section>
       )}
@@ -190,10 +192,10 @@ const categories = [
             <div class="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <Icon name="fire" class="h-5 w-5" />
             </div>
-            <h2 class="text-lg font-bold text-secondary">ดีลและคูปองทั้งหมด</h2>
+            <h2 class="text-lg font-bold text-secondary">{publicText('home.allDealsTitle')}</h2>
           </div>
           <span class="badge border-none bg-primary/10 text-primary font-extrabold" id="all-count">
-            {activeDeals.length} ดีล
+            {publicText('home.allDealsCount', { count: activeDeals.length })}
           </span>
         </div>
 
@@ -215,13 +217,13 @@ const categories = [
         ) : (
           <div class="border border-dashed border-border/80 p-12 text-center rounded-2xl bg-bg-secondary/40">
             <Icon name="search" class="h-10 w-10 mx-auto text-text-tertiary" />
-            <h3 class="mt-4 text-base font-bold text-secondary">ไม่มีคูปองที่ใช้งานได้ในขณะนี้</h3>
-            <p class="mt-1 text-xs text-text-secondary">ร้านค้ายังไม่ได้ปล่อยโปรโมชันในระบบ</p>
+            <h3 class="mt-4 text-base font-bold text-secondary">{publicText('home.noActiveDeals')}</h3>
+            <p class="mt-1 text-xs text-text-secondary">{publicText('home.noActiveDealsDescription')}</p>
           </div>
         )}
 
         <div class="home-empty-state hidden border border-dashed border-border/80 p-8 text-center rounded-2xl bg-bg-secondary/40">
-          <p class="text-sm font-bold text-secondary">ไม่พบดีลในประเภทนี้</p>
+          <p class="text-sm font-bold text-secondary">{publicText('home.noDealsInCategory')}</p>
         </div>
       </section>
 
@@ -232,17 +234,17 @@ const categories = [
             <div class="h-8 w-8 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
               <Icon name="store" class="h-5 w-5" />
             </div>
-            <h2 class="text-lg font-bold text-secondary">ร้านค้าพาร์ทเนอร์ยอดนิยม</h2>
+            <h2 class="text-lg font-bold text-secondary">{publicText('home.partnersTitle')}</h2>
           </div>
           <span class="badge border-none bg-accent/10 text-accent font-extrabold" id="partners-count">
-            {dealsByShop.size} ร้านค้า
+            {publicText('home.partnersCount', { count: dealsByShop.size })}
           </span>
         </div>
 
         <div class="home-section-grid grid gap-4.5 sm:grid-cols-2 md:grid-cols-3">
           {Array.from(dealsByShop.values()).map(({ shop, deals: shopDeals }, index) => (
             <a
-              href={`/${shop.slug}`}
+              href={localizedPath(`/${shop.slug}`)}
               class="home-filter-item card animate-fade-in group flex flex-col justify-between overflow-hidden bg-card-bg/60 backdrop-blur-sm border border-border/40 hover:border-primary/45 rounded-2xl p-5 hover:shadow-md transition-all duration-300"
               data-section="partners"
               data-shop-category={shop.category}
@@ -263,16 +265,16 @@ const categories = [
                     {shop.name}
                   </h3>
                   <p class="text-xs text-text-tertiary mt-0.5">
-                    {SHOP_CATEGORY_LABELS[shop.category as ShopCategory] || shop.category}
+                    {common(`category.${shop.category as ShopCategory}`) || shop.category}
                   </p>
                 </div>
               </div>
               <div class="mt-4 pt-3.5 border-t border-border/30 flex items-center justify-between">
                 <span class="badge border-none bg-primary/10 text-primary font-bold text-[10px]">
-                  {shopDeals.length} ดีลที่ใช้ได้
+                  {publicText('home.activeDealCount', { count: shopDeals.length })}
                 </span>
                 <span class="text-xs font-bold text-text-tertiary group-hover:text-primary transition-colors flex items-center gap-1">
-                  <span>เข้าชมร้าน</span>
+                  <span>{publicText('home.visitShop')}</span>
                   <Icon name="chevron-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </div>
@@ -281,7 +283,7 @@ const categories = [
         </div>
 
         <div class="home-empty-state hidden border border-dashed border-border/80 p-8 text-center rounded-2xl bg-bg-secondary/40">
-          <p class="text-sm font-bold text-secondary">ไม่พบร้านค้าพาร์ทเนอร์ในประเภทนี้</p>
+          <p class="text-sm font-bold text-secondary">{publicText('home.noPartnersInCategory')}</p>
         </div>
       </section>
     </div>

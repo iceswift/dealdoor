@@ -14,7 +14,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
   try {
     const { shop } = await requireDashboardShop(locals.user);
     const days = normalizeAnalyticsDays(url.searchParams.get('days'));
-    const { stats, totals, topDeals, source } = await getDashboardAnalytics(shop.id, days);
+    const { stats, totals, topDeals, source, previousTotals, categoryBreakdown } = await getDashboardAnalytics(shop.id, days);
 
     return json({
       success: true,
@@ -23,6 +23,9 @@ export const GET: APIRoute = async ({ url, locals }) => {
         totals,
         topDeals,
         source,
+        previousTotals,
+        categoryBreakdown,
+        days,
       },
     });
   } catch (error) {

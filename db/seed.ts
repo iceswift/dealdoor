@@ -27,6 +27,7 @@ sqlite.pragma('foreign_keys = ON'); // Re-enable after clearing
 // Create test user
 console.log('  Creating test user...');
 const testUserId = createId();
+const adminUserId = createId();
 const testPasswordHash = await hash('password123', {
   memoryCost: 19456,
   timeCost: 2,
@@ -34,13 +35,22 @@ const testPasswordHash = await hash('password123', {
   parallelism: 1,
 });
 
-db.insert(users).values({
-  id: testUserId,
-  email: 'test@dealdoor.co',
-  passwordHash: testPasswordHash,
-  name: 'Test Merchant',
-  role: 'merchant',
-}).run();
+db.insert(users).values([
+  {
+    id: testUserId,
+    email: 'test@dealdoor.co',
+    passwordHash: testPasswordHash,
+    name: 'Test Merchant',
+    role: 'merchant',
+  },
+  {
+    id: adminUserId,
+    email: 'admin@dealdoor.co',
+    passwordHash: testPasswordHash,
+    name: 'DealDoor Admin',
+    role: 'admin',
+  },
+]).run();
 
 // Create merchants
 console.log('  Creating merchants...');
@@ -348,6 +358,7 @@ db.insert(menuItems).values([
     name: 'Brownie',
     price: 89,
     description: 'บราวนี่ช็อกโกแลตเข้มข้น',
+    imageUrl: '/uploads/menu/menu-brownie.png',
     sortOrder: 1,
   },
   {
@@ -356,6 +367,7 @@ db.insert(menuItems).values([
     name: 'Matcha Latte',
     price: 120,
     description: 'มัทฉะลาเต้เย็น',
+    imageUrl: '/uploads/menu/menu-latte.webp',
     sortOrder: 2,
   },
   {
@@ -364,6 +376,7 @@ db.insert(menuItems).values([
     name: 'Berry Smoothie',
     price: 130,
     description: 'สมูทตี้เบอร์รี่รวม',
+    imageUrl: '/uploads/menu/menu-berry-smoothie.png',
     sortOrder: 3,
   },
   {
@@ -372,6 +385,7 @@ db.insert(menuItems).values([
     name: 'Strawberry Cake',
     price: 150,
     description: 'เค้กสตรอว์เบอร์รี่สด',
+    imageUrl: '/uploads/menu/menu-strawberry-cake.png',
     sortOrder: 4,
   },
   {

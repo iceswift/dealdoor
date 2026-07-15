@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAdminAuditLogs } from '../../server/services/admin-audit.service';
+
+const user = Astro.locals.user;
+if (!user || user.role !== 'admin') return Astro.redirect('/auth/login?redirect=/admin/audit-log');
+const logs = await getAdminAuditLogs();
+
+const labels: Record<string, string> = {
+  'moderation.report_resolved': 'ปิดเคสรายงาน',
+  'moderation.deal_deactivated': 'ปิดการแสดงผลดีล',
+  'moderation.warning_issued': 'ส่งคำเตือน',
+  'moderation.no_action': 'ตรวจสอบแล้วไม่ดำเนินการ',
+};
+---
+
+<BaseLayout title="Admin Audit Log | DealDoor">
+  <main class="mx-auto max-w-6xl px-4 py-10">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-xs font-black uppercase tracking-[0.16em] text-primary">Admin</p>
+        <h1 class="mt-1 text-3xl font-black text-secondary">ประวัติการจัดการระบบ</h1>
+        <p class="mt-2 text-sm text-text-secondary">บันทึกการดำเนินการสำคัญของผู้ดูแลระบบ</p>
+      </div>
+      <a href="/admin/moderation" class="min-h-11 rounded-xl border border-border/60 px-4 py-3 text-sm font-black text-text-secondary hover:bg-bg-secondary">กลับไปคิวรายงาน</a>
+    </div>
+
+    <section class="mt-7 overflow-hidden rounded-2xl border border-border/40 bg-card-bg shadow-sm">
+      {logs.length === 0 ? <p class="px-6 py-14 text-center text-sm font-semibold text-text-tertiary">ยังไม่มีประวัติการดำเนินการ</p> : (
+        <div class="overflow-x-auto">
+          <table class="min-w-[860px] w-full text-left text-sm">
+            <thead class="border-b border-border/40 bg-bg-secondary/45 text-xs font-black uppercase tracking-wide text-text-secondary">
+              <tr><th class="px-5 py-4">เวลา</th><th class="px-5 py-4">ผู้ดูแล</th><th class="px-5 py-4">การกระทำ</th><th class="px-5 py-4">เป้าหมาย</th><th class="px-5 py-4">รายละเอียด</th></tr>
+            </thead>
+            <tbody class="divide-y divide-border/35">
+              {logs.map((log) => <tr>
+                <td class="whitespace-nowrap px-5 py-4 text-text-secondary">{new Date(log.createdAt).toLocaleString('th-TH')}</td>
+                <td class="px-5 py-4"><p class="font-black text-secondary">{log.actor?.name || 'Unknown user'}</p><p class="mt-0.5 text-xs text-text-tertiary">{log.actor?.email || log.actorUserId}</p></td>
+                <td class="px-5 py-4 font-black text-secondary">{labels[log.action] || log.action}</td>
+                <td class="px-5 py-4 text-text-secondary">{log.targetType}: <code class="text-xs">{log.targetId}</code></td>
+                <td class="max-w-md truncate px-5 py-4 text-text-secondary" title={log.metadata || ''}>{log.metadata || '-'}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </main>
+</BaseLayout>

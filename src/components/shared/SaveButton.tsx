@@ -1,15 +1,16 @@
 // src/components/shared/SaveButton.tsx
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { isDealSaved, saveDeal, unsaveDeal } from '../../lib/saved-deals';
 
 interface SaveButtonProps {
   dealId: string;
   showLabel?: boolean;
   className?: string;
+  variant?: 'button' | 'icon';
 }
 
-export default function SaveButton({ dealId, showLabel = false, className = '' }: SaveButtonProps) {
+export default function SaveButton({ dealId, showLabel = false, className = '', variant = 'button' }: SaveButtonProps) {
   const [saved, setSaved] = useState(false);
   const [animating, setAnimating] = useState(false);
 
@@ -17,24 +18,32 @@ export default function SaveButton({ dealId, showLabel = false, className = '' }
     setSaved(isDealSaved(dealId));
   }, [dealId]);
 
-  const handleToggle = () => {
-    setAnimating(true);
-    
+  const handleToggle = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
     if (saved) {
       unsaveDeal(dealId);
     } else {
       saveDeal(dealId);
     }
+
     setSaved(!saved);
-    
+    setAnimating(true);
     setTimeout(() => setAnimating(false), 300);
+
+    window.dispatchEvent(new CustomEvent('dealdoor:saved-deals-change', {
+      detail: { dealId, saved: !saved },
+    }));
   };
 
   return (
     <button
+      type="button"
       onClick={handleToggle}
-      className={`btn ${saved ? 'btn-ghost text-danger' : 'btn-ghost'} ${animating ? 'scale-110' : ''} ${className}`}
+      className={`${variant === 'button' ? `btn ${saved ? 'btn-ghost text-danger' : 'btn-ghost'}` : ''} ${animating ? 'scale-110' : ''} ${className}`}
       aria-label={saved ? 'ยกเลิกบันทึก' : 'บันทึกดีล'}
+      aria-pressed={saved}
     >
       <svg
         className={`h-5 w-5 transition-all ${saved ? 'fill-danger text-danger' : 'text-text-tertiary'} ${animating ? 'scale-125' : ''}`}

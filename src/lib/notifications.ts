@@ -3,15 +3,32 @@
 
 export {
   checkDealExpiration,
-  checkMilestones,
+  checkExpiredDeals,
+  checkShopReadiness,
+  checkAnalyticsMilestones,
   createNotification,
-  formatTimeAgo,
+  createShopNotification,
+  executeNotificationScan,
   getNotificationInbox,
+  getNotificationPreferences,
   getNotifications,
   getUnreadCount,
   markAllAsRead,
   markAsRead,
-  markNotificationReadFromRequest,
+  markNotificationRead,
   normalizeNotificationListParams,
+  runNotificationScan,
+  updateNotificationPreferences,
+  type NotificationPreferenceInput,
+  type NotificationScope,
   type NotificationType,
 } from '../server/services/notification.service';
+
+export {
+  enqueueNotificationDelivery,
+  getPendingNotificationDeliveries,
+  recordInAppDelivery,
+  updateNotificationDelivery,
+  type DeliveryChannel,
+  type DeliveryStatus,
+} from '../server/services/notification-outbox.service';

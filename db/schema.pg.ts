@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
@@ -40,7 +41,9 @@ export const merchants = pgTable('merchants', {
   phone: text('phone'),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  userIdx: uniqueIndex('merchants_user_idx').on(table.userId),
+}));
 
 export const shops = pgTable('shops', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
@@ -208,6 +211,69 @@ export const notifications = pgTable('notifications', {
   shopReadCreatedIdx: index('notifications_shop_read_created_idx').on(table.shopId, table.read, table.createdAt),
 }));
 
+export const notificationDeliveries = pgTable('notification_deliveries', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  notificationId: text('notification_id').notNull().references(() => notifications.id),
+  channel: text('channel').notNull(),
+  status: text('status').notNull().default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  availableAt: timestamp('available_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  lastAttemptAt: timestamp('last_attempt_at', { mode: 'date' }),
+  deliveredAt: timestamp('delivered_at', { mode: 'date' }),
+  providerMessageId: text('provider_message_id'),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  notificationIdx: index('notification_deliveries_notification_idx').on(table.notificationId),
+  queueIdx: index('notification_deliveries_queue_idx').on(table.status, table.availableAt),
+}));
+
+export const notificationPreferences = pgTable('notification_preferences', {
+  userId: text('user_id').primaryKey().references(() => users.id),
+  inAppEnabled: boolean('in_app_enabled').default(true),
+  dealUpdates: boolean('deal_updates').default(true),
+  milestones: boolean('milestones').default(true),
+  reports: boolean('reports').default(true),
+  systemUpdates: boolean('system_updates').default(true),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const jobLocks = pgTable('job_locks', {
+  name: text('name').primaryKey(),
+  ownerToken: text('owner_token').notNull(),
+  lockedUntil: timestamp('locked_until', { mode: 'date' }).notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const jobRuns = pgTable('job_runs', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  name: text('name').notNull(),
+  status: text('status').notNull(),
+  startedAt: timestamp('started_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  finishedAt: timestamp('finished_at', { mode: 'date' }),
+  durationMs: integer('duration_ms'),
+  output: text('output'),
+  error: text('error'),
+}, (table) => ({
+  nameStartedIdx: index('job_runs_name_started_idx').on(table.name, table.startedAt),
+  statusStartedIdx: index('job_runs_status_started_idx').on(table.status, table.startedAt),
+}));
+
+export const adminAuditLogs = pgTable('admin_audit_logs', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  actorUserId: text('actor_user_id').notNull().references(() => users.id),
+  action: text('action').notNull(),
+  targetType: text('target_type').notNull(),
+  targetId: text('target_id').notNull(),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  actorCreatedIdx: index('admin_audit_logs_actor_created_idx').on(table.actorUserId, table.createdAt),
+  targetCreatedIdx: index('admin_audit_logs_target_created_idx').on(table.targetType, table.targetId, table.createdAt),
+  actionCreatedIdx: index('admin_audit_logs_action_created_idx').on(table.action, table.createdAt),
+}));
+
 export const reports = pgTable('reports', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   reporterId: text('reporter_id').references(() => users.id),
@@ -285,4 +351,8 @@ export type Merchant = typeof merchants.$inferSelect;
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type DailyStats = typeof dailyStats.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type JobRun = typeof jobRuns.$inferSelect;
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type Report = typeof reports.$inferSelect;

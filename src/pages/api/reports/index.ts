@@ -3,15 +3,21 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { handleApiError } from '../../../lib/errors';
+import { forbidden, handleApiError, unauthorized } from '../../../lib/errors';
 import { json } from '../../../lib/dashboard/server';
 import {
   createReportFromRequest,
   getReportDashboardData,
 } from '../../../server/services/report.service';
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, locals }) => {
   try {
+    if (!locals.user) {
+      throw unauthorized();
+    }
+    if (locals.user.role !== 'admin') {
+      throw forbidden('ต้องเป็นผู้ดูแลระบบเพื่อดูรายงาน');
+    }
     const data = await getReportDashboardData(url);
     return json({ success: true, data });
   } catch (error) {

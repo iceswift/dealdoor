@@ -1,0 +1,12 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import NotificationSettings from '../../components/dashboard/NotificationSettings.tsx';
+import { getDashboardContext } from '../../lib/dashboard/server';
+
+const context = await getDashboardContext(Astro.locals.user);
+if (!context) return Astro.redirect('/auth/login');
+---
+
+<DashboardLayout title="ตั้งค่าการแจ้งเตือน" activeTab="notifications">
+  <NotificationSettings client:load />
+</DashboardLayout>

@@ -48,7 +48,7 @@
 
 | # | Document | Description |
 |---|----------|-------------|
-| 24 | [Notifications System](./24-notifications-system.md) | Email, LINE, in-app notifications, job scheduler |
+| 24 | [Notifications System](./24-notifications-system.md) | In-app notifications and job scheduler |
 | 25 | [Content Moderation](./25-content-moderation.md) | Report system, auto-filtering, admin dashboard |
 | 26 | [Customer Features](./26-customer-features.md) | Save deals, favorites, deal alerts, preferences |
 | 27 | [Legal & Compliance](./27-legal-compliance.md) | Terms, privacy, PDPA, cookie consent |

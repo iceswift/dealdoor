@@ -12,12 +12,14 @@ services:
       - "${PORT:-4321}:4321"
     volumes:
       - ./db:/app/db
-      - ./public/uploads:/app/public/uploads
+      - ./public/uploads:/app/dist/client/uploads
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=4321
       - DATABASE_URL=/app/db/prod.db
+      - STORAGE_DRIVER=local
+      - MEDIA_LOCAL_ROOT=/app/dist/client
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4321/api/health"]

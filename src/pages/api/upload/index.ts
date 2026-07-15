@@ -4,17 +4,13 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { validateUpload, saveImage, type UploadType } from '../../../lib/upload';
-import { handleApiError, badRequest } from '../../../lib/errors';
+import { handleApiError, badRequest, unauthorized } from '../../../lib/errors';
+import { requireDashboardShop } from '../../../lib/dashboard/server';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    // Check authentication
-    // For MVP, allow uploads without auth
-    // In production, uncomment the auth check
-    // const user = Astro.locals.user;
-    // if (!user) {
-    //   throw unauthorized();
-    // }
+    if (!locals.user) throw unauthorized();
+    await requireDashboardShop(locals.user);
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -35,7 +31,7 @@ export const POST: APIRoute = async ({ request }) => {
     const buffer = Buffer.from(arrayBuffer);
 
     // Save image
-    const url = await saveImage(buffer, type, file.name);
+    const url = await saveImage(buffer, type);
 
     return new Response(
       JSON.stringify({

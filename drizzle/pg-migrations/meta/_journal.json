@@ -8,6 +8,41 @@
       "when": 1783520564725,
       "tag": "0000_chunky_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783691498420,
+      "tag": "0001_supreme_maelstrom",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783692522655,
+      "tag": "0002_goofy_salo",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783693066107,
+      "tag": "0003_soft_venus",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783697210940,
+      "tag": "0004_long_ted_forrester",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783697490871,
+      "tag": "0005_married_squadron_sinister",
+      "breakpoints": true
     }
   ]
 }

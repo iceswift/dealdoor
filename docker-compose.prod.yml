@@ -43,6 +43,7 @@ services:
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
       - R2_BUCKET_NAME=${R2_BUCKET_NAME}
       - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL}
+      - NOTIFICATION_SCAN_SECRET=${NOTIFICATION_SCAN_SECRET}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4321/api/health"]
       interval: 30s
@@ -54,6 +55,31 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+  scheduler:
+    image: alpine:3.21
+    container_name: dealdoor-scheduler
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - NOTIFICATION_SCAN_SECRET=${NOTIFICATION_SCAN_SECRET}
+      - NOTIFICATION_SCAN_INTERVAL_SECONDS=${NOTIFICATION_SCAN_INTERVAL_SECONDS:-3600}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        while true; do
+          date -Iseconds
+          wget -qO- --header="Authorization: Bearer $$NOTIFICATION_SCAN_SECRET" --post-data='' http://app:4321/api/internal/notifications/scan || echo "notification scan failed"
+          sleep "$$NOTIFICATION_SCAN_INTERVAL_SECONDS"
+        done
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
   postgres:
     image: postgres:17-alpine

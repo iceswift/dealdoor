@@ -7,7 +7,10 @@
   "nav": {
     "explore": "Explore Deals",
     "createShop": "Create Shop Page",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "forShops": "For Shops",
+    "pricing": "Pricing",
+    "saved": "Saved deals"
   },
   "action": {
     "share": "Share",
@@ -22,7 +25,12 @@
     "viewMore": "View More",
     "viewAll": "View All",
     "save": "Save",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "login": "Log in",
+    "logout": "Log out",
+    "language": "Language",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "status": {
     "open": "Open Now",
@@ -89,5 +97,22 @@
     "openMap": "Open Map",
     "createdBy": "Powered by DealDoor",
     "createYourPage": "Create Your Shop Page"
+  },
+  "account": {
+    "signedInAs": "Signed in as",
+    "merchantDashboard": "Merchant dashboard",
+    "ownShop": "Do you own a local shop?",
+    "ownShopDescription": "Create a promotion page and manage your shop deals for free.",
+    "merchantLogin": "Merchant login"
+  },
+  "theme": {
+    "title": "Theme",
+    "description": "Choose your preferred color mode"
+  },
+  "footer": {
+    "terms": "Terms of use",
+    "privacy": "Privacy policy",
+    "cookies": "Cookie policy",
+    "copyright": "All rights reserved"
   }
 }

@@ -1,10 +1,12 @@
-// src/components/shop/DealDetailModal.tsx
+﻿// src/components/shop/DealDetailModal.tsx
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Deal, Shop } from '../../lib/db-schema';
 import { getDealViewModel } from '../../lib/deals/view-model';
 import { formatDate } from '../../lib/utils';
+import ReportButton from '../shared/ReportButton.tsx';
+import SaveButton from '../shared/SaveButton.tsx';
 
 interface DealDetailModalProps {
   deal: Deal | null;
@@ -128,6 +130,11 @@ export default function DealDetailModal({ deal, shop, onClose }: DealDetailModal
         className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-bg shadow-2xl md:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
+        <SaveButton
+          dealId={deal.id}
+          variant="icon"
+          className="absolute left-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-xl bg-black/45 text-white shadow-lg backdrop-blur hover:bg-black/60"
+        />
         <button
           onClick={onClose}
           className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-xl bg-black/45 text-white backdrop-blur hover:bg-black/60"
@@ -253,6 +260,11 @@ export default function DealDetailModal({ deal, shop, onClose }: DealDetailModal
           <button onClick={handleShare} className="btn btn-secondary min-h-[48px] w-full rounded-xl font-bold">
             {shared ? 'คัดลอกลิงก์แล้ว' : 'แชร์ดีลนี้'}
           </button>
+          <ReportButton
+            targetType="deal"
+            targetId={deal.id}
+            className="w-full rounded-xl border border-danger/15 bg-danger-bg/10 px-3 py-3 text-xs font-black text-danger hover:border-danger/30 hover:bg-danger-bg/20"
+          />
         </div>
 
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bg/95 p-4 backdrop-blur md:absolute md:rounded-b-3xl">
@@ -264,3 +276,4 @@ export default function DealDetailModal({ deal, shop, onClose }: DealDetailModal
 
   return createPortal(modal, document.body);
 }
+

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `merchants_user_idx` ON `merchants` (`user_id`);

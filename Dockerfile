@@ -39,7 +39,7 @@ COPY --from=builder /app/db ./db
 COPY --from=builder /app/public ./public
 
 # Create necessary directories
-RUN mkdir -p /app/db /app/public/uploads/covers /app/public/uploads/logos /app/public/uploads/deals /app/public/uploads/menu
+RUN mkdir -p /app/db /app/dist/client/uploads/covers /app/dist/client/uploads/logos /app/dist/client/uploads/deals /app/dist/client/uploads/menu
 
 # Set permissions
 RUN chown -R astro:astro /app

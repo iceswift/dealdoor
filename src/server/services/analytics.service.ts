@@ -166,9 +166,9 @@ export async function getShopStats(shopId: string, days: number = 30) {
   return { stats, totals, source };
 }
 
-export async function getTopDeals(shopId: string, limit: number = 5) {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+export async function getTopDeals(shopId: string, limit: number = 5, days: number = 30) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
 
   return db
     .select({
@@ -185,12 +185,76 @@ export async function getTopDeals(shopId: string, limit: number = 5) {
       and(
         eq(analyticsEvents.shopId, shopId),
         sql`${analyticsEvents.dealId} IS NOT NULL`,
-        gte(analyticsEvents.createdAt, thirtyDaysAgo)
+        gte(analyticsEvents.createdAt, startDate)
       )
     )
     .groupBy(analyticsEvents.dealId, deals.title, deals.category)
     .orderBy(desc(sql<number>`sum(case when ${analyticsEvents.type} = 'deal_view' then 1 else 0 end)`))
     .limit(limit);
+}
+
+export async function getPreviousPeriodTotals(shopId: string, days: number) {
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() - days);
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days * 2);
+
+  const rows = await db
+    .select({
+      type: analyticsEvents.type,
+      count: sql<number>`count(*)`,
+    })
+    .from(analyticsEvents)
+    .where(
+      and(
+        eq(analyticsEvents.shopId, shopId),
+        gte(analyticsEvents.createdAt, startDate),
+        lte(analyticsEvents.createdAt, endDate)
+      )
+    )
+    .groupBy(analyticsEvents.type);
+
+  const totals = { pageViews: 0, dealViews: 0, dealClicks: 0, shares: 0, contactClicks: 0 };
+  rows.forEach((row) => {
+    const count = Number(row.count) || 0;
+    if (row.type === 'page_view') totals.pageViews += count;
+    if (row.type === 'deal_view') totals.dealViews += count;
+    if (row.type === 'deal_click') totals.dealClicks += count;
+    if (row.type === 'deal_share') totals.shares += count;
+    if (row.type === 'contact_click') totals.contactClicks += count;
+  });
+  return totals;
+}
+
+export async function getCategoryBreakdown(shopId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const rows = await db
+    .select({
+      category: deals.category,
+      views: sql<number>`sum(case when ${analyticsEvents.type} = 'deal_view' then 1 else 0 end)`,
+      clicks: sql<number>`sum(case when ${analyticsEvents.type} = 'deal_click' then 1 else 0 end)`,
+    })
+    .from(analyticsEvents)
+    .leftJoin(deals, eq(analyticsEvents.dealId, deals.id))
+    .where(
+      and(
+        eq(analyticsEvents.shopId, shopId),
+        sql`${analyticsEvents.dealId} IS NOT NULL`,
+        gte(analyticsEvents.createdAt, startDate)
+      )
+    )
+    .groupBy(deals.category);
+
+  return rows
+    .filter((row) => row.category)
+    .map((row) => ({
+      category: row.category as string,
+      views: Number(row.views) || 0,
+      clicks: Number(row.clicks) || 0,
+    }))
+    .sort((a, b) => b.views - a.views);
 }
 
 export async function getDealViewCount(dealId: string): Promise<number> {
@@ -258,6 +322,10 @@ export async function aggregateDailyStats(shopId: string, date: string): Promise
 
 export async function getDashboardAnalytics(shopId: string, days: number) {
   const { stats, totals, source } = await getShopStats(shopId, days);
-  const topDeals = await getTopDeals(shopId, 5);
-  return { stats, totals, topDeals, source };
+  const [topDeals, previousTotals, categoryBreakdown] = await Promise.all([
+    getTopDeals(shopId, 5, days),
+    getPreviousPeriodTotals(shopId, days),
+    getCategoryBreakdown(shopId, days),
+  ]);
+  return { stats, totals, topDeals, source, previousTotals, categoryBreakdown };
 }

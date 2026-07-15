@@ -3,7 +3,6 @@
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import SharePanel from '../../components/dashboard/SharePanel.tsx';
-import UpgradeBanner from '../../components/dashboard/UpgradeBanner.tsx';
 import Icon from '../../components/icons/index.astro';
 import { getDashboardContext, getDashboardOverview } from '../../lib/dashboard/server';
 
@@ -17,17 +16,45 @@ const overview = shop ? await getDashboardOverview(shop) : null;
 const shopIsPaused = Boolean(shop?.vacationMode);
 
 const statCards = overview ? [
-  { label: 'ยอดเข้าชม', value: overview.totals.pageViews, hint: '60 วันที่ผ่านมา', icon: 'eye', color: 'primary' },
-  { label: 'คลิกดีล', value: overview.totals.dealClicks, hint: 'จากทุกดีล', icon: 'tag', color: 'info' },
-  { label: 'แชร์', value: overview.totals.shares, hint: 'ลิงก์และดีล', icon: 'share', color: 'accent' },
-  { label: 'ดีลใช้งาน', value: `${overview.activeDealCount}/${overview.maxDeals}`, hint: overview.tier === 'pro' ? 'Pro' : 'Free', icon: 'chart', color: 'warning' },
+  { label: 'ยอดเข้าชม', value: overview.totals.pageViews, hint: '60 วันที่ผ่านมา', icon: 'eye', color: 'primary', href: '/dashboard/analytics' },
+  { label: 'คลิกดีล', value: overview.totals.dealClicks, hint: 'จากทุกดีล', icon: 'tag', color: 'info', href: '/dashboard/analytics' },
+  { label: 'แชร์', value: overview.totals.shares, hint: 'ลิงก์และดีล', icon: 'share', color: 'accent', href: '/dashboard/analytics' },
+  { label: 'ดีลใช้งาน', value: `${overview.activeDealCount}/${overview.maxDeals}`, hint: overview.tier === 'pro' ? 'Pro' : 'Free', icon: 'chart', color: 'warning', href: '/dashboard/deals' },
 ] : [];
 
-const colorClasses: Record<string, { text: string; bg: string; border: string }> = {
-  primary: { text: 'text-primary', bg: 'bg-primary/10', border: 'border-l-primary' },
-  info: { text: 'text-info', bg: 'bg-info/10', border: 'border-l-info' },
-  accent: { text: 'text-accent', bg: 'bg-accent/10', border: 'border-l-accent' },
-  warning: { text: 'text-warning', bg: 'bg-warning/10', border: 'border-l-warning' },
+const colorClasses: Record<string, { text: string; bg: string; border: string; hoverBorder: string; hoverShadow: string; glowFrom: string }> = {
+  primary: { 
+    text: 'text-primary', 
+    bg: 'bg-primary/10', 
+    border: 'border-l-primary',
+    hoverBorder: 'hover:border-primary/40',
+    hoverShadow: 'hover:shadow-[0_16px_32px_-12px_rgba(255,90,54,0.25)]',
+    glowFrom: 'from-primary/10'
+  },
+  info: { 
+    text: 'text-info', 
+    bg: 'bg-info/10', 
+    border: 'border-l-info',
+    hoverBorder: 'hover:border-info/40',
+    hoverShadow: 'hover:shadow-[0_16px_32px_-12px_rgba(59,130,246,0.25)]',
+    glowFrom: 'from-info/10'
+  },
+  accent: { 
+    text: 'text-accent', 
+    bg: 'bg-accent/10', 
+    border: 'border-l-accent',
+    hoverBorder: 'hover:border-accent/40',
+    hoverShadow: 'hover:shadow-[0_16px_32px_-12px_rgba(13,148,136,0.25)]',
+    glowFrom: 'from-accent/10'
+  },
+  warning: { 
+    text: 'text-warning', 
+    bg: 'bg-warning/10', 
+    border: 'border-l-warning',
+    hoverBorder: 'hover:border-warning/40',
+    hoverShadow: 'hover:shadow-[0_16px_32px_-12px_rgba(245,158,11,0.25)]',
+    glowFrom: 'from-warning/10'
+  },
 };
 
 const readinessCircumference = 2 * Math.PI * 42;
@@ -113,21 +140,50 @@ const dealStatsById = overview
       </section>
 
       <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((card) => (
-          <div class:list={[
-            'rounded-3xl border border-l-4 border-border/40 bg-card-bg p-5 shadow-sm transition-shadow hover:shadow-md',
-            colorClasses[card.color].border
-          ]}>
-            <div class="flex items-center justify-between gap-2">
-              <p class="text-xs font-black uppercase tracking-wider text-text-tertiary">{card.label}</p>
-              <div class:list={['flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', colorClasses[card.color].bg]}>
-                <Icon name={card.icon} class:list={['h-4 w-4', colorClasses[card.color].text]} />
+        {statCards.map((card) => {
+          const colors = colorClasses[card.color];
+          return (
+            <a 
+              href={card.href}
+              class:list={[
+                'group relative overflow-hidden rounded-3xl border border-border/40 bg-card-bg/90 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 block',
+                colors.hoverBorder,
+                colors.hoverShadow
+              ]}
+            >
+              {/* Dynamic ambient glow gradient */}
+              <div class:list={[
+                'absolute -right-16 -top-16 h-36 w-36 rounded-full bg-gradient-to-br to-transparent opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100 pointer-events-none',
+                colors.glowFrom
+              ]} />
+              
+              <div class="relative z-10 flex items-start justify-between gap-3">
+                <div class="space-y-2">
+                  <p class="text-xs font-black uppercase tracking-wider text-text-tertiary">{card.label}</p>
+                  <p class="text-3xl font-black text-secondary tracking-tight">{card.value}</p>
+                </div>
+                <div class:list={[
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-inner',
+                  colors.bg,
+                  colors.text
+                ]}>
+                  <Icon name={card.icon} class="h-5 w-5" />
+                </div>
               </div>
-            </div>
-            <p class="mt-3 text-3xl font-black text-secondary">{card.value}</p>
-            <p class="mt-1 text-xs font-bold text-text-tertiary">{card.hint}</p>
-          </div>
-        ))}
+              
+              <div class="relative z-10 mt-4 flex items-center justify-between border-t border-border/10 pt-3">
+                <p class="text-[11px] font-bold text-text-tertiary">{card.hint}</p>
+                <span class:list={[
+                  'inline-flex items-center gap-0.5 text-[10px] font-black opacity-0 transition-all duration-300 translate-x-1 group-hover:translate-x-0 group-hover:opacity-100',
+                  colors.text
+                ]}>
+                  ดูรายงาน
+                  <Icon name="chevron-right" class="h-3 w-3" />
+                </span>
+              </div>
+            </a>
+          );
+        })}
       </section>
 
       <section class="grid gap-6 xl:grid-cols-[1fr_380px]">
@@ -190,7 +246,6 @@ const dealStatsById = overview
 
         <div class="space-y-6">
           <SharePanel client:load slug={shop.slug} shopName={shop.name} logoUrl={shop.logoImage} />
-          <UpgradeBanner client:load currentTier={overview.tier} />
         </div>
       </section>
 

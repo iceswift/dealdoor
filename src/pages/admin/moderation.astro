@@ -2,199 +2,504 @@
 // src/pages/admin/moderation.astro
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/auth/login?redirect=/admin/moderation');
+}
+
+const isAdmin = user.role === 'admin';
 ---
 
-<BaseLayout title="Content Moderation">
-  <div class="mx-auto max-w-5xl px-4 py-8">
-    <h1 class="text-2xl font-bold text-secondary">🛡️ Content Moderation</h1>
-    <p class="mt-2 text-text-secondary">ตรวจสอบรายงานจากผู้ใช้</p>
-
-    {/* Stats */}
-    <div class="mt-6 grid grid-cols-3 gap-4">
-      <div class="rounded-xl border border-border bg-bg p-4 text-center">
-        <p class="text-sm text-text-secondary">รายงานทั้งหมด</p>
-        <p id="stat-total" class="mt-1 text-2xl font-bold text-secondary">-</p>
-      </div>
-      <div class="rounded-xl border border-border bg-bg p-4 text-center">
-        <p class="text-sm text-text-secondary">รอดำเนินการ</p>
-        <p id="stat-pending" class="mt-1 text-2xl font-bold text-orange-600">-</p>
-      </div>
-      <div class="rounded-xl border border-border bg-bg p-4 text-center">
-        <p class="text-sm text-text-secondary">ดำเนินการแล้ว</p>
-        <p id="stat-resolved" class="mt-1 text-2xl font-bold text-green-600">-</p>
-      </div>
-    </div>
-
-    {/* Filters */}
-    <div class="mt-6 flex gap-2">
-      <button class="filter-btn active" data-status="pending">รอดำเนินการ</button>
-      <button class="filter-btn" data-status="reviewed">ตรวจสอบแล้ว</button>
-      <button class="filter-btn" data-status="resolved">ดำเนินการแล้ว</button>
-      <button class="filter-btn" data-status="dismissed">ยกเลิก</button>
-    </div>
-
-    {/* Reports List */}
-    <div id="reports-list" class="mt-4 space-y-4">
-      <div class="flex items-center justify-center py-12">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    </div>
-  </div>
-</BaseLayout>
-
-<style>
-  .filter-btn {
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    background-color: var(--color-bg-secondary);
-    color: var(--color-text-secondary);
-  }
-  .filter-btn:hover {
-    background-color: var(--color-bg-tertiary);
-  }
-  .filter-btn.active {
-    background-color: var(--color-primary);
-    color: white;
-  }
-</style>
-
-<script>
-  let currentFilter = 'pending';
-
-  // Filter buttons
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFilter = btn.getAttribute('data-status') || 'pending';
-      fetchReports();
-    });
-  });
-
-  async function fetchReports() {
-    try {
-      const res = await fetch(`/api/reports?status=${currentFilter}`);
-      const data = await res.json();
-
-      if (data.success) {
-        renderStats(data.data.stats);
-        renderReports(data.data.reports);
-      }
-    } catch (err) {
-      console.error('Failed to fetch reports:', err);
-    }
-  }
-
-  function renderStats(stats: any) {
-    document.getElementById('stat-total')!.textContent = stats.total;
-    document.getElementById('stat-pending')!.textContent = stats.pending;
-    document.getElementById('stat-resolved')!.textContent = stats.resolved;
-  }
-
-  function renderReports(reports: any[]) {
-    const container = document.getElementById('reports-list')!;
-
-    if (reports.length === 0) {
-      container.innerHTML = `
-        <div class="rounded-xl border border-dashed p-12 text-center">
-          <span class="text-4xl">✅</span>
-          <p class="mt-4 text-lg font-medium text-secondary">ไม่มีรายงาน</p>
-          <p class="mt-2 text-sm text-text-secondary">ไม่มีรายงานในสถานะนี้</p>
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = reports.map(report => `
-      <div class="rounded-xl border border-border bg-bg p-4" data-report-id="${report.id}">
-        <div class="flex items-start justify-between">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="badge ${getStatusBadge(report.status)}">${getStatusText(report.status)}</span>
-              <span class="text-sm text-text-tertiary">${report.targetType === 'shop' ? '🏪 ร้านค้า' : '🏷️ ดีล'}</span>
+<BaseLayout title="Report Moderation">
+  <main class="mx-auto max-w-6xl px-4 py-8">
+    {!isAdmin ? (
+      <section class="rounded-3xl border border-border/40 bg-card-bg p-8 text-center shadow-sm">
+        <p class="text-xs font-black uppercase tracking-wider text-primary">Admin Only</p>
+        <h1 class="mt-2 text-2xl font-black text-secondary">ไม่มีสิทธิ์เข้าถึงระบบรายงาน</h1>
+        <p class="mx-auto mt-3 max-w-xl text-sm font-bold leading-6 text-text-secondary">
+          รายงานจากผู้ใช้จะถูกส่งให้ทีมผู้ดูแล DealDoor ตรวจสอบเท่านั้น บัญชีร้านค้าทั่วไปจะไม่เห็นข้อมูลผู้รายงานหรือคิว moderation
+        </p>
+        <a href="/dashboard" class="mt-6 inline-flex min-h-[44px] items-center rounded-2xl bg-primary px-5 text-sm font-black text-white">
+          กลับไปแดชบอร์ด
+        </a>
+      </section>
+    ) : (
+      <div class="space-y-6">
+        <section class="rounded-3xl border border-border/40 bg-card-bg p-6 shadow-sm">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p class="text-xs font-black uppercase tracking-wider text-primary">Reports Queue</p>
+              <h1 class="mt-2 text-3xl font-black tracking-tight text-secondary">ระบบรายงานร้านค้าและดีล</h1>
+              <p class="mt-2 max-w-3xl text-sm font-bold leading-6 text-text-secondary">
+                รายงานจากปุ่มบนหน้าร้านและหน้าดีลจะเข้าคิวนี้ ผู้ดูแลสามารถเปิดดูรายการจริง ตักเตือน ปิดดีล หรือปิดเคสได้จากที่นี่
+              </p>
             </div>
-            <p class="mt-2 text-sm font-medium text-secondary">
-              ${getReasonText(report.reason)}
-            </p>
-            ${report.description ? `<p class="mt-1 text-sm text-text-secondary">${report.description}</p>` : ''}
-            <p class="mt-2 text-xs text-text-tertiary">
-              ${new Date(report.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
+            <div class="flex flex-wrap gap-2">
+              <a href="/admin/audit-log" class="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-border/50 px-4 text-sm font-black text-secondary transition hover:bg-bg-secondary">
+                ประวัติการจัดการ
+              </a>
+              <a href="/admin/jobs" class="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-border/50 px-4 text-sm font-black text-secondary transition hover:bg-bg-secondary">
+                งานระบบ
+              </a>
+              <a href="/explore" class="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-border/50 px-4 text-sm font-black text-secondary transition hover:bg-bg-secondary">
+                ดูหน้า Explore
+              </a>
+            </div>
           </div>
 
-          ${report.status === 'pending' ? `
-            <div class="flex gap-2">
-              <button onclick="takeAction('${report.id}', 'remove')" class="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600">
-                ลบเนื้อหา
+          <div class="mt-6 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-border/40 bg-bg p-4 animate-fade-in">
+              <p class="text-xs font-black text-text-tertiary">รายงานทั้งหมด</p>
+              <p id="stat-total" class="mt-2 text-3xl font-black text-secondary">-</p>
+            </div>
+            <div class="rounded-2xl border border-orange-200 bg-orange-50 p-4 dark:border-orange-500/20 dark:bg-orange-500/10">
+              <p class="text-xs font-black text-orange-700 dark:text-orange-300">รอตรวจสอบ</p>
+              <p id="stat-pending" class="mt-2 text-3xl font-black text-orange-700 dark:text-orange-300">-</p>
+            </div>
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+              <p class="text-xs font-black text-emerald-700 dark:text-emerald-300">ดำเนินการแล้ว</p>
+              <p id="stat-resolved" class="mt-2 text-3xl font-black text-emerald-700 dark:text-emerald-300">-</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-3xl border border-border/40 bg-card-bg p-4 shadow-sm sm:p-5">
+          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-wrap gap-2" role="tablist" aria-label="กรองตามสถานะ">
+              <button class="filter-btn active" data-status="pending" role="tab" aria-selected="true">รอตรวจสอบ</button>
+              <button class="filter-btn" data-status="resolved" role="tab" aria-selected="false">ดำเนินการแล้ว</button>
+              <button class="filter-btn" data-status="dismissed" role="tab" aria-selected="false">ปิดเคส</button>
+              <button class="filter-btn" data-status="" role="tab" aria-selected="false">ทั้งหมด</button>
+            </div>
+            <div class="flex flex-wrap gap-2" role="tablist" aria-label="กรองตามประเภทเป้าหมาย">
+              <button class="target-filter-btn active" data-target-type="" role="tab" aria-selected="true">ทุกประเภท</button>
+              <button class="target-filter-btn" data-target-type="shop" role="tab" aria-selected="false">ร้านค้า</button>
+              <button class="target-filter-btn" data-target-type="deal" role="tab" aria-selected="false">ดีล</button>
+            </div>
+          </div>
+
+          <div id="reports-list" class="mt-5 space-y-3" aria-live="polite" aria-busy="false">
+            <div class="flex items-center justify-center py-12">
+              <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Dialog Modal สำหรับยืนยันการดำเนินการ (Universal Design: Tolerance for Error) -->
+        <dialog id="confirm-dialog" class="rounded-3xl border border-border/40 bg-card-bg p-6 shadow-xl w-[90%] max-w-md focus:outline-none">
+          <div class="flex flex-col gap-4">
+            <div class="flex items-center gap-3 text-amber-500" id="dialog-icon-container">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-6 w-6 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h2 class="text-lg font-black text-secondary" id="dialog-title">ยืนยันการดำเนินการ</h2>
+            </div>
+            <p class="text-sm font-bold leading-relaxed text-text-secondary" id="dialog-message">
+              คุณแน่ใจหรือไม่ที่จะทำรายการนี้?
+            </p>
+            <div class="flex justify-end gap-2 mt-4">
+              <button id="dialog-cancel-btn" type="button" class="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-border/50 px-4 text-xs font-black text-secondary transition hover:bg-bg-secondary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
+                ยกเลิก
               </button>
-              <button onclick="takeAction('${report.id}', 'warn')" class="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-600">
-                ตักเตือน
-              </button>
-              <button onclick="takeAction('${report.id}', 'no_action')" class="rounded-lg bg-gray-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-600">
-                ไม่ดำเนินการ
+              <button id="dialog-confirm-btn" type="button" class="inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-xs font-black text-white transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
+                ยืนยัน
               </button>
             </div>
-          ` : ''}
-        </div>
+          </div>
+        </dialog>
       </div>
-    `).join('');
-  }
+    )}
+  </main>
+</BaseLayout>
 
-  function getStatusBadge(status: string) {
-    const badges: Record<string, string> = {
-      pending: 'bg-orange-100 text-orange-700',
-      reviewed: 'bg-blue-100 text-blue-700',
-      resolved: 'bg-green-100 text-green-700',
-      dismissed: 'bg-gray-100 text-gray-700',
-    };
-    return badges[status] || badges.pending;
-  }
+{isAdmin && (
+  <>
+    <style>
+      .filter-btn,
+      .target-filter-btn {
+        min-height: 44px;
+        border-radius: 1rem;
+        border: 1px solid var(--color-border);
+        padding: 0.5rem 0.9rem;
+        font-size: 0.75rem;
+        font-weight: 900;
+        color: var(--color-text-secondary);
+        transition: all 0.2s ease;
+      }
 
-  function getStatusText(status: string) {
-    const texts: Record<string, string> = {
-      pending: 'รอดำเนินการ',
-      reviewed: 'ตรวจสอบแล้ว',
-      resolved: 'ดำเนินการแล้ว',
-      dismissed: 'ยกเลิก',
-    };
-    return texts[status] || status;
-  }
+      .filter-btn:hover,
+      .target-filter-btn:hover {
+        color: var(--color-secondary);
+        background: var(--color-bg-secondary);
+      }
 
-  function getReasonText(reason: string) {
-    const reasons: Record<string, string> = {
-      spam: 'สแปม',
-      fake: 'ข้อมูลเท็จ',
-      offensive: 'เนื้อหาไม่เหมาะสม',
-      scam: 'หลอกลวง',
-      expired: 'หมดอายุ',
-      incorrect: 'ข้อมูลผิด',
-      other: 'อื่นๆ',
-    };
-    return reasons[reason] || reason;
-  }
+      .filter-btn.active,
+      .target-filter-btn.active {
+        border-color: var(--color-primary);
+        background: var(--color-primary);
+        color: white;
+      }
 
-  async function takeAction(reportId: string, action: string) {
-    try {
-      const res = await fetch(`/api/reports/${reportId}/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+      /* Keyboard accessible focus visible outline ring (Principle 2) */
+      button:focus-visible,
+      a:focus-visible,
+      dialog:focus-visible {
+        outline: 3px solid var(--color-primary) !important;
+        outline-offset: 2px !important;
+      }
+
+      /* Dialog styling fallback rules for browser presentation */
+      dialog {
+        background-color: var(--color-card-bg);
+        color: var(--color-text);
+      }
+
+      dialog::backdrop {
+        background-color: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+      }
+    </style>
+
+    <script>
+      let currentStatus = 'pending';
+      let currentTargetType = '';
+
+      const reasonLabels = {
+        spam: 'สแปม',
+        fake: 'ข้อมูลเท็จ',
+        offensive: 'เนื้อหาไม่เหมาะสม',
+        scam: 'หลอกลวง',
+        expired: 'หมดอายุ',
+        incorrect: 'ข้อมูลผิด',
+        other: 'อื่นๆ',
+      };
+
+      const statusLabels = {
+        pending: 'รอตรวจสอบ',
+        reviewed: 'ตรวจสอบแล้ว',
+        resolved: 'ดำเนินการแล้ว',
+        dismissed: 'ปิดเคส',
+      };
+
+      const statusClass = {
+        pending: 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300',
+        reviewed: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
+        resolved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+        dismissed: 'bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300',
+      };
+
+      const statusIcons = {
+        pending: `
+          <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        `,
+        reviewed: `
+          <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+        `,
+        resolved: `
+          <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        `,
+        dismissed: `
+          <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        `,
+      };
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function setActive(selector, activeButton) {
+        document.querySelectorAll(selector).forEach((button) => {
+          button.classList.remove('active');
+          button.setAttribute('aria-selected', 'false');
+        });
+        activeButton.classList.add('active');
+        activeButton.setAttribute('aria-selected', 'true');
+      }
+
+      document.querySelectorAll('.filter-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          setActive('.filter-btn', button);
+          currentStatus = button.getAttribute('data-status') || '';
+          fetchReports();
+        });
       });
 
-      if (res.ok) {
-        fetchReports();
+      document.querySelectorAll('.target-filter-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          setActive('.target-filter-btn', button);
+          currentTargetType = button.getAttribute('data-target-type') || '';
+          fetchReports();
+        });
+      });
+
+      async function fetchReports() {
+        const params = new URLSearchParams();
+        if (currentStatus) params.set('status', currentStatus);
+        if (currentTargetType) params.set('targetType', currentTargetType);
+
+        const container = document.getElementById('reports-list');
+        container.setAttribute('aria-busy', 'true');
+        container.innerHTML = `
+          <div class="flex items-center justify-center py-12">
+            <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+          </div>
+        `;
+
+        try {
+          const response = await fetch(`/api/reports?${params.toString()}`);
+          const payload = await response.json();
+          if (!response.ok || !payload.success) {
+            throw new Error(payload.error?.message || 'โหลดรายงานไม่สำเร็จ');
+          }
+          renderStats(payload.data.stats);
+          renderReports(payload.data.reports);
+          container.setAttribute('aria-busy', 'false');
+        } catch (error) {
+          container.setAttribute('aria-busy', 'false');
+          container.innerHTML = `
+            <div class="rounded-2xl border border-danger/20 bg-danger-bg/10 p-6 text-sm font-bold text-danger">
+              ${escapeHtml(error.message || 'โหลดรายงานไม่สำเร็จ')}
+            </div>
+          `;
+        }
       }
-    } catch (err) {
-      console.error('Failed to take action:', err);
-    }
-  }
 
-  // Initial fetch
-  fetchReports();
+      function renderStats(stats) {
+        document.getElementById('stat-total').textContent = String(stats.total ?? 0);
+        document.getElementById('stat-pending').textContent = String(stats.pending ?? 0);
+        document.getElementById('stat-resolved').textContent = String(stats.resolved ?? 0);
+      }
 
-  // Make functions available globally
-  (window as any).takeAction = takeAction;
-</script>
+      function renderReports(reports) {
+        const container = document.getElementById('reports-list');
+        if (!reports.length) {
+          container.innerHTML = `
+            <div class="rounded-2xl border border-dashed border-border/60 bg-bg-secondary/35 p-10 text-center">
+              <p class="text-lg font-black text-secondary">ไม่มีรายงานในมุมมองนี้</p>
+              <p class="mt-2 text-sm font-bold text-text-secondary">เมื่อผู้ใช้กดรายงานร้านค้าหรือดีล รายการจะมาแสดงที่นี่</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = reports.map((report) => {
+          const target = report.targetDetails;
+          const targetTitle = target?.title || 'ไม่พบรายการปลายทาง';
+          const targetSubtitle = target?.subtitle || report.targetId;
+          
+          let imageHtml = '';
+          if (target?.imageUrl) {
+            imageHtml = `<img src="${escapeHtml(target.imageUrl)}" alt="ภาพประกอบของ ${escapeHtml(report.targetType === 'shop' ? 'ร้านค้า' : 'ดีล')} ${escapeHtml(targetTitle)}" class="h-full w-full object-cover" />`;
+          } else {
+            if (report.targetType === 'shop') {
+              imageHtml = `
+                <svg class="h-6 w-6 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.5a.75.75 0 0 0 .75-.75V14a.75.75 0 0 0-.75-.75h-3.5A.75.75 0 0 0 6 14v3.25c0 .414.336.75.75.75Z" />
+                </svg>
+              `;
+            } else {
+              imageHtml = `
+                <svg class="h-6 w-6 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                </svg>
+              `;
+            }
+          }
+
+          const targetLinksHtml = (() => {
+            if (!target) {
+              return `
+                <span class="inline-flex min-h-[44px] items-center rounded-xl border border-danger/20 bg-danger-bg/10 px-3 text-xs font-black text-danger">
+                  ต้นทางหาย/ถูกลบ
+                </span>
+              `;
+            }
+
+            const links = [];
+            if (target.type === 'deal' && target.href) {
+              links.push(`<a href="${escapeHtml(target.href)}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-[44px] items-center rounded-xl border border-primary/30 bg-primary/10 px-3 text-xs font-black text-primary hover:bg-primary/15">เปิดดีล</a>`);
+            }
+            if (target.shopHref) {
+              links.push(`<a href="${escapeHtml(target.shopHref)}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-[44px] items-center rounded-xl border border-border/50 px-3 text-xs font-black text-secondary hover:bg-card-bg">เปิดร้าน</a>`);
+            } else if (target.type === 'shop' && target.href) {
+              links.push(`<a href="${escapeHtml(target.href)}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-[44px] items-center rounded-xl border border-border/50 px-3 text-xs font-black text-secondary hover:bg-card-bg">เปิดร้าน</a>`);
+            }
+            return links.join('');
+          })();
+
+          const iconHtml = statusIcons[report.status] || statusIcons.pending;
+
+          return `
+            <article class="rounded-3xl border border-border/40 bg-bg p-4 shadow-sm" data-report-id="${escapeHtml(report.id)}">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0 flex gap-3">
+                  <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-bg-secondary" aria-hidden="true">
+                    ${imageHtml}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black ${statusClass[report.status] || statusClass.pending}">
+                        ${iconHtml}
+                        <span>${statusLabels[report.status] || escapeHtml(report.status)}</span>
+                      </span>
+                      <span class="rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-black text-text-secondary">
+                        ${report.targetType === 'shop' ? 'ร้านค้า' : 'ดีล'}
+                      </span>
+                    </div>
+                    <h2 class="mt-2 truncate text-base font-black text-secondary">${escapeHtml(targetTitle)}</h2>
+                    <p class="mt-0.5 truncate text-xs font-bold text-text-tertiary">${escapeHtml(targetSubtitle)}</p>
+                    <p class="mt-2 text-sm font-black text-primary">${reasonLabels[report.reason] || escapeHtml(report.reason)}</p>
+                    ${report.description ? `<p class="mt-1 text-sm font-bold leading-6 text-text-secondary">${escapeHtml(report.description)}</p>` : ''}
+                    <p class="mt-2 text-xs font-bold text-text-tertiary">
+                      ส่งเมื่อ ${new Date(report.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 lg:justify-end items-center">
+                  ${targetLinksHtml}
+                  ${report.status === 'pending' ? `
+                    <button data-report-action="no_action" data-report-id="${escapeHtml(report.id)}" class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-border/50 px-3 text-xs font-black text-secondary hover:bg-card-bg transition duration-150">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                      ไม่ผิด
+                    </button>
+                    <button data-report-action="warn" data-report-id="${escapeHtml(report.id)}" class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-warning px-3 text-xs font-black text-white hover:bg-warning/90 transition duration-150">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      ตักเตือน
+                    </button>
+                    <button data-report-action="remove" data-report-id="${escapeHtml(report.id)}" class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-danger px-3 text-xs font-black text-white hover:bg-danger/90 transition duration-150">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      ปิด/ลบ
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </article>
+          `;
+        }).join('');
+      }
+
+      // Variables to store state for the confirmation dialog modal (Principle 5)
+      let pendingAction = null;
+      let pendingReportId = null;
+      let pendingButton = null;
+
+      const confirmDialog = document.getElementById('confirm-dialog');
+      const dialogTitle = document.getElementById('dialog-title');
+      const dialogMessage = document.getElementById('dialog-message');
+      const dialogIconContainer = document.getElementById('dialog-icon-container');
+      const dialogConfirmBtn = document.getElementById('dialog-confirm-btn');
+      const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
+
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest?.('[data-report-action]');
+        if (!button) return;
+        event.preventDefault();
+
+        pendingReportId = button.getAttribute('data-report-id');
+        pendingAction = button.getAttribute('data-report-action');
+        pendingButton = button;
+
+        if (!pendingReportId || !pendingAction) return;
+
+        // Customize confirmation modal based on the clicked action (Principle 5)
+        if (pendingAction === 'no_action') {
+          dialogTitle.textContent = 'ยืนยันปิดเคสรายงาน (ไม่ผิด)';
+          dialogMessage.textContent = 'คุณต้องการปิดเคสรายงานนี้โดยทำเครื่องหมายว่าไม่ผิดใช่หรือไม่? รายงานนี้จะย้ายไปยังคิว "ปิดเคส" โดยไม่มีผลกระทบต่อร้านค้าหรือดีล';
+          dialogConfirmBtn.className = 'inline-flex min-h-[44px] items-center justify-center rounded-xl bg-secondary px-5 text-xs font-black text-white hover:opacity-90 transition duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none';
+          dialogConfirmBtn.textContent = 'ใช่, ปิดเคส';
+          dialogIconContainer.className = 'flex items-center gap-3 text-secondary';
+          dialogIconContainer.querySelector('svg').innerHTML = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          `;
+        } else if (pendingAction === 'warn') {
+          dialogTitle.textContent = 'ยืนยันการส่งคำตักเตือน';
+          dialogMessage.textContent = 'คุณต้องการส่งข้อความตักเตือนไปยังผู้โพสต์/ร้านค้า และเปลี่ยนสถานะรายการนี้เป็นตรวจสอบแล้วใช่หรือไม่?';
+          dialogConfirmBtn.className = 'inline-flex min-h-[44px] items-center justify-center rounded-xl bg-warning px-5 text-xs font-black text-white hover:opacity-95 transition duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none';
+          dialogConfirmBtn.textContent = 'ใช่, ส่งคำตักเตือน';
+          dialogIconContainer.className = 'flex items-center gap-3 text-warning';
+          dialogIconContainer.querySelector('svg').innerHTML = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          `;
+        } else if (pendingAction === 'remove') {
+          dialogTitle.textContent = 'ยืนยันการลบ/ปิดรายการ';
+          dialogMessage.textContent = 'คำเตือน: ดีลหรือร้านค้านี้จะถูกปิดใช้งานหรือลบออกจากหน้าสาธารณะทันที และไม่สามารถกู้คืนกลับมาโดยตรงได้ คุณแน่ใจที่จะลบ/ปิดรายการนี้ใช่หรือไม่?';
+          dialogConfirmBtn.className = 'inline-flex min-h-[44px] items-center justify-center rounded-xl bg-danger px-5 text-xs font-black text-white hover:opacity-90 transition duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none';
+          dialogConfirmBtn.textContent = 'ใช่, ลบ/ปิดใช้งานรายการ';
+          dialogIconContainer.className = 'flex items-center gap-3 text-danger';
+          dialogIconContainer.querySelector('svg').innerHTML = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          `;
+        }
+
+        confirmDialog.showModal();
+      });
+
+      // Handle Cancel Button Click
+      dialogCancelBtn.addEventListener('click', () => {
+        confirmDialog.close();
+      });
+
+      // Reset pending state on close
+      confirmDialog.addEventListener('close', () => {
+        pendingAction = null;
+        pendingReportId = null;
+        pendingButton = null;
+      });
+
+      // Handle Confirm Action Click
+      dialogConfirmBtn.addEventListener('click', async () => {
+        if (!pendingReportId || !pendingAction || !pendingButton) return;
+
+        const originalText = dialogConfirmBtn.textContent;
+        dialogConfirmBtn.disabled = true;
+        dialogConfirmBtn.textContent = 'กำลังดำเนินการ...';
+        dialogCancelBtn.disabled = true;
+
+        try {
+          const response = await fetch(`/api/reports/${pendingReportId}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: pendingAction }),
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.success) {
+            throw new Error(payload.error?.message || 'จัดการรายงานไม่สำเร็จ');
+          }
+          fetchReports();
+        } catch (error) {
+          alert(error.message || 'จัดการรายงานไม่สำเร็จ');
+          fetchReports();
+        } finally {
+          dialogConfirmBtn.disabled = false;
+          dialogConfirmBtn.textContent = originalText;
+          dialogCancelBtn.disabled = false;
+          confirmDialog.close();
+        }
+      });
+
+      fetchReports();
+    </script>
+  </>
+)}

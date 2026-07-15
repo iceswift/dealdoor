@@ -4,10 +4,15 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Icon from '../../components/icons/index.astro';
 
+const redirectParam = Astro.url.searchParams.get('redirect');
+const safeRedirect = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+  ? redirectParam
+  : null;
+
 // ─── BACKEND WORKFLOW: AUTHENTICATED SESSION CHECK ───
 // If user session cookie is already active and valid, redirect directly to dashboard.
 if (Astro.locals.user) {
-  return Astro.redirect('/dashboard');
+  return Astro.redirect(safeRedirect || (Astro.locals.user.role === 'admin' ? '/admin/moderation' : '/dashboard'));
 }
 // ─────────────────────────────────────────────────────
 ---
@@ -191,7 +196,12 @@ if (Astro.locals.user) {
       showToast('เข้าสู่ระบบสำเร็จ', 'success');
       
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        const params = new URLSearchParams(window.location.search);
+        const requestedRedirect = params.get('redirect');
+        const safeRedirect = requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')
+          ? requestedRedirect
+          : null;
+        window.location.href = safeRedirect || (result.data?.role === 'admin' ? '/admin/moderation' : '/dashboard');
       }, 500);
     } catch (err: any) {
       if (errorMessage) {

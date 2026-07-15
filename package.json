@@ -33,6 +33,9 @@
     "smoke:pg:app": "node scripts/smoke-postgres-app.cjs",
     "db:baseline": "node scripts/db-baseline-existing.cjs",
     "db:seed": "bun run db/seed.ts",
+    "db:audit:identity": "node node_modules/tsx/dist/cli.mjs scripts/db-audit-identity.ts",
+    "i18n:audit": "bun run scripts/i18n-audit.ts",
+    "notifications:scan": "node node_modules/tsx/dist/cli.mjs scripts/notifications-scan.ts",
     "db:studio": "bunx drizzle-kit studio",
     "db:studio:pg": "bunx drizzle-kit studio --config drizzle.pg.config.ts",
     "db:reset": "if (Test-Path db/dev.db) { Remove-Item db/dev.db }; bun run db:push; bun run db:seed",
@@ -53,6 +56,7 @@
   "dependencies": {
     "@astrojs/node": "^11.0.0",
     "@astrojs/react": "^6.0.0",
+    "@aws-sdk/client-s3": "^3.1084.0",
     "@noble/hashes": "^2.2.0",
     "@node-rs/argon2": "^2.0.2",
     "@oslojs/crypto": "^1.0.1",
