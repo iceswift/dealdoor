@@ -30,9 +30,6 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
 
-# Create non-root user
-RUN groupadd --system --gid 1001 astro && useradd --system --uid 1001 --gid astro astro
-
 # Copy built files
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
@@ -45,11 +42,7 @@ COPY --from=builder /app/scripts ./scripts
 # Create necessary directories
 RUN mkdir -p /app/db /app/dist/client/uploads/covers /app/dist/client/uploads/logos /app/dist/client/uploads/deals /app/dist/client/uploads/menu
 
-# Set permissions
-RUN chown -R astro:astro /app
-
-# Switch to non-root user
-# Railway mounts volumes as root. Other hosts can run with --user 1001:1001.
+# Railway mounts volumes as root; persistent data is created at startup.
 
 # Expose port
 EXPOSE 4321
