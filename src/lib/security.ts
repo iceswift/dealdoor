@@ -121,7 +121,7 @@ export function getSecurityHeaders(): Record<string, string> {
     'X-Frame-Options': 'SAMEORIGIN',
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self)',
     'Content-Security-Policy': [
       "default-src 'self' https://unpkg.com",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com",

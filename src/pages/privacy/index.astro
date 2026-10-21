@@ -1,122 +1,39 @@
 ---
-// src/pages/privacy/index.astro
-
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import LegalDocumentShell from '../../components/legal/LegalDocumentShell.astro';
+import { LEGAL_CONTACTS } from '../../lib/legal';
 ---
 
-<BaseLayout title="นโยบายความเป็นส่วนตัว">
-  <article class="mx-auto max-w-3xl px-4 py-8">
-    <h1 class="text-3xl font-bold text-secondary">นโยบายความเป็นส่วนตัว</h1>
-    <p class="mt-2 text-text-secondary">วันที่มีผล: 1 กรกฎาคม 2568</p>
+<LegalDocumentShell document="privacy" title="นโยบายความเป็นส่วนตัว" summary="อธิบายข้อมูลที่ DealDoor ประมวลผล เหตุผลในการใช้ข้อมูล และสิทธิของเจ้าของข้อมูล">
+  <h2>1. ขอบเขตและสถานะเอกสาร</h2>
+  <p>นโยบายนี้อธิบายการประมวลผลข้อมูลเมื่อใช้ DealDoor ทั้งส่วนสาธารณะและส่วนร้านค้า เอกสารฉบับนี้ยังเป็นร่างก่อนเปิดใช้งานจริง รายละเอียดผู้ควบคุมข้อมูล นิติบุคคล ที่อยู่ ผู้ประมวลผลข้อมูล และระยะเวลาเก็บรักษาจะต้องได้รับการยืนยันก่อนนำไปใช้เป็นประกาศฉบับสุดท้าย</p>
 
-    <div class="prose mt-8 space-y-6 text-text-secondary">
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">1. ข้อมูลที่เราเก็บรวบรวม</h2>
-        
-        <h3 class="mt-4 text-lg font-medium text-secondary">ข้อมูลที่คุณให้เรา</h3>
-        <ul class="mt-2 list-inside list-disc space-y-1">
-          <li>ชื่อ อีเมล เบอร์โทร</li>
-          <li>ข้อมูลร้านค้า (ชื่อ ที่อยู่ ประเภท)</li>
-          <li>ข้อมูลโปรโมชันและดีล</li>
-          <li>รูปภาพ (หากอัปโหลด)</li>
-        </ul>
+  <h2>2. ข้อมูลที่ระบบประมวลผล</h2>
+  <table><thead><tr><th>กลุ่มข้อมูล</th><th>ตัวอย่าง</th><th>วัตถุประสงค์</th></tr></thead><tbody>
+    <tr><td>บัญชีผู้ใช้</td><td>ชื่อ อีเมล รหัสผ่านที่เข้ารหัส บทบาท และ session</td><td>สมัครสมาชิก เข้าสู่ระบบ และควบคุมสิทธิ์</td></tr>
+    <tr><td>ข้อมูลร้านและดีล</td><td>ข้อมูลติดต่อ ที่อยู่ เวลาเปิด-ปิด รูปภาพ เมนู คูปอง เงื่อนไข และจำนวนสิทธิ์</td><td>สร้างและเผยแพร่หน้าร้าน/ดีล ข้อมูลที่เลือกเผยแพร่เป็นข้อมูลสาธารณะ</td></tr>
+    <tr><td>การใช้งานและความปลอดภัย</td><td>event, IP, user-agent, เวลา, shop/deal ID</td><td>วิเคราะห์การใช้งาน นับผู้เข้าชม ป้องกัน abuse และวัดผล Boost</td></tr>
+    <tr><td>ตำแหน่งอุปกรณ์</td><td>latitude, longitude, accuracy</td><td>ค้นหาดีลใกล้ฉันและจัดศูนย์แผนที่ เมื่อผู้ใช้อนุญาต</td></tr>
+    <tr><td>การแจ้งเตือนและรายงาน</td><td>การตั้งค่าแจ้งเตือน รายงาน เหตุผล รายละเอียด และ audit log</td><td>ให้บริการ แจ้งเตือน และดูแลความปลอดภัยของชุมชน</td></tr>
+    <tr><td>รายการเครดิตในอนาคต</td><td>order ID ราคา สกุลเงิน จำนวนเครดิต และ payment reference</td><td>รองรับการซื้อเครดิตเมื่อเปิดใช้ผู้ให้บริการชำระเงิน</td></tr>
+  </tbody></table>
 
-        <h3 class="mt-4 text-lg font-medium text-secondary">ข้อมูลที่เก็บอัตโนมัติ</h3>
-        <ul class="mt-2 list-inside list-disc space-y-1">
-          <li>ที่อยู่ IP</li>
-          <li>ประเภทเบราว์เซอร์และอุปกรณ์</li>
-          <li>หน้าที่เข้าชม</li>
-          <li>วันที่และเวลาเข้าชม</li>
-          <li>คุกกี้</li>
-        </ul>
-      </section>
+  <h2>3. ตำแหน่งอุปกรณ์</h2>
+  <p>DealDoor ขอใช้ตำแหน่งผ่าน permission ของเบราว์เซอร์เท่านั้นเมื่อผู้ใช้กดใช้โหมดใกล้ฉัน ใน implementation ปัจจุบัน พิกัดถูกเก็บไว้ใน browser session เพื่อการค้นหา/แผนที่และไม่ได้ส่งไปเก็บเป็นพิกัดผู้ใช้ถาวรในฐานข้อมูลของแอป ผู้ใช้ปฏิเสธหรือถอน permission ได้จากการตั้งค่าเบราว์เซอร์</p>
 
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">2. วิธีการใช้ข้อมูล</h2>
-        <p class="mt-2">เราใช้ข้อมูลของคุณเพื่อ:</p>
-        <ul class="mt-2 list-inside list-disc space-y-1">
-          <li>ให้บริการและดูแลรักษาแพลตฟอร์ม</li>
-          <li>ปรับปรุงประสบการณ์ผู้ใช้</li>
-          <li>ส่งการแจ้งเตือนเกี่ยวกับดีล</li>
-          <li>วิเคราะห์การใช้งานเพื่อปรับปรุงบริการ</li>
-          <li>ป้องกันการฉ้อโกงและละเมิด</li>
-        </ul>
-      </section>
+  <h2>4. การวิเคราะห์และ cookie consent</h2>
+  <p>ระบบบันทึกเหตุการณ์การใช้งานบางประเภท รวมถึงการดูและคลิกดีล เพื่อแสดงสถิติร้านและป้องกันการใช้งานผิดปกติ หากเปิดใช้ Boost ระบบอาจบันทึกการเห็น card ที่ถูกโปรโมตเมื่อ card อยู่บนหน้าจอในระดับที่กำหนด</p>
+  <p><strong>ข้อจำกัดปัจจุบัน:</strong> consent banner มีอยู่แล้ว แต่การกำหนดฐานกฎหมายและการบังคับใช้ consent กับ internal analytics ยังอยู่ระหว่างจัดทำ ก่อนเปิดใช้งานจริง DealDoor ต้องเลือกและบังคับใช้โมเดลที่สอดคล้องกัน โปรดดู <a href="/cookies" class="text-primary hover:underline">นโยบาย cookies</a> สำหรับ inventory ปัจจุบัน</p>
 
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">3. การแบ่งปันข้อมูล</h2>
-        <p class="mt-2">
-          เราไม่ขายข้อมูลส่วนบุคคลของคุณ เราอาจแบ่งปันข้อมูลกับ:
-        </p>
-        <ul class="mt-2 list-inside list-disc space-y-1">
-          <li>ผู้ให้บริการที่เชื่อถือได้ (เช่น โฮสติ้ง วิเคราะห์)</li>
-          <li>หน่วยงานกฎหมาย หากจำเป็นตามกฎหมาย</li>
-          <li>บุคคลที่สาม เมื่อได้รับความยินยอมจากคุณ</li>
-        </ul>
-      </section>
+  <h2>5. การจัดเก็บและผู้ให้บริการ</h2>
+  <p>ข้อมูลหลักเก็บในฐานข้อมูลของระบบ รูปที่อัปโหลดจะถูกแปลงเป็น WebP และจัดเก็บแบบ local ในสภาพแวดล้อมปัจจุบัน ระบบรองรับการใช้ Cloudflare R2 เมื่อมีการตั้งค่า แต่ต้องอัปเดตรายชื่อผู้ประมวลผลข้อมูลและสถานที่จัดเก็บก่อนเปิดใช้งานจริง</p>
 
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">4. การเก็บรักษาข้อมูล</h2>
-        <p class="mt-2">
-          เราเก็บข้อมูลของคุณตราบเท่าที่จำเป็นในการให้บริการ 
-          หากคุณลบบัญชี เราจะลบข้อมูลส่วนบุคคลภายใน 30 วัน
-        </p>
-      </section>
+  <h2>6. ระยะเวลาการเก็บรักษา</h2>
+  <p>DealDoor จะกำหนดตารางเก็บรักษาแยกตามประเภทข้อมูลก่อน launch รวมถึง session, raw analytics, notification, report, audit log, media, และข้อมูลคำสั่งซื้อ เอกสารนี้จะไม่รับปากระยะเวลาลบข้อมูลที่ยังไม่มี job และกระบวนการปฏิบัติการรองรับ</p>
 
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">5. สิทธิ์ของคุณ (PDPA)</h2>
-        <p class="mt-2">
-          ภายใต้พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA) คุณมีสิทธิ์:
-        </p>
-        <ul class="mt-2 list-inside list-disc space-y-1">
-          <li>สิทธิ์เข้าถึงข้อมูล - ขอสำเนาข้อมูลของคุณ</li>
-          <li>สิทธิ์แก้ไขข้อมูล - แก้ไขข้อมูลที่ไม่ถูกต้อง</li>
-          <li>สิทธิ์ลบข้อมูล - ขอลบข้อมูลของคุณ</li>
-          <li>สิทธิ์คัดค้าน - คัดค้านการประมวลผลข้อมูล</li>
-          <li>สิทธิ์ถอนความยินยอม - ถอนความยินยอมเมื่อใดก็ได้</li>
-        </ul>
-        <p class="mt-4">
-          <a href="/privacy/request" class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark">
-            ยื่นคำขอใช้สิทธิ์
-          </a>
-        </p>
-      </section>
+  <h2>7. สิทธิของเจ้าของข้อมูล</h2>
+  <p>ภายใต้กฎหมายที่ใช้บังคับ คุณอาจมีสิทธิขอเข้าถึง แก้ไข ลบ จำกัดการประมวลผล คัดค้าน ถอนความยินยอม หรือขอรับข้อมูลในรูปแบบที่กฎหมายกำหนด การใช้สิทธิอาจต้องยืนยันตัวตนและอาจมีข้อยกเว้นตามกฎหมาย</p>
+  <p>ศูนย์คำขอใช้สิทธิแบบออนไลน์ยังไม่เปิดใช้งานจริงในเวอร์ชันนี้ กรุณาส่งคำขอไปที่ <a href={`mailto:${LEGAL_CONTACTS.privacyEmail}`} class="text-primary hover:underline">{LEGAL_CONTACTS.privacyEmail}</a> โดยระบุอีเมลบัญชี ประเภทคำขอ และรายละเอียดที่จำเป็น</p>
 
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">6. คุกกี้</h2>
-        <p class="mt-2">
-          เราใช้คุกกี้เพื่อปรับปรุงประสบการณ์ของคุณ คุณสามารถจัดการคุกกี้ได้ในการตั้งค่าเบราว์เซอร์
-        </p>
-        <p class="mt-2">
-          ดูรายละเอียดเพิ่มเติมใน <a href="/cookies" class="text-primary hover:underline">นโยบายคุกกี้</a>
-        </p>
-      </section>
-
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">7. ความปลอดภัย</h2>
-        <p class="mt-2">
-          เราใช้มาตรการรักษาความปลอดภัยที่เหมาะสมเพื่อปกป้องข้อมูลของคุณ 
-          รวมถึงการเข้ารหัส การควบคุมการเข้าถึง และการตรวจสอบเป็นประจำ
-        </p>
-      </section>
-
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">8. การเปลี่ยนแปลงนโยบาย</h2>
-        <p class="mt-2">
-          เราอาจอัปเดตนโยบายความเป็นส่วนตัวเป็นครั้งคราว 
-          การเปลี่ยนแปลงจะมีผลทันทีที่ประกาศบนแพลตฟอร์ม
-        </p>
-      </section>
-
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">9. การติดต่อ</h2>
-        <p class="mt-2">
-          หากคุณมีคำถามเกี่ยวกับนโยบายความเป็นส่วนตัว กรุณาติดต่อ:
-        </p>
-        <p class="mt-2">
-          อีเมล: <a href="mailto:privacy@dealdoor.co" class="text-primary hover:underline">privacy@dealdoor.co</a>
-        </p>
-      </section>
-    </div>
-  </article>
-</BaseLayout>
+  <h2>8. การเปลี่ยนแปลงและการติดต่อ</h2>
+  <p>เมื่อมีการเปิดใช้ R2, payment gateway, email/SMS/LINE delivery, advertising หรือ analytics provider รายใหม่ DealDoor จะทบทวนและออก version ใหม่ของนโยบายนี้ก่อนเปิดใช้ สำหรับคำถามด้านความเป็นส่วนตัวติดต่อ <a href={`mailto:${LEGAL_CONTACTS.privacyEmail}`} class="text-primary hover:underline">{LEGAL_CONTACTS.privacyEmail}</a></p>
+</LegalDocumentShell>

@@ -1,115 +1,23 @@
 ---
-// src/pages/privacy/request.astro
-
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { LEGAL_CONTACTS, LEGAL_DOCUMENTS } from '../../lib/legal';
 ---
 
-<BaseLayout title="ยื่นคำขอใช้สิทธิ์ข้อมูล">
-  <div class="mx-auto max-w-2xl px-4 py-8">
-    <h1 class="text-3xl font-bold text-secondary">ยื่นคำขอใช้สิทธิ์ข้อมูล</h1>
-    <p class="mt-2 text-text-secondary">
-      ภายใต้ PDPA คุณมีสิทธิ์เข้าถึง แก้ไข หรือลบข้อมูลส่วนบุคคลของคุณ
-    </p>
-
-    <form id="privacy-request-form" class="mt-8 space-y-6">
-      {/* Request Type */}
-      <div>
-        <label class="block text-sm font-medium text-secondary">ประเภทคำขอ *</label>
-        <div class="mt-2 space-y-2">
-          <label class="flex items-center gap-2">
-            <input type="radio" name="type" value="access" required />
-            <span class="text-sm">ขอสำเนาข้อมูล</span>
-          </label>
-          <label class="flex items-center gap-2">
-            <input type="radio" name="type" value="rectification" />
-            <span class="text-sm">แก้ไขข้อมูลที่ไม่ถูกต้อง</span>
-          </label>
-          <label class="flex items-center gap-2">
-            <input type="radio" name="type" value="erasure" />
-            <span class="text-sm">ลบข้อมูล</span>
-          </label>
-          <label class="flex items-center gap-2">
-            <input type="radio" name="type" value="restriction" />
-            <span class="text-sm">จำกัดการประมวลผล</span>
-          </label>
-          <label class="flex items-center gap-2">
-            <input type="radio" name="type" value="objection" />
-            <span class="text-sm">คัดค้านการประมวลผล</span>
-          </label>
-        </div>
-      </div>
-
-      {/* Email */}
-      <div>
-        <label for="email" class="block text-sm font-medium text-secondary">
-          อีเมลที่ใช้สมัคร *
-        </label>
-        <input
-          type="email"
-          id="email"
-          name="email"
-          required
-          class="mt-1 w-full rounded-lg border border-border bg-bg px-4 py-3 text-sm focus:border-primary focus:outline-none"
-          placeholder="your@email.com"
-        />
-      </div>
-
-      {/* Description */}
-      <div>
-        <label for="description" class="block text-sm font-medium text-secondary">
-          รายละเอียดเพิ่มเติม
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          rows={4}
-          class="mt-1 w-full rounded-lg border border-border bg-bg px-4 py-3 text-sm focus:border-primary focus:outline-none"
-          placeholder="อธิบายคำขอของคุณ (ไม่บังคับ)"
-        />
-      </div>
-
-      {/* Submit */}
-      <button
-        type="submit"
-        class="w-full rounded-lg bg-primary py-3 text-sm font-medium text-white hover:bg-primary-dark"
-      >
-        ส่งคำขอ
-      </button>
-
-      <p class="text-xs text-text-tertiary">
-        เราจะดำเนินการตามคำขอภายใน 30 วัน และจะแจ้งผลให้คุณทราบทางอีเมล
-      </p>
-    </form>
-
-    {/* Success Message */}
-    <div id="success-message" class="hidden mt-8 rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-      <span class="text-4xl">✅</span>
-      <h2 class="mt-4 text-xl font-bold text-secondary">รับคำขอแล้ว</h2>
-      <p class="mt-2 text-text-secondary">
-        เราจะดำเนินการตามคำขอภายใน 30 วัน และจะแจ้งผลให้คุณทราบทางอีเมล
-      </p>
-      <a href="/" class="mt-4 inline-block rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white">
-        กลับหน้าแรก
-      </a>
-    </div>
-  </div>
+<BaseLayout title="คำขอใช้สิทธิข้อมูลส่วนบุคคล">
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+    <p class="text-xs font-black uppercase tracking-[0.16em] text-primary">Privacy request</p>
+    <h1 class="mt-2 text-3xl font-black tracking-tight text-secondary">คำขอใช้สิทธิข้อมูลส่วนบุคคล</h1>
+    <p class="mt-3 text-sm font-semibold leading-6 text-text-secondary">คุณสามารถขอเข้าถึง แก้ไข ลบ จำกัดการประมวลผล หรือคัดค้านการประมวลผลข้อมูลได้ตามสิทธิที่กฎหมายกำหนด</p>
+    <section class="mt-7 rounded-3xl border border-warning/20 bg-warning-bg/60 p-6">
+      <h2 class="text-lg font-black text-secondary">ช่องทางคำขอในเวอร์ชันปัจจุบัน</h2>
+      <p class="mt-2 text-sm font-semibold leading-6 text-text-secondary">ศูนย์คำขอออนไลน์ยังไม่เชื่อมต่อกับระบบจัดการเคส จึงไม่มีฟอร์มส่งคำขอในหน้านี้ เพื่อไม่ให้เกิดความเข้าใจผิด กรุณาส่งอีเมลถึงทีมความเป็นส่วนตัวโดยตรง</p>
+      <a href={`mailto:${LEGAL_CONTACTS.privacyEmail}?subject=DealDoor%20Privacy%20Request`} class="mt-5 inline-flex min-h-11 items-center rounded-2xl bg-primary px-5 text-sm font-black text-white hover:bg-primary-dark">ส่งคำขอทางอีเมล</a>
+    </section>
+    <section class="mt-6 rounded-3xl border border-border/60 bg-card-bg p-6">
+      <h2 class="text-lg font-black text-secondary">ข้อมูลที่ควรระบุ</h2>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm font-semibold leading-6 text-text-secondary"><li>อีเมลที่ใช้กับบัญชี DealDoor</li><li>ประเภทคำขอ เช่น ขอสำเนาข้อมูล แก้ไข หรือลบ</li><li>รายละเอียดที่ช่วยให้ตรวจสอบคำขอได้</li><li>ช่องทางติดต่อกลับ</li></ul>
+      <p class="mt-4 text-sm font-semibold leading-6 text-text-secondary">DealDoor อาจขอข้อมูลเพิ่มเพื่อยืนยันตัวตนและจะดำเนินการตามกรอบเวลาที่กฎหมายกำหนด โปรดอย่าส่งรหัสผ่านหรือข้อมูลบัตรชำระเงินทางอีเมล</p>
+    </section>
+    <p class="mt-6 text-xs font-bold text-text-tertiary">อ้างอิงนโยบายความเป็นส่วนตัว version {LEGAL_DOCUMENTS.privacy.version} · <a href="/privacy" class="text-primary hover:underline">กลับสู่นโยบายความเป็นส่วนตัว</a></p>
+  </main>
 </BaseLayout>
-
-<script>
-  const form = document.getElementById('privacy-request-form');
-  const successMessage = document.getElementById('success-message');
-
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const formData = new FormData(form as HTMLFormElement);
-    const data = Object.fromEntries(formData);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Show success
-    form.classList.add('hidden');
-    successMessage?.classList.remove('hidden');
-  });
-</script>

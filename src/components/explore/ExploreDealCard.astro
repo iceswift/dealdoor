@@ -11,9 +11,11 @@ interface Props {
   deal: Deal;
   shop: Shop;
   featured?: boolean;
+  highlighted?: boolean;
+  isPromoted?: boolean;
 }
 
-const { deal, shop, featured = false } = Astro.props;
+const { deal, shop, featured = false, highlighted = false, isPromoted = false } = Astro.props;
 const lang = getLangFromRequest(Astro.request);
 const common = (key: string) => t(lang, 'common', key);
 const publicText = (key: string, params?: Record<string, string | number>) => t(lang, 'public', key, params);
@@ -72,10 +74,14 @@ if (priceMatchResult) {
 
 <a
   href={view.urls.deal || `/${shop.slug}?deal=${deal.id}`}
+  data-boost-impression={isPromoted ? 'true' : undefined}
+  data-deal-id={isPromoted ? deal.id : undefined}
+  data-shop-id={isPromoted ? shop.id : undefined}
   class:list={[
     'group block overflow-hidden bg-card-bg/65 backdrop-blur-md border border-border/15 rounded-[24px] hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1.5 hover:border-primary/25 transition-all duration-300 relative cursor-pointer flex h-full flex-col justify-between shadow-sm',
     isExpired && 'opacity-65 grayscale-[20%]',
     isCriticalSoon && !isExpired && 'animate-pulse-danger border-danger/30',
+    highlighted && 'ring-2 ring-primary/70 border-primary/60 shadow-lg shadow-primary/10',
   ]}
   aria-label={`${publicText('deal.viewDeal')}: ${view.title} · ${shop.name}`}
 >
@@ -99,6 +105,16 @@ if (priceMatchResult) {
       <div class="absolute -left-10 top-4 w-36 rotate-[-45deg] bg-gradient-to-r from-danger to-primary py-1.5 text-center shadow-md z-10">
         <span class="text-sm font-black tracking-wider text-white">-{priceMatch.percent}%</span>
       </div>
+    )}
+
+    {isPromoted && (
+      <span class:list={[
+        'absolute left-3 z-10 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-[9px] font-black text-white shadow-sm',
+        priceMatch ? 'top-12' : 'top-3',
+      ]}>
+        <Icon name="rocket" class="h-3 w-3" />
+        {publicText('deal.promoted')}
+      </span>
     )}
 
     {/* Category Pill Tag Overlay - color-coded by deal category */}
@@ -139,18 +155,6 @@ if (priceMatchResult) {
       variant="icon"
       className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/90 p-0 text-secondary shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-white hover:text-rose-500 active:scale-95 dark:bg-black/60 dark:text-white"
     />
-
-    {/* Hover Reveal Quick Actions */}
-    <div class="absolute inset-x-0 bottom-0 flex translate-y-full items-center justify-center gap-2 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-      <span class="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-black text-secondary shadow-sm">
-        <Icon name="heart" class="h-3 w-3" />
-        {common('action.save')}
-      </span>
-      <span class="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[10px] font-black text-white shadow-sm">
-        {publicText('deal.viewDeal')}
-        <Icon name="arrow-right" class="h-3 w-3" />
-      </span>
-    </div>
   </div>
 
   {/* Card Content body */}
@@ -217,3 +221,28 @@ if (priceMatchResult) {
     </div>
   </div>
 </a>
+
+<script>
+  const promotedCards = document.querySelectorAll('[data-boost-impression="true"]');
+  if ('IntersectionObserver' in window && promotedCards.length) {
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.6) continue;
+        const card = entry.target as HTMLElement;
+        observer.unobserve(card);
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({
+            type: 'deal_impression',
+            shopId: card.dataset.shopId,
+            dealId: card.dataset.dealId,
+            metadata: { placement: 'boost', surface: window.location.pathname },
+          }),
+        }).catch(() => {});
+      }
+    }, { threshold: 0.6 });
+    promotedCards.forEach((card) => observer.observe(card));
+  }
+</script>

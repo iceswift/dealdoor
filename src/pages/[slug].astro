@@ -7,7 +7,7 @@ import { shops, deals, menuItems, shopSpecialHours } from '../lib/db-schema';
 import { firstRow } from '../lib/db-query';
 import { eq, and, gte, lt, asc } from 'drizzle-orm';
 import ShopHeader from '../components/shop/ShopHeader.astro';
-import DealCard from '../components/shop/DealCard.astro';
+import ExploreDealCard from '../components/explore/ExploreDealCard.astro';
 import DealDetailModal from '../components/shop/DealDetailModal.tsx';
 import MenuList from '../components/shop/MenuList.astro';
 import ShopInfo from '../components/shop/ShopInfo.astro';
@@ -100,88 +100,94 @@ const breadcrumbSchema = generateBreadcrumbSchema([
     {/* Shop Profile Header */}
     <ShopHeader shop={shop} specialHours={specialHoursList} />
 
-    {/* Active Coupons/Deals Listing */}
-    <section class="mt-8">
-      <div class="flex items-center gap-2.5 mb-5 border-b border-border/30 pb-3">
-        <div class="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-          <Icon name="fire" class="h-5 w-5" />
-        </div>
-        <h2 class="text-lg font-bold text-secondary">
-          {common('shopPage.activeDeals')} ({activeDeals.length})
-        </h2>
-      </div>
-      
-      {activeDeals.length > 0 ? (
-        <div class="grid gap-6 sm:grid-cols-2">
-          {activeDeals.map((deal) => (
-            <DealCard deal={deal} shop={shop} highlighted={deal.id === dealId} />
-          ))}
-        </div>
-      ) : (
-        <div class="border border-dashed border-border/80 p-10 text-center rounded-2xl bg-bg-secondary/40 max-w-sm mx-auto">
-          <Icon name="clipboard" class="h-10 w-10 mx-auto text-text-tertiary" />
-          <h3 class="mt-4 text-base font-bold text-secondary">{common('empty.noDeals')}</h3>
-          <p class="mt-1 text-xs text-text-secondary">{common('empty.noDealsDesc')}</p>
-        </div>
-      )}
-    </section>
+    {/* Sticky Navigation Tabs (Scrollspy Glass Tabs) */}
+    <div class="sticky top-[76px] bg-card-bg/65 backdrop-blur-md border border-border/15 rounded-full shadow-md p-1 z-30 flex gap-1.5 max-w-max mx-auto my-6">
+      <button class="scroll-tab-btn px-4 py-1.5 text-xs font-extrabold rounded-full bg-primary text-white shadow-sm transition-all duration-300" data-target="section-deals">
+        {lang === 'th' ? 'ดีลพิเศษ' : 'Deals'}
+      </button>
+      <button class="scroll-tab-btn px-4 py-1.5 text-xs font-extrabold rounded-full bg-transparent text-text-secondary hover:text-secondary transition-all duration-300" data-target="section-menu">
+        {lang === 'th' ? 'เมนูแนะนำ' : 'Menu'}
+      </button>
+      <button class="scroll-tab-btn px-4 py-1.5 text-xs font-extrabold rounded-full bg-transparent text-text-secondary hover:text-secondary transition-all duration-300" data-target="section-info">
+        {lang === 'th' ? 'ข้อมูลร้าน' : 'Shop Info'}
+      </button>
+    </div>
 
-    {/* Expired Coupons/Deals Listing */}
-    {expiredDeals.length > 0 && (
-      <section class="mt-12">
-        <div class="flex items-center gap-2.5 mb-5 border-b border-border/30 pb-3">
-          <div class="h-8 w-8 rounded-xl bg-border/20 flex items-center justify-center text-text-tertiary">
-            <Icon name="clock" class="h-5 w-5" />
+    {/* Vertical Single-Column Sections */}
+    <div class="space-y-12 mt-8">
+      
+      {/* 1. Deals Section */}
+      <section id="section-deals" class="scroll-mt-32">
+        {/* Active Coupons/Deals Listing */}
+        <div>
+          <div class="flex items-center gap-2.5 mb-5 border-b border-border/30 pb-3">
+            <div class="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Icon name="fire" class="h-5 w-5" />
+            </div>
+            <h2 class="text-lg font-bold text-secondary">
+              {common('shopPage.activeDeals')} ({activeDeals.length})
+            </h2>
           </div>
-          <h2 class="text-lg font-bold text-text-tertiary">
-            ดีลที่หมดอายุ ({expiredDeals.length})
-          </h2>
+          
+          {activeDeals.length > 0 ? (
+            <div class="grid gap-6 sm:grid-cols-2">
+              {activeDeals.map((deal) => (
+                <ExploreDealCard deal={deal} shop={shop} highlighted={deal.id === dealId} />
+              ))}
+            </div>
+          ) : (
+            <div class="border border-dashed border-border/80 p-10 text-center rounded-2xl bg-bg-secondary/40 max-w-sm mx-auto">
+              <Icon name="clipboard" class="h-10 w-10 mx-auto text-text-tertiary" />
+              <h3 class="mt-4 text-base font-bold text-secondary">{common('empty.noDeals')}</h3>
+              <p class="mt-1 text-xs text-text-secondary">{common('empty.noDealsDesc')}</p>
+            </div>
+          )}
         </div>
-        <div class="grid gap-6 sm:grid-cols-2 opacity-60">
-          {expiredDeals.map((deal) => (
-            <DealCard deal={deal} shop={shop} highlighted={deal.id === dealId} />
-          ))}
+
+        {/* Expired Coupons/Deals Listing */}
+        {expiredDeals.length > 0 && (
+          <div class="mt-10">
+            <div class="flex items-center gap-2.5 mb-5 border-b border-border/30 pb-3">
+              <div class="h-8 w-8 rounded-xl bg-border/20 flex items-center justify-center text-text-tertiary">
+                <Icon name="clock" class="h-5 w-5" />
+              </div>
+              <h2 class="text-lg font-bold text-text-tertiary">
+                ดีลที่หมดอายุ ({expiredDeals.length})
+              </h2>
+            </div>
+            <div class="grid gap-6 sm:grid-cols-2 opacity-60">
+              {expiredDeals.map((deal) => (
+                <ExploreDealCard deal={deal} shop={shop} highlighted={deal.id === dealId} />
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 2. Menu Section */}
+      <section id="section-menu" class="scroll-mt-32">
+        <MenuList items={menuItemsList} />
+      </section>
+
+      {/* 3. Shop Info Section */}
+      <section id="section-info" class="scroll-mt-32 space-y-8">
+        {/* Detailed Info Card */}
+        <ShopInfo shop={shop} />
+
+        {/* Amenities details stacked cleanly in a responsive grid */}
+        <div class="grid gap-6 sm:grid-cols-2">
+          <PaymentMethods shop={shop} />
+          <AccessibilityInfo shop={shop} />
+          <ParkingInfo shop={shop} />
+          <PetPolicy shop={shop} />
+          <FamilyFacilities shop={shop} />
         </div>
       </section>
-    )}
 
-    {/* Custom Catalogue/Menu Listing */}
-    <div class="mt-8">
-      <MenuList items={menuItemsList} />
-    </div>
-
-    {/* Payment Methods */}
-    <div class="px-4">
-      <PaymentMethods shop={shop} />
-    </div>
-
-    {/* Accessibility Info */}
-    <div class="px-4">
-      <AccessibilityInfo shop={shop} />
-    </div>
-
-    {/* Parking & Transport */}
-    <div class="px-4">
-      <ParkingInfo shop={shop} />
-    </div>
-
-    {/* Pet Policy */}
-    <div class="px-4">
-      <PetPolicy shop={shop} />
-    </div>
-
-    {/* Family Facilities */}
-    <div class="px-4">
-      <FamilyFacilities shop={shop} />
-    </div>
-
-    {/* Detailed Info Card */}
-    <div class="mt-8 pb-10">
-      <ShopInfo shop={shop} />
     </div>
 
     {/* Premium Footer Glass CTA */}
-    <div class="rounded-3xl border border-border/40 bg-bg-secondary/50 backdrop-blur-sm p-8 text-center shadow-sm relative overflow-hidden mt-10">
+    <div class="rounded-3xl border border-border/40 bg-bg-secondary/50 backdrop-blur-sm p-8 text-center shadow-sm relative overflow-hidden mt-12 w-full">
       <div class="absolute -right-16 -bottom-16 h-36 w-36 rounded-full bg-primary/10 blur-2xl"></div>
       
       <p class="text-xs text-text-tertiary tracking-wider uppercase font-semibold">{common('shopPage.createdBy')}</p>
@@ -234,8 +240,6 @@ const breadcrumbSchema = generateBreadcrumbSchema([
       )}
     </div>
   </div>
-
-
 
   {/* Deal Detail Modal (client-side interactive component) */}
   <DealDetailModal
@@ -290,4 +294,61 @@ const breadcrumbSchema = generateBreadcrumbSchema([
     }
   });
   // ───────────────────────────────────────────────
+</script>
+
+<script>
+  function setupScrollspyTabs() {
+    const tabBtns = document.querySelectorAll('.scroll-tab-btn');
+    const sections = {
+      'section-deals': document.getElementById('section-deals'),
+      'section-menu': document.getElementById('section-menu'),
+      'section-info': document.getElementById('section-info'),
+    };
+    
+    // Smooth scroll to sections on tab click
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = btn.getAttribute('data-target');
+        if (!targetId) return;
+        const targetEl = sections[targetId as keyof typeof sections];
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+    
+    // Scrollspy behavior using IntersectionObserver
+    const observerOptions = {
+      root: null,
+      rootMargin: '-130px 0px -60% 0px',
+      threshold: 0,
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const activeId = entry.target.id;
+          
+          tabBtns.forEach(btn => {
+            const btnTarget = btn.getAttribute('data-target');
+            if (btnTarget === activeId) {
+              btn.classList.remove('bg-transparent', 'text-text-secondary', 'hover:text-secondary');
+              btn.classList.add('bg-primary', 'text-white', 'shadow-sm');
+            } else {
+              btn.classList.remove('bg-primary', 'text-white', 'shadow-sm');
+              btn.classList.add('bg-transparent', 'text-text-secondary', 'hover:text-secondary');
+            }
+          });
+        }
+      });
+    }, observerOptions);
+    
+    Object.values(sections).forEach(section => {
+      if (section) observer.observe(section);
+    });
+  }
+  
+  document.addEventListener('DOMContentLoaded', setupScrollspyTabs);
+  document.addEventListener('astro:page-load', setupScrollspyTabs);
 </script>

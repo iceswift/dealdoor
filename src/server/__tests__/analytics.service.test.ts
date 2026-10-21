@@ -34,6 +34,20 @@ describe('analytics event contract', () => {
     expect(() => normalizeTrackEventInput({ type: 'redeemed', shopId: 'shop_1' }, request)).toThrow();
   });
 
+  it('accepts a promoted-card impression with simple attribution metadata', () => {
+    const event = normalizeTrackEventInput({
+      type: 'deal_impression',
+      shopId: 'shop_1',
+      dealId: 'deal_1',
+      metadata: { placement: 'boost', surface: '/explore', unsafe: { nested: true } },
+    }, request);
+
+    expect(event).toMatchObject({
+      type: 'deal_impression',
+      metadata: { placement: 'boost', surface: '/explore' },
+    });
+  });
+
   it('keeps unlimited deals out of quota capacity and calculates limited deal status', () => {
     const quota = normalizeDealQuotaAnalytics([
       { dealId: 'limited', title: 'Limited deal', maxRedemptions: 20, lowStockThreshold: 5, redemptions: 16 },

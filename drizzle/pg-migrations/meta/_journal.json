@@ -57,6 +57,13 @@
       "when": 1784123289732,
       "tag": "0007_charming_ezekiel",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784157629497,
+      "tag": "0008_curvy_nitro",
+      "breakpoints": true
     }
   ]
 }

@@ -48,7 +48,7 @@ function openShareWindow(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer,width=720,height=720');
 }
 
-export default function SharePanel({ slug, shopName }: SharePanelProps) {
+export default function SharePanel({ slug, shopName, logoUrl }: SharePanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('link');
   const [copyState, setCopyState] = useState<CopyState>('idle');
   const [origin, setOrigin] = useState(productionOrigin);
@@ -64,7 +64,7 @@ export default function SharePanel({ slug, shopName }: SharePanelProps) {
   const shareText = `ดูโปรโมชันล่าสุดจาก ${shopName}`;
   const encodedUrl = encodeURIComponent(url);
   const encodedShareText = encodeURIComponent(`${shareText} ${url}`);
-  const qrSvgUrl = `/api/qr/${slug}?size=420`;
+  const qrSvgUrl = `/api/qr/${slug}?size=420&style=standard-v1`;
 
   async function handleCopy() {
     try {
@@ -264,7 +264,7 @@ export default function SharePanel({ slug, shopName }: SharePanelProps) {
               <div className="relative rounded-3xl border border-border/30 bg-white p-3 shadow-inner">
                 <img
                   src={qrSvgUrl}
-                  alt="QR Code สำหรับหน้าร้าน"
+                  alt={`QR Code สำหรับ ${shopName}`}
                   className={`h-44 w-44 sm:h-52 sm:w-52 ${qrReady ? 'opacity-100' : 'opacity-0'}`}
                   onLoad={() => setQrReady(true)}
                   onError={() => showToast('ไม่สามารถสร้าง QR Code ได้', 'error')}

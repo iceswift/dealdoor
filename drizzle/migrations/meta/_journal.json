@@ -57,6 +57,13 @@
       "when": 1784123287750,
       "tag": "0007_outgoing_rage",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784157627432,
+      "tag": "0008_parallel_morlun",
+      "breakpoints": true
     }
   ]
 }

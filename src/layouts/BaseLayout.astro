@@ -716,6 +716,7 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
             <a href={localizedPath('/terms')} class="hover:text-primary transition-colors">{common('footer.terms')}</a>
             <a href={localizedPath('/privacy')} class="hover:text-primary transition-colors">{common('footer.privacy')}</a>
             <a href={localizedPath('/cookies')} class="hover:text-primary transition-colors">{common('footer.cookies')}</a>
+            <button type="button" id="cookie-settings-btn" class="hover:text-primary transition-colors">Cookie settings</button>
           </div>
         </div>
       </div>
@@ -728,6 +729,11 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
 
   <!-- Cookie Banner -->
   <CookieBanner client:idle />
+  <script>
+    document.getElementById('cookie-settings-btn')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('dealdoor:open-cookie-settings'));
+    });
+  </script>
   
   <!-- PWA Install Prompt -->
   <InstallPrompt client:idle />

@@ -55,6 +55,7 @@ export type ExploreMapPin = {
   hasCouponCode: boolean;
   claimTypes: string[];
   bestEndTime: number;
+  isPromoted: boolean;
   amenityTags: string[];
   bestDeal: {
     id: string;
@@ -63,6 +64,7 @@ export type ExploreMapPin = {
     imageUrl: string;
     expiryLabel: string;
     href: string;
+    isPromoted: boolean;
   } | null;
   shopHref: string;
   directionsHref: string;
@@ -142,10 +144,13 @@ export function getExpiryLabel(endDate: Date, now = new Date()) {
   return `ถึง ${endDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`;
 }
 
-export function getBestDeal(shopDeals: Deal[], now = new Date()) {
+export function getBestDeal(shopDeals: Deal[], now = new Date(), promotedDealIds: ReadonlySet<string> = new Set()) {
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   return [...shopDeals].sort((a, b) => {
+    const aPromoted = promotedDealIds.has(a.id) ? 0 : 1;
+    const bPromoted = promotedDealIds.has(b.id) ? 0 : 1;
+    if (aPromoted !== bPromoted) return aPromoted - bPromoted;
     const aSoon = new Date(a.endDate) <= in7Days ? 0 : 1;
     const bSoon = new Date(b.endDate) <= in7Days ? 0 : 1;
     if (aSoon !== bSoon) return aSoon - bSoon;
@@ -173,7 +178,12 @@ function getSpecialHourStatus(item: ShopSpecialHour | null, now: Date) {
   return { isOpen, label };
 }
 
-export function getExploreMapData(activeDeals: DealWithShop[], now = new Date(), specialHoursByShop = new Map<string, ShopSpecialHour[]>()) {
+export function getExploreMapData(
+  activeDeals: DealWithShop[],
+  now = new Date(),
+  specialHoursByShop = new Map<string, ShopSpecialHour[]>(),
+  promotedDealIds: ReadonlySet<string> = new Set(),
+) {
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const dealsByShop = new Map<string, ShopDealGroup>();
 
@@ -191,7 +201,7 @@ export function getExploreMapData(activeDeals: DealWithShop[], now = new Date(),
   const unmappedShops = shopGroups.filter(({ shop }) => !shop.latitude || !shop.longitude);
 
   const mapPins: ExploreMapPin[] = mappedShops.map(({ shop, deals: shopDeals }) => {
-    const bestDeal = getBestDeal(shopDeals, now);
+    const bestDeal = getBestDeal(shopDeals, now, promotedDealIds);
     const bestEndDate = bestDeal ? new Date(bestDeal.endDate) : null;
     const urgentDealCount = shopDeals.filter((deal) => new Date(deal.endDate) <= in7Days).length;
     const category = shop.category as ShopCategory;
@@ -222,6 +232,7 @@ export function getExploreMapData(activeDeals: DealWithShop[], now = new Date(),
       hasCouponCode: shopDeals.some((deal) => !!deal.couponCode),
       claimTypes: Array.from(new Set(shopDeals.map((deal) => deal.claimType))),
       bestEndTime: bestEndDate?.getTime() || Number.MAX_SAFE_INTEGER,
+      isPromoted: Boolean(bestDeal && promotedDealIds.has(bestDeal.id)),
       amenityTags: [
         shop.wheelchairAccessible ? 'วีลแชร์' : '',
         shop.freeParking ? 'ที่จอดฟรี' : '',
@@ -239,6 +250,7 @@ export function getExploreMapData(activeDeals: DealWithShop[], now = new Date(),
             imageUrl: bestDeal.imageUrl || '',
             expiryLabel: getExpiryLabel(bestEndDate, now),
             href: `/deal/${bestDeal.id}`,
+            isPromoted: promotedDealIds.has(bestDeal.id),
           }
         : null,
       shopHref: `/${shop.slug}`,

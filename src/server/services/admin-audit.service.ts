@@ -7,12 +7,13 @@ export type AdminAuditAction =
   | 'moderation.report_resolved'
   | 'moderation.deal_deactivated'
   | 'moderation.warning_issued'
-  | 'moderation.no_action';
+  | 'moderation.no_action'
+  | 'boost.campaign_stopped';
 
 export async function writeAdminAuditLog(params: {
   actorUserId: string;
   action: AdminAuditAction;
-  targetType: 'report' | 'shop' | 'deal';
+  targetType: 'report' | 'shop' | 'deal' | 'boost_campaign';
   targetId: string;
   metadata?: Record<string, unknown>;
 }) {

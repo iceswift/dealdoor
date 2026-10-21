@@ -8,6 +8,7 @@ import { badRequest } from '../../lib/errors';
 
 export type EventType =
   | 'page_view'
+  | 'deal_impression'
   | 'deal_view'
   | 'deal_click'
   | 'claim_started'
@@ -22,6 +23,7 @@ export type EventType =
 
 const EVENT_TYPES = new Set<EventType>([
   'page_view',
+  'deal_impression',
   'deal_view',
   'deal_click',
   'claim_started',

@@ -8,6 +8,7 @@ import { SHOP_CATEGORIES, SHOP_CATEGORY_ICONS } from '../../lib/constants';
 import type { ShopCategory } from '../../lib/constants';
 import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
 import Icon from '../../components/icons/index.astro';
+import { getActiveBoostedDealIds, prioritizePromotedDeals } from '../../lib/boosts/public';
 
 const lang = getLangFromRequest(Astro.request);
 const common = (key: string) => t(lang, 'common', key);
@@ -49,6 +50,10 @@ const matchingDeals = activeDeals
   .sort((first, second) => activeSort === 'expiring'
     ? new Date(first.deal.endDate).getTime() - new Date(second.deal.endDate).getTime()
     : new Date(second.deal.createdAt).getTime() - new Date(first.deal.createdAt).getTime());
+const boostedDealIds = await getActiveBoostedDealIds(now);
+const rankedMatchingDeals = activeSort === 'latest'
+  ? prioritizePromotedDeals(matchingDeals, boostedDealIds, 1)
+  : matchingDeals;
 
 const makeListUrl = (overrides: Record<string, string> = {}) => {
   const params = new URLSearchParams();
@@ -163,11 +168,11 @@ const dealsDiscoveryState = { savedOnly, activeSort };
         </div>
       </div>
 
-      {matchingDeals.length > 0 ? (
+      {rankedMatchingDeals.length > 0 ? (
         <div id="deals-grid" class="mt-6 grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {matchingDeals.map(({ deal, shop }, index) => (
+          {rankedMatchingDeals.map(({ deal, shop }, index) => (
             <div class="deal-list-item animate-fade-in" data-deal-id={deal.id} data-latitude={shop?.latitude ?? ''} data-longitude={shop?.longitude ?? ''} style={`animation-delay: ${Math.min(index, 8) * 0.04}s`}>
-              {shop && <ExploreDealCard deal={deal} shop={shop} />}
+              {shop && <ExploreDealCard deal={deal} shop={shop} isPromoted={boostedDealIds.has(deal.id)} />}
               <p class="deal-distance mt-2 hidden px-1 text-[10px] font-black text-primary"></p>
             </div>
           ))}

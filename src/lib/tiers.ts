@@ -4,6 +4,12 @@
 
 export type Tier = 'free' | 'pro';
 
+export interface BoostEntitlements {
+  includedCreditsPerBillingCycle: number;
+  maxConcurrentCampaigns: number;
+  canPurchaseCredits: boolean;
+}
+
 export interface TierLimits {
   maxShops: number;
   maxActiveDeals: number;
@@ -14,7 +20,15 @@ export interface TierLimits {
   hasScheduledDeals: boolean;
   hasMultipleBranches: boolean;
   hasPrioritySupport: boolean;
+  boost: BoostEntitlements;
 }
+
+export const BOOST_RULES = {
+  creditDurationHours: 24,
+  maxCampaignDurationHours: 168,
+  includedCreditsExpireAtBillingCycleEnd: true,
+  purchasedCreditExpiryDays: 180,
+} as const;
 
 export const TIER_LIMITS: Record<Tier, TierLimits> = {
   free: {
@@ -27,6 +41,11 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     hasScheduledDeals: false,
     hasMultipleBranches: false,
     hasPrioritySupport: false,
+    boost: {
+      includedCreditsPerBillingCycle: 0,
+      maxConcurrentCampaigns: 1,
+      canPurchaseCredits: true,
+    },
   },
   pro: {
     maxShops: 1,
@@ -38,6 +57,11 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     hasScheduledDeals: true,
     hasMultipleBranches: false, // Future: separate plan
     hasPrioritySupport: true,
+    boost: {
+      includedCreditsPerBillingCycle: 4,
+      maxConcurrentCampaigns: 2,
+      canPurchaseCredits: true,
+    },
   },
 };
 
@@ -68,6 +92,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'QR code',
       'Share link',
       'Basic support',
+      'Buy Boost credits when available',
     ],
     featuresTh: [
       '1 หน้าร้าน',
@@ -76,6 +101,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'QR Code',
       'ลิงก์แชร์',
       'การสนับสนุนพื้นฐาน',
+      'ซื้อเครดิต Boost เพิ่มได้ (เร็ว ๆ นี้)',
     ],
   },
   {
@@ -93,6 +119,8 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Custom branding',
       'Scheduled deals',
       'Priority support',
+      '4 Boost credits per billing cycle',
+      'Boost up to 2 deals at once',
     ],
     featuresTh: [
       '1 หน้าร้าน',
@@ -103,6 +131,8 @@ export const PRICING_PLANS: PricingPlan[] = [
       'ปรับแต่งแบรนด์',
       'ตั้งเวลาดีล',
       'การสนับสนุนลำดับแรก',
+      '4 เครดิต Boost ต่อรอบบิล',
+      'Boost พร้อมกันได้สูงสุด 2 ดีล',
     ],
     isPopular: true,
   },
@@ -132,6 +162,19 @@ export function hasFeature(tier: Tier, feature: keyof TierLimits): boolean {
 export function getRemainingDeals(currentDeals: number, tier: Tier): number {
   const limits = getTierLimits(tier);
   return Math.max(0, limits.maxActiveDeals - currentDeals);
+}
+
+export function getBoostEntitlements(tier: Tier): BoostEntitlements {
+  return getTierLimits(tier).boost;
+}
+
+export function canStartBoost(currentCampaigns: number, tier: Tier): boolean {
+  return currentCampaigns < getBoostEntitlements(tier).maxConcurrentCampaigns;
+}
+
+export function getBoostCreditsForDuration(durationHours: number): number {
+  const normalizedHours = Math.max(0, durationHours);
+  return Math.ceil(normalizedHours / BOOST_RULES.creditDurationHours);
 }
 
 // ─── Upgrade Prompt Messages ─────────────────────────────

@@ -9,6 +9,7 @@ import CategoryChips from '../../components/explore/CategoryChips.astro';
 import SearchBar from '../../components/explore/SearchBar.tsx';
 import ExploreDealCard from '../../components/explore/ExploreDealCard.astro';
 import Icon from '../../components/icons/index.astro';
+import { getActiveBoostedDealIds, prioritizePromotedDeals } from '../../lib/boosts/public';
 
 export const prerender = false;
 
@@ -16,6 +17,8 @@ export const prerender = false;
 const query = Astro.url.searchParams.get('q')?.trim() || '';
 const now = new Date();
 let searchResults: { deal: typeof deals.$inferSelect; shop: typeof shops.$inferSelect }[] = [];
+let boostedDealIds = new Set<string>();
+let rankedSearchResults = searchResults;
 
 if (query && query.length > 0) {
   try {
@@ -42,6 +45,8 @@ if (query && query.length > 0) {
       )
       .orderBy(desc(deals.createdAt))
       .limit(50);
+    boostedDealIds = await getActiveBoostedDealIds(now);
+    rankedSearchResults = prioritizePromotedDeals(searchResults, boostedDealIds, 1);
   } catch (error) {
     console.error('Search error:', error);
   }
@@ -94,11 +99,11 @@ if (query && query.length > 0) {
               </p>
             </div>
 
-            {searchResults.length > 0 ? (
+            {rankedSearchResults.length > 0 ? (
               <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {searchResults.map(({ deal, shop }, index) => (
+                {rankedSearchResults.map(({ deal, shop }, index) => (
                   <div class="animate-fade-in" style={`animation-delay: ${index * 0.04}s`}>
-                    {shop && <ExploreDealCard deal={deal} shop={shop} />}
+                    {shop && <ExploreDealCard deal={deal} shop={shop} isPromoted={boostedDealIds.has(deal.id)} />}
                   </div>
                 ))}
               </div>

@@ -244,6 +244,35 @@ import Icon from '../components/icons/index.astro';
         ))}
       </div>
 
+      <section class="mt-14 border-y border-border/20 py-10 text-left">
+        <div class="max-w-3xl">
+          <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-primary">
+            <Icon name="rocket" class="h-3.5 w-3.5" /> Deal Boost
+          </span>
+          <h2 class="mt-2 text-2xl font-extrabold text-secondary">เพิ่มการมองเห็นดีลอย่างชัดเจนและโปร่งใส</h2>
+          <p class="mt-2 max-w-2xl text-xs font-bold leading-relaxed text-text-secondary">
+            Boost ช่วยเพิ่มโอกาสให้ดีลปรากฏในพื้นที่โปรโมตที่เกี่ยวข้อง โดยจะแสดงป้าย “โปรโมต” เสมอ และไม่ทำให้ผลค้นหาที่ไม่ตรงกับความสนใจของลูกค้าถูกแทรกขึ้นมา
+          </p>
+        </div>
+        <div class="mt-8 grid gap-6 md:grid-cols-3 md:divide-x md:divide-border/20">
+          <div class="pr-6">
+            <p class="text-sm font-black text-secondary">1 เครดิต = 24 ชั่วโมง</p>
+            <p class="mt-1 text-[11px] font-bold leading-relaxed text-text-secondary">ใช้เครดิตตามระยะเวลา Boost ที่เลือก โดยเปิดใช้งานได้สูงสุด 7 วันต่อครั้ง</p>
+          </div>
+          <div class="px-0 md:px-6">
+            <p class="text-sm font-black text-secondary">สิทธิ์จากแผน</p>
+            <p class="mt-1 text-[11px] font-bold leading-relaxed text-text-secondary">Free ไม่มีเครดิตรวมในแผน ส่วน Pro ได้ 4 เครดิตต่อรอบบิล และ Boost พร้อมกันได้สูงสุด 2 ดีล</p>
+          </div>
+          <div class="pl-0 md:pl-6">
+            <p class="text-sm font-black text-secondary">เครดิตซื้อเพิ่ม</p>
+            <p class="mt-1 text-[11px] font-bold leading-relaxed text-text-secondary">ทุกแผนจะซื้อเครดิตเพิ่มได้เมื่อเปิดระบบชำระเงิน เครดิตซื้อเพิ่มมีอายุ 180 วัน และไม่ทบรวมกับเครดิตจากแผน</p>
+          </div>
+        </div>
+        <p class="mt-7 border-t border-border/15 pt-5 text-[11px] font-bold leading-relaxed text-text-tertiary">
+          เครดิตจากแผนจะรีเซ็ตเมื่อเริ่มรอบบิลใหม่และไม่ทบยอด ดีลที่หมดอายุ ปิดใช้งาน สิทธิ์เต็ม หรืออยู่ระหว่างการตรวจสอบ จะไม่สามารถเริ่ม Boost ได้
+        </p>
+      </section>
+
       {/* Detailed Feature Comparison Section */}
       <div class="mt-16 text-center relative z-10">
         <button id="toggle-comparison-btn" class="py-2.5 px-6 rounded-xl border border-border/30 bg-card-bg text-xs font-black text-secondary hover:border-primary/25 hover:text-primary transition-all flex items-center gap-2 mx-auto cursor-pointer">
@@ -271,6 +300,26 @@ import Icon from '../components/icons/index.astro';
                   </td>
                   <td class="py-4 px-6 text-center">1 หน้าร้าน</td>
                   <td class="py-4 px-6 text-center text-primary font-black">1 หน้าร้าน</td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="rocket" class="h-4 w-4" /></span>
+                      เครดิต Boost ต่อรอบบิล
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">0 เครดิต</td>
+                  <td class="py-4 px-6 text-center text-primary font-black">4 เครดิต</td>
+                </tr>
+                <tr class="hover:bg-bg-tertiary/20 transition-colors">
+                  <td class="py-4 px-6 text-secondary font-black">
+                    <div class="flex items-center gap-2">
+                      <span class="text-primary"><Icon name="rocket" class="h-4 w-4" /></span>
+                      จำนวนดีลที่ Boost พร้อมกัน
+                    </div>
+                  </td>
+                  <td class="py-4 px-6 text-center">1 ดีล</td>
+                  <td class="py-4 px-6 text-center text-primary font-black">2 ดีล</td>
                 </tr>
                 <tr class="hover:bg-bg-tertiary/20 transition-colors">
                   <td class="py-4 px-6 text-secondary font-black">

@@ -362,6 +362,78 @@ export const reports = sqliteTable('reports', {
   targetIdx: index('reports_target_idx').on(table.targetType, table.targetId),
 }));
 
+// ─── Deal Boost ─────────────────────────────────────────
+
+export const boostWallets = sqliteTable('boost_wallets', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  includedCreditsBalance: integer('included_credits_balance').notNull().default(0),
+  purchasedCreditsBalance: integer('purchased_credits_balance').notNull().default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopUnique: uniqueIndex('boost_wallets_shop_unique').on(table.shopId),
+}));
+
+export const boostCreditOrders = sqliteTable('boost_credit_orders', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  status: text('status').notNull().default('pending'), // pending | paid | expired | failed | refunded | cancelled
+  provider: text('provider'),
+  providerReference: text('provider_reference'),
+  currency: text('currency').notNull().default('THB'),
+  amountMinor: integer('amount_minor').notNull(),
+  creditQuantity: integer('credit_quantity').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  paidAt: integer('paid_at', { mode: 'timestamp' }),
+  metadata: text('metadata'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopStatusCreatedIdx: index('boost_credit_orders_shop_status_created_idx').on(table.shopId, table.status, table.createdAt),
+  providerReferenceUnique: uniqueIndex('boost_credit_orders_provider_reference_unique').on(table.provider, table.providerReference),
+}));
+
+export const boostCampaigns = sqliteTable('boost_campaigns', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  dealId: text('deal_id').notNull().references(() => deals.id),
+  createdByUserId: text('created_by_user_id').references(() => users.id),
+  status: text('status').notNull().default('scheduled'), // scheduled | active | paused | completed | cancelled | expired | stopped
+  creditSource: text('credit_source').notNull(), // included | purchased | mixed
+  creditsReserved: integer('credits_reserved').notNull(),
+  startsAt: integer('starts_at', { mode: 'timestamp' }).notNull(),
+  endsAt: integer('ends_at', { mode: 'timestamp' }).notNull(),
+  stoppedAt: integer('stopped_at', { mode: 'timestamp' }),
+  stopReason: text('stop_reason'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopStatusEndIdx: index('boost_campaigns_shop_status_end_idx').on(table.shopId, table.status, table.endsAt),
+  dealStatusEndIdx: index('boost_campaigns_deal_status_end_idx').on(table.dealId, table.status, table.endsAt),
+}));
+
+export const boostTransactions = sqliteTable('boost_transactions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  walletId: text('wallet_id').notNull().references(() => boostWallets.id),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  campaignId: text('campaign_id').references(() => boostCampaigns.id),
+  orderId: text('order_id').references(() => boostCreditOrders.id),
+  type: text('type').notNull(), // plan_grant | purchase | reservation | campaign_charge | refund | expiry | adjustment
+  creditSource: text('credit_source').notNull(), // included | purchased
+  creditDelta: integer('credit_delta').notNull(),
+  balanceAfter: integer('balance_after').notNull(),
+  idempotencyKey: text('idempotency_key'),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  metadata: text('metadata'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  walletCreatedIdx: index('boost_transactions_wallet_created_idx').on(table.walletId, table.createdAt),
+  shopCreatedIdx: index('boost_transactions_shop_created_idx').on(table.shopId, table.createdAt),
+  campaignCreatedIdx: index('boost_transactions_campaign_created_idx').on(table.campaignId, table.createdAt),
+  idempotencyKeyUnique: uniqueIndex('boost_transactions_idempotency_key_unique').on(table.idempotencyKey),
+}));
+
 // Export inferred types for Drizzle models
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -377,3 +449,7 @@ export type NotificationPreferences = typeof notificationPreferences.$inferSelec
 export type JobRun = typeof jobRuns.$inferSelect;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type Report = typeof reports.$inferSelect;
+export type BoostWallet = typeof boostWallets.$inferSelect;
+export type BoostCreditOrder = typeof boostCreditOrders.$inferSelect;
+export type BoostCampaign = typeof boostCampaigns.$inferSelect;
+export type BoostTransaction = typeof boostTransactions.$inferSelect;

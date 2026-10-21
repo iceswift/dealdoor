@@ -295,6 +295,78 @@ export const reports = pgTable('reports', {
   targetIdx: index('reports_target_idx').on(table.targetType, table.targetId),
 }));
 
+// ─── Deal Boost ─────────────────────────────────────────
+
+export const boostWallets = pgTable('boost_wallets', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  includedCreditsBalance: integer('included_credits_balance').notNull().default(0),
+  purchasedCreditsBalance: integer('purchased_credits_balance').notNull().default(0),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopUnique: uniqueIndex('boost_wallets_shop_unique').on(table.shopId),
+}));
+
+export const boostCreditOrders = pgTable('boost_credit_orders', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  status: text('status').notNull().default('pending'),
+  provider: text('provider'),
+  providerReference: text('provider_reference'),
+  currency: text('currency').notNull().default('THB'),
+  amountMinor: integer('amount_minor').notNull(),
+  creditQuantity: integer('credit_quantity').notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }),
+  paidAt: timestamp('paid_at', { mode: 'date' }),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopStatusCreatedIdx: index('boost_credit_orders_shop_status_created_idx').on(table.shopId, table.status, table.createdAt),
+  providerReferenceUnique: uniqueIndex('boost_credit_orders_provider_reference_unique').on(table.provider, table.providerReference),
+}));
+
+export const boostCampaigns = pgTable('boost_campaigns', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  dealId: text('deal_id').notNull().references(() => deals.id),
+  createdByUserId: text('created_by_user_id').references(() => users.id),
+  status: text('status').notNull().default('scheduled'),
+  creditSource: text('credit_source').notNull(),
+  creditsReserved: integer('credits_reserved').notNull(),
+  startsAt: timestamp('starts_at', { mode: 'date' }).notNull(),
+  endsAt: timestamp('ends_at', { mode: 'date' }).notNull(),
+  stoppedAt: timestamp('stopped_at', { mode: 'date' }),
+  stopReason: text('stop_reason'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  shopStatusEndIdx: index('boost_campaigns_shop_status_end_idx').on(table.shopId, table.status, table.endsAt),
+  dealStatusEndIdx: index('boost_campaigns_deal_status_end_idx').on(table.dealId, table.status, table.endsAt),
+}));
+
+export const boostTransactions = pgTable('boost_transactions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  walletId: text('wallet_id').notNull().references(() => boostWallets.id),
+  shopId: text('shop_id').notNull().references(() => shops.id),
+  campaignId: text('campaign_id').references(() => boostCampaigns.id),
+  orderId: text('order_id').references(() => boostCreditOrders.id),
+  type: text('type').notNull(),
+  creditSource: text('credit_source').notNull(),
+  creditDelta: integer('credit_delta').notNull(),
+  balanceAfter: integer('balance_after').notNull(),
+  idempotencyKey: text('idempotency_key'),
+  expiresAt: timestamp('expires_at', { mode: 'date' }),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  walletCreatedIdx: index('boost_transactions_wallet_created_idx').on(table.walletId, table.createdAt),
+  shopCreatedIdx: index('boost_transactions_shop_created_idx').on(table.shopId, table.createdAt),
+  campaignCreatedIdx: index('boost_transactions_campaign_created_idx').on(table.campaignId, table.createdAt),
+  idempotencyKeyUnique: uniqueIndex('boost_transactions_idempotency_key_unique').on(table.idempotencyKey),
+}));
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   merchant: one(merchants),
   sessions: many(sessions),
@@ -323,6 +395,9 @@ export const shopsRelations = relations(shops, ({ one, many }) => ({
   deals: many(deals),
   menuItems: many(menuItems),
   specialHours: many(shopSpecialHours),
+  boostWallet: one(boostWallets),
+  boostCreditOrders: many(boostCreditOrders),
+  boostCampaigns: many(boostCampaigns),
 }));
 
 export const dealsRelations = relations(deals, ({ one }) => ({
@@ -346,6 +421,53 @@ export const shopSpecialHoursRelations = relations(shopSpecialHours, ({ one }) =
   }),
 }));
 
+export const boostWalletsRelations = relations(boostWallets, ({ one, many }) => ({
+  shop: one(shops, {
+    fields: [boostWallets.shopId],
+    references: [shops.id],
+  }),
+  transactions: many(boostTransactions),
+}));
+
+export const boostCreditOrdersRelations = relations(boostCreditOrders, ({ one, many }) => ({
+  shop: one(shops, {
+    fields: [boostCreditOrders.shopId],
+    references: [shops.id],
+  }),
+  transactions: many(boostTransactions),
+}));
+
+export const boostCampaignsRelations = relations(boostCampaigns, ({ one, many }) => ({
+  shop: one(shops, {
+    fields: [boostCampaigns.shopId],
+    references: [shops.id],
+  }),
+  deal: one(deals, {
+    fields: [boostCampaigns.dealId],
+    references: [deals.id],
+  }),
+  transactions: many(boostTransactions),
+}));
+
+export const boostTransactionsRelations = relations(boostTransactions, ({ one }) => ({
+  wallet: one(boostWallets, {
+    fields: [boostTransactions.walletId],
+    references: [boostWallets.id],
+  }),
+  shop: one(shops, {
+    fields: [boostTransactions.shopId],
+    references: [shops.id],
+  }),
+  campaign: one(boostCampaigns, {
+    fields: [boostTransactions.campaignId],
+    references: [boostCampaigns.id],
+  }),
+  order: one(boostCreditOrders, {
+    fields: [boostTransactions.orderId],
+    references: [boostCreditOrders.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Shop = typeof shops.$inferSelect;
@@ -360,3 +482,7 @@ export type NotificationPreferences = typeof notificationPreferences.$inferSelec
 export type JobRun = typeof jobRuns.$inferSelect;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type Report = typeof reports.$inferSelect;
+export type BoostWallet = typeof boostWallets.$inferSelect;
+export type BoostCreditOrder = typeof boostCreditOrders.$inferSelect;
+export type BoostCampaign = typeof boostCampaigns.$inferSelect;
+export type BoostTransaction = typeof boostTransactions.$inferSelect;

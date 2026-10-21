@@ -1,89 +1,42 @@
 ---
-// src/pages/cookies.astro
-
-import BaseLayout from '../layouts/BaseLayout.astro';
+import LegalDocumentShell from '../components/legal/LegalDocumentShell.astro';
+import { LEGAL_CONTACTS } from '../lib/legal';
 ---
 
-<BaseLayout title="นโยบายคุกกี้">
-  <article class="mx-auto max-w-3xl px-4 py-8">
-    <h1 class="text-3xl font-bold text-secondary">นโยบายคุกกี้</h1>
-    <p class="mt-2 text-text-secondary">วันที่มีผล: 1 กรกฎาคม 2568</p>
+<LegalDocumentShell document="cookies" title="นโยบายคุกกี้และเทคโนโลยีที่คล้ายกัน" summary="รายการเทคโนโลยีที่ใช้จริงใน DealDoor และวิธีจัดการการตั้งค่าของคุณ">
+  <h2>1. เอกสารนี้ครอบคลุมอะไร</h2>
+  <p>เอกสารนี้ครอบคลุม cookies, localStorage และ sessionStorage ซึ่งช่วยให้เว็บไซต์จำ session จำการตั้งค่า และทำงานด้านการค้นหา/ประสบการณ์ผู้ใช้ได้ เรายกตัวอย่างเฉพาะเทคโนโลยีที่ implementation ปัจจุบันใช้ ไม่ระบุ third-party analytics หรือ marketing technology ที่ยังไม่เปิดใช้งาน</p>
 
-    <div class="prose mt-8 space-y-6 text-text-secondary">
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">คุกกี้คืออะไร?</h2>
-        <p class="mt-2">
-          คุกกี้เป็นไฟล์ขนาดเล็กที่เก็บไว้ในเบราว์เซอร์ของคุณเมื่อเข้าชมเว็บไซต์ 
-          คุกกี้ช่วยให้เว็บไซต์จดจำการตั้งค่าและปรับปรุงประสบการณ์ของคุณ
-        </p>
-      </section>
+  <h2>2. Cookies ที่ใช้</h2>
+  <table><thead><tr><th>ชื่อ</th><th>ประเภท</th><th>ระยะเวลา</th><th>วัตถุประสงค์</th></tr></thead><tbody>
+    <tr><td><code>dealdoor_session</code></td><td>จำเป็น</td><td>สูงสุด 30 วัน</td><td>ยืนยันตัวตนและรักษา session การเข้าสู่ระบบ; เป็น HttpOnly และใช้ Secure บน HTTPS</td></tr>
+    <tr><td>locale preference</td><td>functional</td><td>1 ปี</td><td>จดจำภาษา/เส้นทางภาษาที่เลือก</td></tr>
+  </tbody></table>
 
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">ประเภทคุกกี้ที่เราใช้</h2>
+  <h2>3. Browser storage ที่ใช้</h2>
+  <table><thead><tr><th>Key</th><th>ที่เก็บ</th><th>วัตถุประสงค์</th></tr></thead><tbody>
+    <tr><td><code>dealdoor_cookie_consent</code></td><td>localStorage</td><td>บันทึกการเลือก consent ในเบราว์เซอร์นั้น</td></tr>
+    <tr><td><code>theme</code></td><td>localStorage</td><td>จำธีมสี</td></tr>
+    <tr><td><code>dealdoor_saved_deals</code>, <code>dealdoor_favorite_shops</code></td><td>localStorage</td><td>จำรายการดีลและร้านที่บันทึกไว้ในอุปกรณ์</td></tr>
+    <tr><td><code>dealdoor_onboarding</code></td><td>localStorage</td><td>เก็บแบบร่าง onboarding ร้านค้า; อาจมีข้อมูลติดต่อและที่อยู่</td></tr>
+    <tr><td>user location session key</td><td>sessionStorage</td><td>เก็บพิกัด/ความแม่นยำชั่วคราวสำหรับ nearby และ map ใน tab ปัจจุบัน</td></tr>
+  </tbody></table>
 
-        <div class="mt-4 space-y-4">
-          <div class="rounded-lg border border-border p-4">
-            <h3 class="font-medium text-secondary">คุกกี้ที่จำเป็น</h3>
-            <p class="mt-1 text-sm">
-              คุกกี้เหล่านี้จำเป็นสำหรับการทำงานของแพลตฟอร์ม ไม่สามารถปิดได้
-            </p>
-            <p class="mt-2 text-xs text-text-tertiary">
-              ตัวอย่าง: การตั้งค่าธีม, ภาษา, เซสชัน
-            </p>
-          </div>
+  <h2>4. ตัวเลือก consent ปัจจุบัน</h2>
+  <p>banner ให้เลือกใช้เฉพาะเทคโนโลยีจำเป็นหรือยอมรับ analytics preference ได้ การเลือกถูกบันทึกในคุกกี้ <code>dealdoor_consent</code> แบบ HttpOnly เพื่อให้ API ตรวจได้ และ localStorage เก็บเพียงสำเนาสำหรับแสดงผลในหน้าเว็บเท่านั้น เมื่อปฏิเสธ ระบบจะไม่บันทึก event การใช้งานที่ส่งผ่าน public analytics API</p>
 
-          <div class="rounded-lg border border-border p-4">
-            <h3 class="font-medium text-secondary">คุกกี้วิเคราะห์</h3>
-            <p class="mt-1 text-sm">
-              ช่วยให้เราเข้าใจการใช้งานแพลตฟอร์ม เพื่อปรับปรุงบริการ
-            </p>
-            <p class="mt-2 text-xs text-text-tertiary">
-              ตัวอย่าง: Plausible Analytics (ไม่ระบุตัวตน)
-            </p>
-          </div>
+  <h2>5. การจัดการข้อมูลในอุปกรณ์</h2>
+  <p>คุณสามารถล้าง cookies และ site data ได้จากการตั้งค่าเบราว์เซอร์ การล้างข้อมูลอาจทำให้ต้องเข้าสู่ระบบใหม่ รีเซ็ตธีม ลบรายการบันทึก และลบแบบร่าง onboarding ในอุปกรณ์นั้น คุณสามารถปฏิเสธการใช้ตำแหน่งได้จาก browser permission โดยไม่กระทบการใช้งานทั่วไป</p>
 
-          <div class="rounded-lg border border-border p-4">
-            <h3 class="font-medium text-secondary">คุกกี้การตลาด</h3>
-            <p class="mt-1 text-sm">
-              ใช้เพื่อแสดงโฆษณาที่เกี่ยวข้อง (หากมี)
-            </p>
-            <p class="mt-2 text-xs text-text-tertiary">
-              ปัจจุบันไม่ได้ใช้
-            </p>
-          </div>
-        </div>
-      </section>
+  <h2>6. การอัปเดต</h2>
+  <p>เมื่อ DealDoor เพิ่ม analytics provider, advertising, payment provider หรือ third-party service ที่วาง cookies จะออก version ใหม่ของหน้านี้ก่อนเปิดใช้ หากมีคำถาม ติดต่อ <a href={`mailto:${LEGAL_CONTACTS.privacyEmail}`} class="text-primary hover:underline">{LEGAL_CONTACTS.privacyEmail}</a></p>
+  <h2>7. จัดการความยินยอม</h2>
+  <p>คุณสามารถเปลี่ยนการอนุญาตคุกกี้สถิติได้ทุกเมื่อ การตั้งค่าจะถูกบันทึกในคุกกี้ที่เว็บไซต์อ่านได้เฉพาะฝั่งเซิร์ฟเวอร์ และระบบจะไม่บันทึก event การใช้งานผ่าน API สาธารณะเมื่อไม่ได้รับอนุญาต</p>
+  <button type="button" id="cookie-settings-page-btn" class="mt-2 min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-dark">จัดการการตั้งค่าคุกกี้</button>
+</LegalDocumentShell>
 
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">การจัดการคุกกี้</h2>
-        <p class="mt-2">
-          คุณสามารถจัดการคุกกี้ได้ในการตั้งค่าเบราว์เซอร์:
-        </p>
-        <ul class="mt-2 list-inside list-disc space-y-1">
-          <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" class="text-primary hover:underline">Google Chrome</a></li>
-          <li><a href="https://support.mozilla.org/en-US/kb/enhanced-tracking-protection-firefox-desktop" target="_blank" class="text-primary hover:underline">Mozilla Firefox</a></li>
-          <li><a href="https://support.apple.com/guide/safari/manage-cookies-sfri11471/mac" target="_blank" class="text-primary hover:underline">Safari</a></li>
-          <li><a href="https://support.microsoft.com/en-us/microsoft-edge/delete-cookies-in-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09" target="_blank" class="text-primary hover:underline">Microsoft Edge</a></li>
-        </ul>
-      </section>
-
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">การเปลี่ยนแปลงนโยบาย</h2>
-        <p class="mt-2">
-          เราอาจอัปเดตนโยบายคุกกี้เป็นครั้งคราว 
-          การเปลี่ยนแปลงจะมีผลทันทีที่ประกาศบนแพลตฟอร์ม
-        </p>
-      </section>
-
-      <section>
-        <h2 class="text-xl font-semibold text-secondary">การติดต่อ</h2>
-        <p class="mt-2">
-          หากคุณมีคำถามเกี่ยวกับนโยบายคุกกี้ กรุณาติดต่อ:
-        </p>
-        <p class="mt-2">
-          อีเมล: <a href="mailto:privacy@dealdoor.co" class="text-primary hover:underline">privacy@dealdoor.co</a>
-        </p>
-      </section>
-    </div>
-  </article>
-</BaseLayout>
+<script>
+  document.getElementById('cookie-settings-page-btn')?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('dealdoor:open-cookie-settings'));
+  });
+</script>

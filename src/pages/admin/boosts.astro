@@ -1,0 +1,51 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const user = Astro.locals.user;
+if (!user || user.role !== 'admin') return Astro.redirect('/auth/login?redirect=/admin/boosts');
+---
+
+<BaseLayout title="Boost moderation | DealDoor">
+  <main class="mx-auto max-w-6xl px-4 py-10">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div><p class="text-xs font-black uppercase tracking-widest text-primary">Admin moderation</p><h1 class="mt-1 text-3xl font-black text-secondary">ตรวจสอบ Boost</h1><p class="mt-2 max-w-3xl text-sm font-semibold leading-6 text-text-secondary">หยุดแคมเปญที่มีรายงาน, ดีลหมดอายุ, ถูกปิด หรือเงื่อนไขแคมเปญไม่สอดคล้องกับดีล</p></div>
+      <div class="flex gap-2"><a href="/admin/moderation" class="inline-flex min-h-11 items-center rounded-2xl border border-border px-4 text-sm font-black text-secondary hover:bg-bg-secondary">รายงาน</a><a href="/admin/audit-log" class="inline-flex min-h-11 items-center rounded-2xl border border-border px-4 text-sm font-black text-secondary hover:bg-bg-secondary">Audit log</a></div>
+    </div>
+    <section class="mt-7 rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
+      <div class="flex flex-wrap gap-3"><div class="rounded-2xl bg-bg-secondary px-4 py-3"><p class="text-xs font-black text-text-tertiary">กำลังทำงาน</p><p id="boost-active" class="mt-1 text-2xl font-black text-secondary">-</p></div><div class="rounded-2xl bg-warning-bg px-4 py-3"><p class="text-xs font-black text-warning">ต้องตรวจ</p><p id="boost-risk" class="mt-1 text-2xl font-black text-warning">-</p></div></div>
+      <div id="boost-queue" class="mt-5 space-y-3" aria-live="polite"><p class="rounded-2xl bg-bg-secondary p-6 text-center text-sm font-bold text-text-secondary">กำลังโหลดแคมเปญ...</p></div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  const queue = document.querySelector('#boost-queue');
+  const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const flagLabel = { deal_missing: 'ไม่พบดีล', deal_inactive: 'ดีลถูกปิด', deal_expired: 'ดีลหมดอายุ', campaign_outlives_deal: 'เกินวันหมดอายุดีล', pending_reports: 'มีรายงานรอตรวจ' };
+
+  async function loadQueue() {
+    const response = await fetch('/api/admin/boosts');
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload?.error?.message || 'ไม่สามารถโหลดข้อมูล Boost ได้');
+    const rows = payload.data || [];
+    document.querySelector('#boost-active').textContent = String(rows.length);
+    document.querySelector('#boost-risk').textContent = String(rows.filter((row) => row.flags.length).length);
+    if (!rows.length) { queue.innerHTML = '<p class="rounded-2xl bg-bg-secondary p-8 text-center text-sm font-bold text-text-secondary">ไม่มี Boost ที่กำลังทำงาน</p>'; return; }
+    queue.innerHTML = rows.map((row) => {
+      const flags = row.flags.map((flag) => `<span class="rounded-full bg-warning-bg px-2.5 py-1 text-xs font-black text-warning">${escapeHtml(flagLabel[flag] || flag)}</span>`).join('');
+      const shopHref = row.shop?.slug ? `/${encodeURIComponent(row.shop.slug)}` : '#';
+      const dealHref = row.shop?.slug && row.deal?.id ? `/deal/${encodeURIComponent(row.deal.id)}` : '#';
+      return `<article class="rounded-2xl border border-border/50 bg-bg p-4"><div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><p class="font-black text-secondary">${escapeHtml(row.deal?.title || 'ดีลที่ถูกลบ')}</p>${flags || '<span class="rounded-full bg-success-bg px-2.5 py-1 text-xs font-black text-success">ปกติ</span>'}</div><p class="mt-1 text-sm font-semibold text-text-secondary">${escapeHtml(row.shop?.name || row.campaign.shopId)} · ${row.campaign.creditsReserved} เครดิต · รายงานรอตรวจ ${row.pendingReportCount}</p><p class="mt-1 text-xs font-bold text-text-tertiary">สิ้นสุด ${new Date(row.campaign.endsAt).toLocaleString('th-TH')}</p></div><div class="flex flex-wrap gap-2"><a href="${dealHref}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-xl border border-border px-3 text-xs font-black text-secondary">เปิดดีล</a><a href="${shopHref}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-xl border border-border px-3 text-xs font-black text-secondary">เปิดร้าน</a><button type="button" data-stop="${escapeHtml(row.campaign.id)}" class="min-h-11 rounded-xl bg-danger px-4 text-xs font-black text-white">หยุด Boost</button></div></div></article>`;
+    }).join('');
+    queue.querySelectorAll('[data-stop]').forEach((button) => button.addEventListener('click', () => stopCampaign(button.dataset.stop)));
+  }
+  async function stopCampaign(id) {
+    const reason = window.prompt('ระบุเหตุผลการหยุด Boost สำหรับ audit log');
+    if (!reason) return;
+    const response = await fetch(`/api/admin/boosts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stop', reason }) });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) { window.alert(payload?.error?.message || 'ไม่สามารถหยุด Boost ได้'); return; }
+    loadQueue();
+  }
+  loadQueue().catch((error) => { queue.innerHTML = `<p class="rounded-2xl bg-danger-bg p-6 text-sm font-bold text-danger">${escapeHtml(error.message)}</p>`; });
+</script>

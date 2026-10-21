@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import type { LegalDocumentKey } from '../../lib/legal';
+import { LEGAL_DOCUMENTS } from '../../lib/legal';
+
+interface Props {
+  document: LegalDocumentKey;
+  title: string;
+  summary: string;
+}
+
+const { document, title, summary } = Astro.props;
+const metadata = LEGAL_DOCUMENTS[document];
+---
+
+<BaseLayout title={title}>
+  <main class="mx-auto max-w-4xl px-4 py-10 sm:py-14">
+    <header class="border-b border-border/60 pb-7">
+      <p class="text-xs font-black uppercase tracking-[0.16em] text-primary">DealDoor legal</p>
+      <h1 class="mt-2 text-3xl font-black tracking-tight text-secondary sm:text-4xl">{title}</h1>
+      <p class="mt-3 max-w-3xl text-sm font-semibold leading-6 text-text-secondary">{summary}</p>
+      <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold">
+        <span class="rounded-full bg-bg-secondary px-3 py-1.5 text-text-secondary">Version {metadata.version}</span>
+        <span class="rounded-full bg-bg-secondary px-3 py-1.5 text-text-secondary">Updated {metadata.effectiveDate}</span>
+        <span class="rounded-full bg-warning-bg px-3 py-1.5 text-warning">Pre-launch draft</span>
+      </div>
+    </header>
+    <div class="mt-6 rounded-2xl border border-warning/20 bg-warning-bg/60 p-4 text-sm font-semibold leading-6 text-text-secondary">
+      <strong class="text-secondary">Before launch:</strong> this document is a versioned product draft. DealDoor must confirm its legal controller details, retention schedule, processors, and payment terms, then obtain Thai legal review before removing this notice.
+    </div>
+    <article class="legal-copy mt-8"><slot /></article>
+    <footer class="mt-10 border-t border-border/60 pt-6 text-sm text-text-secondary">
+      <p><strong class="text-secondary">What changed in this version:</strong> {metadata.changeSummary}</p>
+      <nav class="mt-4 flex flex-wrap gap-x-5 gap-y-2 font-bold text-primary" aria-label="Legal documents">
+        <a href="/terms" class="hover:underline">Terms</a><a href="/privacy" class="hover:underline">Privacy</a><a href="/cookies" class="hover:underline">Cookies</a>
+      </nav>
+    </footer>
+  </main>
+</BaseLayout>
+
+<style>
+  .legal-copy :global(h2) { margin-top: 2.5rem; color: var(--color-secondary); font-size: 1.25rem; font-weight: 900; }
+  .legal-copy :global(h3) { margin-top: 1.25rem; color: var(--color-secondary); font-size: 1rem; font-weight: 800; }
+  .legal-copy :global(p), .legal-copy :global(li) { color: var(--color-text-secondary); font-size: 0.9375rem; line-height: 1.75; }
+  .legal-copy :global(ul) { margin-top: 0.75rem; list-style: disc; padding-left: 1.25rem; }
+  .legal-copy :global(table) { margin-top: 1rem; width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 1rem; border: 1px solid var(--color-border); font-size: 0.875rem; }
+  .legal-copy :global(th), .legal-copy :global(td) { border-bottom: 1px solid var(--color-border); padding: 0.75rem; text-align: left; vertical-align: top; }
+  .legal-copy :global(th) { background: var(--color-bg-secondary); color: var(--color-secondary); font-weight: 800; }
+</style>

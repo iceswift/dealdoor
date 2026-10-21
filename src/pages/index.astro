@@ -10,6 +10,7 @@ import { SHOP_CATEGORIES, SHOP_CATEGORY_ICONS, SHOP_CATEGORY_LABELS } from '../l
 import type { ShopCategory } from '../lib/constants';
 import ExploreDealCard from '../components/explore/ExploreDealCard.astro';
 import Icon from '../components/icons/index.astro';
+import { getActiveBoostedDealIds, prioritizePromotedDeals } from '../lib/boosts/public';
 
 const lang = getLangFromRequest(Astro.request);
 const common = (key: string) => t(lang, 'common', key);
@@ -30,8 +31,13 @@ const homeClientText = {
   mapUrl: localizedPath('/explore'),
   useMyLocation: publicText('home.useMyLocation'),
   locationRequesting: publicText('home.locationRequesting'),
+  locationFallback: publicText('home.locationFallback'),
   locationReady: publicText('home.locationReady'),
   locationUnavailable: publicText('home.locationUnavailable'),
+  locationPermissionDenied: publicText('home.locationPermissionDenied'),
+  locationPositionUnavailable: publicText('home.locationPositionUnavailable'),
+  locationTimeout: publicText('home.locationTimeout'),
+  locationSecureContextRequired: publicText('home.locationSecureContextRequired'),
 };
 
 // ─── BACKEND WORKFLOW: FETCH ALL ACTIVE DEALS FOR CONSUMER FEED ───
@@ -55,6 +61,8 @@ const expiringDealIds = new Set(expiringSoon.map(({ deal }) => deal.id));
 const recommendedDeals = activeDeals
   .filter(({ deal }) => !expiringDealIds.has(deal.id))
   .slice(0, 6);
+const boostedDealIds = await getActiveBoostedDealIds(now);
+const rankedRecommendedDeals = prioritizePromotedDeals(recommendedDeals, boostedDealIds, 1);
 
 const dealsByShop = new Map<string, { shop: typeof shops.$inferSelect; deals: typeof deals.$inferSelect[] }>();
 activeDeals.forEach(({ deal, shop }) => {
@@ -208,7 +216,7 @@ const categories = [
                 data-shop-name={shop?.name.toLowerCase() || ''}
                 style={`animation-delay: ${index * 0.08}s`}
               >
-                {shop && <ExploreDealCard deal={deal} shop={shop} featured={index === 0} />}
+                {shop && <ExploreDealCard deal={deal} shop={shop} featured={index === 0} isPromoted={boostedDealIds.has(deal.id)} />}
                 <span class="home-distance mt-2 hidden text-[10px] font-black text-primary"></span>
               </div>
             ))}
@@ -227,7 +235,7 @@ const categories = [
       )}
 
       {/* Recommended deals deliberately exclude expiring cards above. */}
-      {recommendedDeals.length > 0 ? (
+      {rankedRecommendedDeals.length > 0 ? (
       <section class="home-section max-w-4xl mx-auto px-4" data-section="recommended">
         <div class="flex items-center justify-between border-b border-border/30 pb-3 mb-6">
           <div class="flex items-center gap-2.5">
@@ -240,12 +248,12 @@ const categories = [
             </div>
           </div>
           <span class="badge border-none bg-primary/10 text-primary font-extrabold" id="recommended-count">
-            {publicText('home.recommendedCount', { count: recommendedDeals.length })}
+            {publicText('home.recommendedCount', { count: rankedRecommendedDeals.length })}
           </span>
         </div>
 
         <div class="home-section-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {recommendedDeals.map(({ deal, shop }, index) => (
+          {rankedRecommendedDeals.map(({ deal, shop }, index) => (
             <div
               class="home-filter-item animate-fade-in"
               data-section="recommended"
@@ -258,7 +266,7 @@ const categories = [
               data-shop-name={shop?.name.toLowerCase() || ''}
               style={`animation-delay: ${index * 0.04}s`}
             >
-              {shop && <ExploreDealCard deal={deal} shop={shop} />}
+              {shop && <ExploreDealCard deal={deal} shop={shop} isPromoted={boostedDealIds.has(deal.id)} />}
               <span class="home-distance mt-2 hidden text-[10px] font-black text-primary"></span>
             </div>
           ))}
@@ -657,9 +665,16 @@ const categories = [
       if (item) trackHomeDealClick(item);
     });
 
+    function getLocationFailureMessage(error) {
+      if (error?.code === 1) return homeClientText.locationPermissionDenied;
+      if (error?.code === 2) return homeClientText.locationPositionUnavailable;
+      if (error?.code === 3) return homeClientText.locationTimeout;
+      return homeClientText.locationUnavailable;
+    }
+
     useLocationButton?.addEventListener('click', () => {
       if (!navigator.geolocation || !window.isSecureContext) {
-        setLocationMessage(homeClientText.locationUnavailable, 'error');
+        setLocationMessage(homeClientText.locationSecureContextRequired, 'error');
         return;
       }
 
@@ -667,8 +682,7 @@ const categories = [
       useLocationButton.setAttribute('aria-busy', 'true');
       setLocationMessage(homeClientText.locationRequesting, 'primary');
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
+      const complete = (position) => {
           try {
             window.sessionStorage.setItem(USER_LOCATION_SESSION_KEY, JSON.stringify({
               lat: position.coords.latitude,
@@ -679,13 +693,33 @@ const categories = [
           } catch {}
           setLocationMessage(homeClientText.locationReady, 'primary');
           openMap({ sort: 'nearby' });
-        },
-        () => {
+      };
+
+      const fail = (error) => {
           useLocationButton.disabled = false;
           useLocationButton.removeAttribute('aria-busy');
-          setLocationMessage(homeClientText.locationUnavailable, 'error');
+          setLocationMessage(getLocationFailureMessage(error), 'error');
+      };
+
+      const requestFallbackLocation = () => {
+        setLocationMessage(homeClientText.locationFallback, 'primary');
+        navigator.geolocation.getCurrentPosition(
+          complete,
+          fail,
+          { enableHighAccuracy: false, maximumAge: 300_000, timeout: 15_000 }
+        );
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        complete,
+        (error) => {
+          if (error?.code === 1) {
+            fail(error);
+            return;
+          }
+          requestFallbackLocation();
         },
-        { enableHighAccuracy: true, maximumAge: 60_000, timeout: 8_000 }
+        { enableHighAccuracy: true, maximumAge: 60_000, timeout: 12_000 }
       );
     });
 

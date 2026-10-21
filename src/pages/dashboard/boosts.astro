@@ -1,0 +1,265 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import Icon from '../../components/icons/index.astro';
+import { requireDashboardShop } from '../../lib/dashboard/server';
+import { getBoostDashboard } from '../../server/services/boost.service';
+
+let context;
+try {
+  context = await requireDashboardShop(Astro.locals.user);
+} catch {
+  return Astro.redirect('/dashboard');
+}
+
+const data = await getBoostDashboard(context.shop);
+const activeCount = data.campaigns.filter(({ campaign }) =>
+  (campaign.status === 'active' || campaign.status === 'scheduled') && new Date(campaign.endsAt) > new Date()
+).length;
+const formatDate = (value: Date | string) => new Intl.DateTimeFormat('th-TH', {
+  dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok',
+}).format(new Date(value));
+---
+
+<DashboardLayout title="Boost Deals" activeTab="boosts">
+  <div class="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <section class="overflow-hidden rounded-3xl border border-border/50 bg-card-bg p-6 shadow-sm sm:p-8">
+      <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex gap-4">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Icon name="rocket" class="h-6 w-6" />
+          </div>
+          <div>
+            <p class="text-xs font-black uppercase tracking-widest text-primary">Boost deal</p>
+            <h1 class="mt-1 text-2xl font-black text-secondary sm:text-3xl">โปรโมตดีลให้ถูกค้นพบมากขึ้น</h1>
+            <p class="mt-2 max-w-2xl text-sm font-semibold leading-6 text-text-secondary">ดีลที่ Boost จะมีป้ายโปรโมตและมีสิทธิ์ถูกจัดลำดับก่อนในหน้าแนะนำและผลการค้นหาที่เกี่ยวข้อง</p>
+          </div>
+        </div>
+        <a href="/pricing" class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 text-sm font-black text-primary transition hover:bg-primary hover:text-white">
+          ดูสิทธิ์แพ็กเกจ
+          <span aria-hidden="true">&rarr;</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="grid gap-4 sm:grid-cols-3">
+      <article class="rounded-3xl border border-border/50 bg-card-bg p-5 shadow-sm">
+        <p class="text-xs font-black uppercase tracking-widest text-text-tertiary">เครดิตพร้อมใช้</p>
+        <p class="mt-3 text-4xl font-black text-secondary">{data.wallet.availableCredits}</p>
+        <p class="mt-2 text-sm font-bold text-text-secondary">เครดิตแผน {data.wallet.includedCredits} · ซื้อเพิ่ม {data.wallet.purchasedCredits}</p>
+      </article>
+      <article class="rounded-3xl border border-border/50 bg-card-bg p-5 shadow-sm">
+        <p class="text-xs font-black uppercase tracking-widest text-text-tertiary">กำลังโปรโมต</p>
+        <p class="mt-3 text-4xl font-black text-secondary">{activeCount}<span class="ml-1 text-xl text-text-tertiary">/ {data.entitlement.maxConcurrentCampaigns}</span></p>
+        <p class="mt-2 text-sm font-bold text-text-secondary">ดีลพร้อมกันตามแพ็กเกจ</p>
+      </article>
+      <article class="rounded-3xl border border-border/50 bg-card-bg p-5 shadow-sm">
+        <p class="text-xs font-black uppercase tracking-widest text-text-tertiary">สิทธิ์แพ็กเกจ</p>
+        <p class="mt-3 text-2xl font-black capitalize text-secondary">{context.shop.tier || 'free'}</p>
+        <p class="mt-2 text-sm font-bold text-text-secondary">{data.entitlement.includedCreditsPerBillingCycle} เครดิตต่อรอบบิล</p>
+      </article>
+    </section>
+
+    <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.72fr)]">
+      <article class="rounded-3xl border border-border/50 bg-card-bg p-6 shadow-sm">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-black uppercase tracking-widest text-primary">New campaign</p>
+            <h2 class="mt-1 text-xl font-black text-secondary">เริ่ม Boost ดีล</h2>
+          </div>
+          <span class="rounded-full bg-bg-secondary px-3 py-1.5 text-xs font-black text-text-secondary">1 เครดิต = 24 ชั่วโมง</span>
+        </div>
+
+        {data.eligibleDeals.length ? (
+          <form id="boost-form" class="mt-6 space-y-6">
+            <label class="block">
+              <span class="mb-2 block text-sm font-black text-secondary">เลือกดีล</span>
+              <select id="boost-deal" required class="min-h-12 w-full rounded-2xl border border-border bg-bg px-4 text-sm font-bold text-secondary outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10">
+                <option value="">เลือกดีลที่ต้องการโปรโมต</option>
+                {data.eligibleDeals.map((deal) => <option value={deal.id}>{deal.title}</option>)}
+              </select>
+            </label>
+
+            <fieldset>
+              <legend class="mb-3 text-sm font-black text-secondary">ระยะเวลา</legend>
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {data.rules.durations.map((hours, index) => (
+                  <button type="button" class:list={['duration-option min-h-16 rounded-2xl border px-3 text-left transition', index === 0 ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-bg text-secondary']} data-hours={hours} aria-pressed={index === 0 ? 'true' : 'false'}>
+                    <span class="block text-lg font-black">{hours / 24} วัน</span>
+                    <span class="block text-xs font-bold opacity-70">{hours / 24} เครดิต</span>
+                  </button>
+                ))}
+              </div>
+              <input id="boost-duration" type="hidden" value="24" />
+            </fieldset>
+
+            <div class="flex flex-col gap-3 rounded-2xl bg-bg-secondary/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-sm font-bold text-text-secondary">ใช้ <strong id="credit-count" class="text-secondary">1</strong> เครดิต · เริ่มแสดงผลทันทีหลังยืนยัน</p>
+              <button id="boost-submit" type="submit" class="min-h-12 rounded-2xl bg-primary px-5 text-sm font-black text-white shadow-lg shadow-primary/20 transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50">เริ่ม Boost</button>
+            </div>
+            <p id="boost-message" class="hidden rounded-xl px-4 py-3 text-sm font-bold" aria-live="polite"></p>
+          </form>
+        ) : (
+          <div class="mt-6 rounded-2xl border border-dashed border-border bg-bg-secondary/40 p-6 text-center">
+            <p class="font-black text-secondary">ยังไม่มีดีลที่พร้อม Boost</p>
+            <p class="mt-1 text-sm font-semibold text-text-secondary">สร้างดีลที่กำลังใช้งานและยังไม่หมดอายุก่อนเริ่มโปรโมต</p>
+            <a href="/dashboard/deals/new" class="mt-4 inline-flex min-h-11 items-center rounded-2xl bg-primary px-4 text-sm font-black text-white">สร้างดีลใหม่</a>
+          </div>
+        )}
+      </article>
+
+      <aside class="rounded-3xl border border-border/50 bg-card-bg p-6 shadow-sm">
+        <p class="text-xs font-black uppercase tracking-widest text-primary">How it works</p>
+        <h2 class="mt-1 text-xl font-black text-secondary">กติกา Boost</h2>
+        <ol class="mt-5 space-y-4 text-sm font-semibold leading-6 text-text-secondary">
+          <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-black text-primary">1</span><span>เลือกดีลที่ยังเปิดใช้งาน และกำหนดระยะเวลาได้สูงสุด {data.rules.maxCampaignDurationHours / 24} วัน</span></li>
+          <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-black text-primary">2</span><span>ระบบหักเครดิตเมื่อเริ่มแคมเปญ และไม่คืนเครดิตเมื่อหยุดก่อนกำหนด</span></li>
+          <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-black text-primary">3</span><span>เครดิตที่ซื้อเพิ่มจะหมดอายุภายใน {data.rules.purchasedCreditExpiryDays} วันหลังชำระเงิน</span></li>
+        </ol>
+        <div class="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+          <p class="text-sm font-black text-secondary">ซื้อเครดิตเพิ่ม</p>
+          <p class="mt-1 text-sm font-semibold leading-5 text-text-secondary">ระบบชำระเงินจะเปิดในเฟสถัดไป คุณยังอัปเกรดแพ็กเกจเพื่อรับเครดิตแผนได้</p>
+          <a href="/pricing" class="mt-3 inline-flex text-sm font-black text-primary hover:underline">ดูแพ็กเกจและสิทธิ์</a>
+        </div>
+      </aside>
+    </section>
+
+    <section class="rounded-3xl border border-border/50 bg-card-bg p-6 shadow-sm">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div><p class="text-xs font-black uppercase tracking-widest text-primary">Performance</p><h2 class="mt-1 text-xl font-black text-secondary">ผลลัพธ์จาก Boost</h2><p class="mt-1 text-sm font-semibold text-text-secondary">สรุป {data.analytics.days} วันล่าสุดจากแคมเปญที่เพิ่งทำงาน</p></div>
+        <a href="/dashboard/analytics" class="text-sm font-black text-primary hover:underline">ดูสถิติร้านทั้งหมด</a>
+      </div>
+      <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="rounded-2xl bg-bg-secondary/70 p-4"><p class="text-xs font-black text-text-tertiary">เห็น Boost</p><p class="mt-2 text-2xl font-black text-secondary">{data.analytics.totals.impressions}</p></div>
+        <div class="rounded-2xl bg-bg-secondary/70 p-4"><p class="text-xs font-black text-text-tertiary">คลิกดีล</p><p class="mt-2 text-2xl font-black text-secondary">{data.analytics.totals.clicks}</p></div>
+        <div class="rounded-2xl bg-bg-secondary/70 p-4"><p class="text-xs font-black text-text-tertiary">เปิดหน้าดีล</p><p class="mt-2 text-2xl font-black text-secondary">{data.analytics.totals.views}</p></div>
+        <div class="rounded-2xl bg-bg-secondary/70 p-4"><p class="text-xs font-black text-text-tertiary">เริ่มใช้สิทธิ์</p><p class="mt-2 text-2xl font-black text-secondary">{data.analytics.totals.claims}</p></div>
+        <div class="rounded-2xl bg-bg-secondary/70 p-4"><p class="text-xs font-black text-text-tertiary">CTR</p><p class="mt-2 text-2xl font-black text-secondary">{data.analytics.totals.clickThroughRate ?? '-'}<span class="ml-0.5 text-sm text-text-tertiary">%</span></p></div>
+      </div>
+      <div class="mt-5 rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm font-semibold leading-6 text-text-secondary">
+        <strong class="text-secondary">การอ่านตัวเลขอย่างโปร่งใส:</strong> “เห็น Boost” คือ card โปรโมตที่อยู่บนหน้าจออย่างน้อย 60% ส่วนการคลิก เปิดดีล และเริ่มใช้สิทธิ์ เป็นกิจกรรมที่เกิดขึ้นในช่วงเวลาแคมเปญ จึงไม่ใช่การยืนยันว่า Boost เป็นสาเหตุทั้งหมด
+      </div>
+      {data.analytics.campaigns.length ? (
+        <div class="mt-5 overflow-x-auto rounded-2xl border border-border/60">
+          <table class="min-w-[720px] w-full text-left text-sm"><thead class="bg-bg-secondary/70 text-xs text-text-tertiary"><tr><th class="px-4 py-3 font-black">ดีล</th><th class="px-4 py-3 font-black">สถานะ</th><th class="px-4 py-3 text-right font-black">เห็น</th><th class="px-4 py-3 text-right font-black">คลิก</th><th class="px-4 py-3 text-right font-black">เริ่มใช้</th><th class="px-4 py-3 text-right font-black">CTR</th></tr></thead>
+          <tbody class="divide-y divide-border/60">{data.analytics.campaigns.map((campaign) => <tr><td class="px-4 py-3 font-black text-secondary">{campaign.dealTitle || 'ดีลที่ถูกลบไปแล้ว'}</td><td class="px-4 py-3"><span class="rounded-full bg-bg-secondary px-2.5 py-1 text-xs font-black text-text-secondary">{campaign.status}</span></td><td class="px-4 py-3 text-right font-bold text-secondary">{campaign.impressions}</td><td class="px-4 py-3 text-right font-bold text-secondary">{campaign.clicks}</td><td class="px-4 py-3 text-right font-bold text-secondary">{campaign.claims}</td><td class="px-4 py-3 text-right font-bold text-secondary">{campaign.impressions ? `${Math.round((campaign.clicks / campaign.impressions) * 1000) / 10}%` : '-'}</td></tr>)}</tbody>
+          </table>
+        </div>
+      ) : <p class="mt-5 rounded-2xl bg-bg-secondary/60 p-5 text-sm font-bold text-text-secondary">เริ่ม Boost แล้วผลลัพธ์จะปรากฏในส่วนนี้เมื่อมีการแสดงผลหรือมีผู้สนใจดีล</p>}
+    </section>
+
+    <section class="rounded-3xl border border-border/50 bg-card-bg p-6 shadow-sm">
+      <div class="flex items-end justify-between gap-4">
+        <div><p class="text-xs font-black uppercase tracking-widest text-primary">History</p><h2 class="mt-1 text-xl font-black text-secondary">ประวัติการโปรโมต</h2></div>
+        <span class="text-sm font-bold text-text-tertiary">ล่าสุด 20 รายการ</span>
+      </div>
+      {data.campaigns.length ? (
+        <div class="mt-5 divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60">
+          {data.campaigns.map(({ campaign, deal }) => (
+            (() => {
+              const isActive = (campaign.status === 'active' || campaign.status === 'scheduled') && new Date(campaign.endsAt) > new Date();
+              return (
+            <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div class="min-w-0"><p class="truncate font-black text-secondary">{deal?.title || 'ดีลที่ถูกลบไปแล้ว'}</p><p class="mt-1 text-sm font-semibold text-text-secondary">{formatDate(campaign.startsAt)} - {formatDate(campaign.endsAt)} · {campaign.creditsReserved} เครดิต</p></div>
+              <div class="flex items-center gap-2"><span class:list={['w-fit rounded-full px-3 py-1.5 text-xs font-black', isActive ? 'bg-success-bg text-success' : 'bg-bg-secondary text-text-secondary']}>
+                {isActive ? 'กำลัง Boost' : 'สิ้นสุดแล้ว'}
+              </span>{isActive && <button type="button" class="stop-boost min-h-9 rounded-xl border border-danger/20 px-3 text-xs font-black text-danger transition hover:bg-danger-bg" data-campaign-id={campaign.id}>หยุด</button>}</div>
+            </div>
+              );
+            })()
+          ))}
+        </div>
+      ) : <p class="mt-5 rounded-2xl bg-bg-secondary/60 p-5 text-sm font-bold text-text-secondary">ยังไม่มีประวัติการ Boost</p>}
+    </section>
+
+    <section class="rounded-3xl border border-border/50 bg-card-bg p-6 shadow-sm">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div><p class="text-xs font-black uppercase tracking-widest text-primary">Credit store</p><h2 class="mt-1 text-xl font-black text-secondary">ซื้อเครดิต Boost เพิ่ม</h2><p class="mt-1 text-sm font-semibold text-text-secondary">เครดิตที่ซื้อเพิ่มใช้ได้นาน {data.rules.purchasedCreditExpiryDays} วันหลังยืนยันการชำระเงิน</p></div>
+        <span class="w-fit rounded-full bg-warning-bg px-3 py-1.5 text-xs font-black text-warning">รอเชื่อมระบบชำระเงิน</span>
+      </div>
+      <div class="mt-5 grid gap-4 md:grid-cols-3">
+        {data.creditPackages.map((item) => (
+          <article class:list={['relative rounded-2xl border p-5', item.highlight ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-bg-secondary/30']}>
+            {item.highlight && <span class="absolute -top-2.5 right-4 rounded-full bg-primary px-2.5 py-1 text-[10px] font-black text-white">คุ้มค่า</span>}
+            <p class="text-sm font-black text-secondary">{item.name}</p>
+            <p class="mt-3 text-3xl font-black text-secondary">{item.credits}<span class="ml-1 text-sm text-text-tertiary">เครดิต</span></p>
+            <p class="mt-1 text-sm font-bold text-text-secondary">฿{(item.amountMinor / 100).toLocaleString('th-TH')}</p>
+            <button type="button" disabled title="ระบบชำระเงินยังไม่เปิดใช้งาน" class="mt-5 min-h-11 w-full rounded-2xl bg-bg-tertiary px-4 text-sm font-black text-text-tertiary">เร็ว ๆ นี้</button>
+          </article>
+        ))}
+      </div>
+      {data.orders.length > 0 && (
+        <div class="mt-6 border-t border-border/60 pt-5">
+          <p class="text-sm font-black text-secondary">รายการซื้อเครดิตล่าสุด</p>
+          <div class="mt-3 space-y-2">
+            {data.orders.slice(0, 3).map((order) => (
+              <div class="flex items-center justify-between rounded-2xl bg-bg-secondary/60 px-4 py-3 text-sm">
+                <span class="font-bold text-secondary">{order.creditQuantity} เครดิต · ฿{(order.amountMinor / 100).toLocaleString('th-TH')}</span>
+                <span class:list={['rounded-full px-2.5 py-1 text-xs font-black', order.status === 'paid' ? 'bg-success-bg text-success' : 'bg-warning-bg text-warning']}>{order.status === 'paid' ? 'ชำระแล้ว' : 'รอชำระ'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  </div>
+</DashboardLayout>
+
+<script define:vars={{ availableCredits: data.wallet.availableCredits }}>
+  const form = document.querySelector('#boost-form');
+  const durationInput = document.querySelector('#boost-duration');
+  const creditCount = document.querySelector('#credit-count');
+  const submitButton = document.querySelector('#boost-submit');
+  const message = document.querySelector('#boost-message');
+
+  document.querySelectorAll('.duration-option').forEach((button) => {
+    button.addEventListener('click', () => {
+      const hours = Number(button.dataset.hours);
+      durationInput.value = String(hours);
+      creditCount.textContent = String(hours / 24);
+      document.querySelectorAll('.duration-option').forEach((option) => {
+        const selected = option === button;
+        option.setAttribute('aria-pressed', String(selected));
+        option.classList.toggle('border-primary', selected);
+        option.classList.toggle('bg-primary/5', selected);
+        option.classList.toggle('text-primary', selected);
+        option.classList.toggle('border-border', !selected);
+        option.classList.toggle('bg-bg', !selected);
+        option.classList.toggle('text-secondary', !selected);
+      });
+      submitButton.disabled = hours / 24 > availableCredits;
+    });
+  });
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const dealId = document.querySelector('#boost-deal').value;
+    const durationHours = Number(durationInput.value);
+    if (!dealId) return;
+    submitButton.disabled = true;
+    submitButton.textContent = 'กำลังเริ่ม Boost...';
+    message.className = 'hidden rounded-xl px-4 py-3 text-sm font-bold';
+    try {
+      const response = await fetch('/api/boosts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId, durationHours }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error?.message || 'ไม่สามารถเริ่ม Boost ได้');
+      message.textContent = 'เริ่ม Boost แล้ว ระบบกำลังอัปเดตผลลัพธ์สาธารณะ';
+      message.className = 'rounded-xl bg-success-bg px-4 py-3 text-sm font-bold text-success';
+      window.setTimeout(() => window.location.reload(), 750);
+    } catch (error) {
+      message.textContent = error instanceof Error ? error.message : 'ไม่สามารถเริ่ม Boost ได้';
+      message.className = 'rounded-xl bg-danger-bg px-4 py-3 text-sm font-bold text-danger';
+      submitButton.disabled = false;
+      submitButton.textContent = 'เริ่ม Boost';
+    }
+  });
+
+  document.querySelectorAll('.stop-boost').forEach((button) => {
+    button.addEventListener('click', async () => {
+      if (!window.confirm('หยุด Boost นี้? เครดิตที่ใช้ไปจะไม่ถูกคืน')) return;
+      button.disabled = true;
+      const response = await fetch(`/api/boosts/${button.dataset.campaignId}`, { method: 'DELETE' });
+      if (response.ok) window.location.reload();
+      else { button.disabled = false; window.alert('ไม่สามารถหยุด Boost ได้ โปรดลองอีกครั้ง'); }
+    });
+  });
+</script>
