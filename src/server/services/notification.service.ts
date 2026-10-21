@@ -5,7 +5,9 @@ import { db } from '../../lib/db';
 import { forbidden, notFound } from '../../lib/errors';
 import { isToday, jsonTextEquals } from '../../lib/db-sql';
 import { runExclusiveJob } from './job.service';
-import { recordInAppDelivery } from './notification-outbox.service';
+import { inAppDeliveryQuery } from './notification-outbox.service';
+import { runTransaction, transactionWrite } from '../../lib/db-transaction';
+import { isPostgresRuntime } from '../../lib/db-runtime';
 
 export type NotificationType =
   | 'deal_expiring'
@@ -97,8 +99,8 @@ export async function createNotification(params: {
 
   const id = createId();
 
-  await db.transaction(async (transaction) => {
-    await transaction.insert(notifications).values({
+  await runTransaction(db, function* (transaction): Generator<any, any, any> {
+    yield transactionWrite(transaction.insert(notifications).values({
       id,
       userId: params.userId,
       shopId: params.shopId || null,
@@ -106,9 +108,9 @@ export async function createNotification(params: {
       title: params.title,
       message: params.message,
       metadata: params.metadata ? JSON.stringify(params.metadata) : null,
-    });
-    await recordInAppDelivery(id, transaction as typeof db);
-  });
+    }));
+    yield transactionWrite(inAppDeliveryQuery(id, transaction));
+  }, isPostgresRuntime());
 
   return id;
 }

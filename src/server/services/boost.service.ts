@@ -12,6 +12,8 @@ import {
   type Shop,
 } from '../../lib/db-schema';
 import { firstRow } from '../../lib/db-query';
+import { runTransaction, transactionRows, transactionWrite } from '../../lib/db-transaction';
+import { isPostgresRuntime } from '../../lib/db-runtime';
 import { badRequest, conflict, notFound } from '../../lib/errors';
 import { BOOST_RULES, canStartBoost, getBoostCreditsForDuration, getBoostEntitlements, type Tier } from '../../lib/tiers';
 import { BOOST_CREDIT_PACKAGES, getBoostCreditPackage } from '../../lib/boosts/catalog';
@@ -50,8 +52,8 @@ async function ensureBoostWallet(shop: Shop, now = new Date()) {
 
   if (!grant) {
     const nextBalance = wallet.includedCreditsBalance + entitlement.includedCreditsPerBillingCycle;
-    await db.transaction(async (tx: any) => {
-      await tx.insert(boostTransactions).values({
+    await runTransaction(db, function* (tx): Generator<any, any, any> {
+      yield transactionWrite(tx.insert(boostTransactions).values({
         walletId: wallet!.id,
         shopId: shop.id,
         type: 'plan_grant',
@@ -60,11 +62,11 @@ async function ensureBoostWallet(shop: Shop, now = new Date()) {
         balanceAfter: nextBalance,
         idempotencyKey: grantKey,
         metadata: JSON.stringify({ cycle: cycleKey(now) }),
-      });
-      await tx.update(boostWallets)
+      }));
+      yield transactionWrite(tx.update(boostWallets)
         .set({ includedCreditsBalance: nextBalance, updatedAt: now })
-        .where(eq(boostWallets.id, wallet!.id));
-    });
+        .where(eq(boostWallets.id, wallet!.id)));
+    }, isPostgresRuntime());
     wallet = await firstRow(db.select().from(boostWallets).where(eq(boostWallets.id, wallet.id)).limit(1));
   }
 
@@ -199,27 +201,27 @@ export async function createBoostCreditOrder(shop: Shop, input: unknown) {
 // Reserved for the payment webhook adapter. Do not expose this to a browser route.
 export async function confirmBoostCreditOrderPaid(orderId: string, provider: string, providerReference: string) {
   const now = new Date();
-  return db.transaction(async (tx: any) => {
-    const order = await firstRow(tx.select().from(boostCreditOrders).where(eq(boostCreditOrders.id, orderId)).limit(1));
+  return runTransaction(db, function* (tx): Generator<any, any, any> {
+    const [order] = yield transactionRows(tx.select().from(boostCreditOrders).where(eq(boostCreditOrders.id, orderId)).limit(1));
     if (!order) throw notFound('Boost credit order not found.');
     if (order.status === 'paid') return order;
     if (order.status !== 'pending') throw conflict('BOOST_ORDER_NOT_PAYABLE', 'This Boost credit order cannot be paid.');
 
-    let wallet = await firstRow(tx.select().from(boostWallets).where(eq(boostWallets.shopId, order.shopId)).limit(1));
+    let [wallet] = yield transactionRows(tx.select().from(boostWallets).where(eq(boostWallets.shopId, order.shopId)).limit(1));
     if (!wallet) {
-      await tx.insert(boostWallets).values({ shopId: order.shopId });
-      wallet = await firstRow(tx.select().from(boostWallets).where(eq(boostWallets.shopId, order.shopId)).limit(1));
+      yield transactionWrite(tx.insert(boostWallets).values({ shopId: order.shopId }));
+      [wallet] = yield transactionRows(tx.select().from(boostWallets).where(eq(boostWallets.shopId, order.shopId)).limit(1));
     }
     if (!wallet) throw new Error('Unable to initialize Boost wallet');
 
     const nextPurchased = wallet.purchasedCreditsBalance + order.creditQuantity;
-    const [paidOrder] = await tx.update(boostCreditOrders)
+    const [paidOrder] = yield transactionRows(tx.update(boostCreditOrders)
       .set({ status: 'paid', provider, providerReference, paidAt: now, updatedAt: now })
       .where(and(eq(boostCreditOrders.id, order.id), eq(boostCreditOrders.status, 'pending')))
-      .returning();
+      .returning());
     if (!paidOrder) return order;
 
-    await tx.insert(boostTransactions).values({
+    yield transactionWrite(tx.insert(boostTransactions).values({
       walletId: wallet.id,
       shopId: order.shopId,
       orderId: order.id,
@@ -230,10 +232,10 @@ export async function confirmBoostCreditOrderPaid(orderId: string, provider: str
       idempotencyKey: `boost-purchase:${order.id}`,
       expiresAt: new Date(now.getTime() + BOOST_RULES.purchasedCreditExpiryDays * 24 * 60 * 60 * 1000),
       metadata: JSON.stringify({ provider, providerReference }),
-    });
-    await tx.update(boostWallets).set({ purchasedCreditsBalance: nextPurchased, updatedAt: now }).where(eq(boostWallets.id, wallet.id));
+    }));
+    yield transactionWrite(tx.update(boostWallets).set({ purchasedCreditsBalance: nextPurchased, updatedAt: now }).where(eq(boostWallets.id, wallet.id)));
     return paidOrder;
-  });
+  }, isPostgresRuntime());
 }
 
 export async function startBoostCampaign(shop: Shop, userId: string, input: unknown) {
@@ -246,26 +248,26 @@ export async function startBoostCampaign(shop: Shop, userId: string, input: unkn
 
   const now = new Date();
   await ensureBoostWallet(shop, now);
-  const result = await db.transaction(async (tx: any) => {
-    const deal = await firstRow(tx.select().from(deals).where(and(eq(deals.id, dealId), eq(deals.shopId, shop.id))).limit(1));
+  const result = await runTransaction(db, function* (tx): Generator<any, any, any> {
+    const [deal] = yield transactionRows(tx.select().from(deals).where(and(eq(deals.id, dealId), eq(deals.shopId, shop.id))).limit(1));
     if (!deal) throw notFound('ไม่พบดีลของร้านค้านี้');
     if (!deal.isActive || new Date(deal.endDate) <= now) throw conflict('INELIGIBLE_DEAL', 'ดีลนี้ไม่พร้อมสำหรับการ Boost');
 
-    const activeCampaigns = await tx.select({ id: boostCampaigns.id })
+    const activeCampaigns = yield transactionRows(tx.select({ id: boostCampaigns.id })
       .from(boostCampaigns)
       .where(and(eq(boostCampaigns.shopId, shop.id), inArray(boostCampaigns.status, [...ACTIVE_CAMPAIGN_STATUSES]), gt(boostCampaigns.endsAt, now)))
-      .limit(10);
+      .limit(10));
     if (!canStartBoost(activeCampaigns.length, (shop.tier as Tier) || 'free')) {
       throw conflict('BOOST_CONCURRENCY_LIMIT', 'คุณใช้จำนวนดีล Boost พร้อมกันครบตามสิทธิ์แล้ว');
     }
 
-    const duplicate = await firstRow(tx.select({ id: boostCampaigns.id })
+    const [duplicate] = yield transactionRows(tx.select({ id: boostCampaigns.id })
       .from(boostCampaigns)
       .where(and(eq(boostCampaigns.dealId, deal.id), inArray(boostCampaigns.status, [...ACTIVE_CAMPAIGN_STATUSES]), gt(boostCampaigns.endsAt, now)))
       .limit(1));
     if (duplicate) throw conflict('DEAL_ALREADY_BOOSTED', 'ดีลนี้กำลังถูก Boost อยู่แล้ว');
 
-    let wallet = await firstRow(tx.select().from(boostWallets).where(eq(boostWallets.shopId, shop.id)).limit(1));
+    const [wallet] = yield transactionRows(tx.select().from(boostWallets).where(eq(boostWallets.shopId, shop.id)).limit(1));
     if (!wallet) throw conflict('BOOST_WALLET_UNAVAILABLE', 'ยังไม่พบกระเป๋าเครดิต Boost กรุณารีเฟรชหน้าแล้วลองใหม่');
 
     const creditsRequired = getBoostCreditsForDuration(durationHours);
@@ -275,7 +277,7 @@ export async function startBoostCampaign(shop: Shop, userId: string, input: unkn
     const useIncluded = Math.min(wallet.includedCreditsBalance, creditsRequired);
     const usePurchased = creditsRequired - useIncluded;
     const creditSource = useIncluded && usePurchased ? 'mixed' : useIncluded ? 'included' : 'purchased';
-    const [campaign] = await tx.insert(boostCampaigns).values({
+    const [campaign] = yield transactionRows(tx.insert(boostCampaigns).values({
       shopId: shop.id,
       dealId: deal.id,
       createdByUserId: userId,
@@ -284,29 +286,29 @@ export async function startBoostCampaign(shop: Shop, userId: string, input: unkn
       creditsReserved: creditsRequired,
       startsAt: now,
       endsAt: new Date(now.getTime() + durationHours * 60 * 60 * 1000),
-    }).returning();
+    }).returning());
 
     const nextIncluded = wallet.includedCreditsBalance - useIncluded;
     const nextPurchased = wallet.purchasedCreditsBalance - usePurchased;
     if (useIncluded) {
-      await tx.insert(boostTransactions).values({
+      yield transactionWrite(tx.insert(boostTransactions).values({
         walletId: wallet.id, shopId: shop.id, campaignId: campaign.id,
         type: 'campaign_charge', creditSource: 'included', creditDelta: -useIncluded,
         balanceAfter: nextIncluded,
-      });
+      }));
     }
     if (usePurchased) {
-      await tx.insert(boostTransactions).values({
+      yield transactionWrite(tx.insert(boostTransactions).values({
         walletId: wallet.id, shopId: shop.id, campaignId: campaign.id,
         type: 'campaign_charge', creditSource: 'purchased', creditDelta: -usePurchased,
         balanceAfter: nextPurchased,
-      });
+      }));
     }
-    await tx.update(boostWallets)
+    yield transactionWrite(tx.update(boostWallets)
       .set({ includedCreditsBalance: nextIncluded, purchasedCreditsBalance: nextPurchased, updatedAt: now })
-      .where(eq(boostWallets.id, wallet.id));
+      .where(eq(boostWallets.id, wallet.id)));
     return campaign;
-  });
+  }, isPostgresRuntime());
 
   return result;
 }

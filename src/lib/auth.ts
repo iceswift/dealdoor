@@ -1,6 +1,8 @@
 // src/lib/auth.ts
 
 import { db } from './db';
+import { runTransaction, transactionWrite } from './db-transaction';
+import { isPostgresRuntime } from './db-runtime';
 import { users, sessions, merchants, shops } from './db-schema';
 import { eq, and, gt } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
@@ -150,21 +152,21 @@ export async function createUser(data: {
 
   const userId = createId();
   const merchantId = createId();
-  await db.transaction(async (transaction) => {
-    await transaction.insert(users).values({
+  await runTransaction(db, function* (transaction): Generator<any, any, any> {
+    yield transactionWrite(transaction.insert(users).values({
       id: userId,
       email: data.email,
       passwordHash,
       name: data.name,
       role: 'merchant',
-    });
-    await transaction.insert(merchants).values({
+    }));
+    yield transactionWrite(transaction.insert(merchants).values({
       id: merchantId,
       userId,
       email: data.email,
       name: data.name,
-    });
-  });
+    }));
+  }, isPostgresRuntime());
 
   const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
   const merchant = await db.query.merchants.findFirst({ where: eq(merchants.id, merchantId) });

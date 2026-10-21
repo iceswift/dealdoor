@@ -14,6 +14,10 @@ Built around Thai local businesses, the project connects customer discovery, mer
 
 **Stack:** Astro · React · TypeScript · Tailwind CSS · Drizzle ORM · SQLite / PostgreSQL · Bun
 
+## Demo Accounts
+
+The dedicated demo deployment provides Free and Pro merchant accounts plus a read-only Admin account. Credentials and hosting details are documented in [Demo deployment](docs/demo-deployment.md). These accounts apply to the isolated demo environment, not production.
+
 ## Product Experience
 
 | Audience | Experience |

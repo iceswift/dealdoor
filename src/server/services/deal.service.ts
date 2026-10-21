@@ -3,6 +3,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import { analyticsEvents, deals, type Shop } from '../../lib/db-schema';
 import { badRequest, unprocessable } from '../../lib/errors';
 import { db } from '../../lib/db';
+import { runTransaction, transactionRows, transactionWrite } from '../../lib/db-transaction';
+import { isPostgresRuntime } from '../../lib/db-runtime';
 import { firstRow } from '../../lib/db-query';
 import { notifyDealQuotaStatus } from './notification.service';
 import { dealSchema, validateInput } from '../../lib/validations';
@@ -132,8 +134,8 @@ export async function getDealRedemptionCount(dealId: string) {
 export async function confirmDealRedemptionForShop(dealId: string, shopId: string, metadata: { ip?: string; userAgent?: string }) {
   const deal = await getDealForShop(dealId, shopId);
 
-  const summary = await db.transaction(async (tx) => {
-    const row = await firstRow(tx
+  const summary = await runTransaction(db, function* (tx): Generator<any, any, any> {
+    const [row] = yield transactionRows(tx
       .select({ count: sql<number>`count(*)` })
       .from(analyticsEvents)
       .where(and(eq(analyticsEvents.dealId, deal.id), eq(analyticsEvents.type, 'redemption_confirmed')))
@@ -147,7 +149,7 @@ export async function confirmDealRedemptionForShop(dealId: string, shopId: strin
       });
     }
 
-    await tx.insert(analyticsEvents).values({
+    yield transactionWrite(tx.insert(analyticsEvents).values({
       id: createId(),
       type: 'redemption_confirmed',
       shopId,
@@ -156,13 +158,13 @@ export async function confirmDealRedemptionForShop(dealId: string, shopId: strin
       ip: metadata.ip || null,
       userAgent: metadata.userAgent || null,
       createdAt: new Date(),
-    });
+    }));
 
     return {
       redemptions: current + 1,
       maxRedemptions: deal.maxRedemptions,
     };
-  });
+  }, isPostgresRuntime());
 
   try {
     await notifyDealQuotaStatus({

@@ -6,9 +6,9 @@ import { notificationDeliveries } from '../../lib/db-schema';
 export type DeliveryChannel = 'in_app' | 'email' | 'web_push';
 export type DeliveryStatus = 'queued' | 'processing' | 'delivered' | 'failed' | 'skipped';
 
-export async function recordInAppDelivery(notificationId: string, executor: typeof db = db) {
+export function inAppDeliveryQuery(notificationId: string, executor: typeof db = db) {
   const now = new Date();
-  await executor.insert(notificationDeliveries).values({
+  return executor.insert(notificationDeliveries).values({
     id: createId(),
     notificationId,
     channel: 'in_app',
@@ -20,6 +20,10 @@ export async function recordInAppDelivery(notificationId: string, executor: type
     createdAt: now,
     updatedAt: now,
   });
+}
+
+export async function recordInAppDelivery(notificationId: string, executor: typeof db = db) {
+  await inAppDeliveryQuery(notificationId, executor);
 }
 
 export async function enqueueNotificationDelivery(notificationId: string, channel: Exclude<DeliveryChannel, 'in_app'>) {

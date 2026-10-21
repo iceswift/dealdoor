@@ -4,6 +4,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { getUserFromRequest } from './lib/auth';
 import { getSecurityHeaders, getClientIp, apiLimiter, authLimiter } from './lib/security';
 import { getLangFromRequest, getLocalizedPath, LOCALE_COOKIE, stripLocalePrefix } from './i18n';
+import { isDemoAdminWriteBlocked } from './lib/demo';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const clientIp = getClientIp(context.request, context.clientAddress);
@@ -83,6 +84,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // Continue without user if auth fails
   }
   context.locals.user = user;
+
+  if (isDemoAdminWriteBlocked(process.env.DEMO_MODE === 'true', user?.role, method, path)) {
+    return new Response(JSON.stringify({ success: false, error: { code: 'DEMO_READ_ONLY', message: 'Demo admin is read-only.' } }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   // Protect dashboard routes
   if (path.startsWith('/dashboard')) {

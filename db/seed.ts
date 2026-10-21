@@ -6,7 +6,8 @@ import { users, merchants, shops, deals, menuItems } from './schema';
 import { createId } from '@paralleldrive/cuid2';
 import { hash } from '@node-rs/argon2';
 
-const sqlite = new Database('./db/dev.db');
+if (process.env.DB_DRIVER === 'postgres') throw new Error('This sample seed supports SQLite only.');
+const sqlite = new Database(process.env.DATABASE_URL || './db/dev.db');
 sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('foreign_keys = OFF'); // Disable for seeding
 
@@ -403,3 +404,4 @@ console.log(`   - 3 merchants`);
 console.log(`   - 3 shops`);
 console.log(`   - 10 deals`);
 console.log(`   - 5 menu items`);
+sqlite.close();
