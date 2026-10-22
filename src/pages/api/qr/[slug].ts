@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../../lib/db';
 import { shops } from '../../../lib/db-schema';
 import { firstRow } from '../../../lib/db-query';
+import { getDealUrl, getShopUrl } from '../../../lib/deals/urls';
 
 export const GET: APIRoute = async ({ params, request }) => {
   const shop = await firstRow(db.select().from(shops).where(eq(shops.slug, params.slug!)).limit(1));
@@ -13,9 +14,10 @@ export const GET: APIRoute = async ({ params, request }) => {
 
   const url = new URL(request.url);
   const dealId = url.searchParams.get('deal');
-  const targetUrl = dealId
-    ? `https://dealdoor.co/${shop.slug}?deal=${dealId}`
-    : `https://dealdoor.co/${shop.slug}`;
+  const targetUrl = new URL(
+    dealId ? getDealUrl(shop, { id: dealId }) : getShopUrl(shop),
+    url.origin,
+  ).href;
   const requestedSize = Number.parseInt(url.searchParams.get('size') || '300', 10);
   const size = Number.isFinite(requestedSize) ? Math.min(Math.max(requestedSize, 160), 1200) : 300;
 

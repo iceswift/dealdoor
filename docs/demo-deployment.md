@@ -33,3 +33,31 @@ The Admin restriction is enforced server-side for modifying requests, with login
 There is no scheduled data reset in this initial deployment. Demo initialization only runs for an empty database; restarting the service does not reset merchant edits or replenish spent Boost credits. Back up or export data before any intentional reset.
 
 The Free plan has limited monthly credits, memory, and storage. It can sleep or stop when credits are exhausted. It should not be presented as an always-on production service.
+
+## Readiness checks
+
+Run from the repository root after installing dependencies:
+
+```sh
+bun run test
+bun run build
+bun build db/seed.ts --target=node --packages=external --outfile=dist/demo-seed.mjs
+bun run smoke:demo
+```
+
+The smoke script starts and stops its own production Node server on an available loopback port. It always creates a new SQLite database and local media directory under ignored `tmp/demo-smoke-*`, ignoring the caller's database/storage paths. It never resets an existing database or contacts the hosted demo. Fixtures are retained for inspection.
+
+Coverage includes public pages, three sample logins, merchant dashboard routes, API edits, cross-merchant ownership, server-enforced Admin read-only errors, logout invalidation, internal-job access denial, QR responses, media path traversal rejection, real PNG-to-WebP upload, and account/edit/media persistence after restart. QR unit tests check the encoded destination uses the current origin rather than a hardcoded production host.
+
+These checks do not verify a Railway build, live HTTPS/proxy cookies, map-provider availability, visual layout, or real payment/email delivery. Repeat live login, QR scanning on a phone, and media checks once the service is online.
+
+## Public demo safety and limitations
+
+- Use sample data only. Do not add personal information, real customer records, real payment credentials, or production storage credentials.
+- The shared merchant accounts intentionally allow edits. Visitors can change or pause sample deals and spend sample Boost credits; other visitors see those changes. Admin is inspection-only, not a way to exercise moderation writes.
+- Per-file image limits and request throttling exist, but there is no aggregate demo storage quota or periodic cleanup. Monitor the volume and do not present this as an abuse-proof public sandbox.
+- Registration remains enabled. New users can create sample content; there is no automatic reset/replenishment or guaranteed isolated session per visitor.
+- Do not configure external delivery/payment integrations for this demo. Seeded contact links are sample content, not verified businesses.
+- Keep Railway credentials outside the repository. The current tracked tree contains environment templates, not live environment files, SQLite databases, or project-token files; this is not a full historical secret audit.
+
+Before advertising the live URL: verify health, all three HTTPS logins, merchant edits, read-only Admin, QR destination, uploads after restart, and current hosting credit/storage availability. A local pass alone does not establish deployment success.
