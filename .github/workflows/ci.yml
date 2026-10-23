@@ -1,118 +1,47 @@
-# DealDoor - CI/CD Pipeline
-
-name: CI/CD
+name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # ─── Lint & Type Check ─────────────────────────────────
-  lint:
-    name: Lint & Type Check
-    runs-on: ubuntu-latest
+  verify:
+    name: Tests, build and isolated demo checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          bun-version: "1.3.14"
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run linter
-        run: bun run lint || true
-
-      - name: Type check
-        run: bun run typecheck || true
-
-  # ─── Unit Tests ────────────────────────────────────────
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
+          node-version: '22'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: "1.3.14"
-
-      - name: Install dependencies
+          bun-version: '1.3.14'
+      - name: Install locked dependencies
         run: bun install --frozen-lockfile
-
-      - name: Run tests
+      - name: Unit and regression tests
         run: bun run test
-
-  # ─── Build ─────────────────────────────────────────────
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.14"
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build application
+      - name: Production build for the demo domain
         run: bun run build
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build
-          path: dist/
-          retention-days: 7
-
-  # ─── Deploy to Staging ────────────────────────────────
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download build
-        uses: actions/download-artifact@v4
-        with:
-          name: build
-          path: dist/
-
-      - name: Deploy to Render (Staging)
-        uses: bounceapp/render-action@0.6.0
-        with:
-          render-token: ${{ secrets.RENDER_TOKEN }}
-          service-id: ${{ secrets.RENDER_STAGING_SERVICE_ID }}
-          wait-for-server: true
-
-  # ─── Deploy to Production ─────────────────────────────
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download build
-        uses: actions/download-artifact@v4
-        with:
-          name: build
-          path: dist/
-
-      - name: Deploy to Render (Production)
-        uses: bounceapp/render-action@0.6.0
-        with:
-          render-token: ${{ secrets.RENDER_TOKEN }}
-          service-id: ${{ secrets.RENDER_PRODUCTION_SERVICE_ID }}
-          wait-for-server: true
+        env:
+          PUBLIC_SITE_URL: https://dealdoor.suwiwat.com
+      - name: Bundle disposable demo fixtures
+        run: bun build db/seed.ts --target=node --packages=external --outfile=dist/demo-seed.mjs
+      - name: Restricted demo and proxy checks
+        run: bun run smoke:demo
+        env:
+          SMOKE_EXPECT_SITE_URL: https://dealdoor.suwiwat.com
+      - name: Private-test opt-in regression checks
+        run: node scripts/smoke-demo.mjs --allow-demo-writes
+        env:
+          SMOKE_EXPECT_SITE_URL: https://dealdoor.suwiwat.com

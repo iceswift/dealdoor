@@ -14,6 +14,24 @@ Built around Thai local businesses, the project connects customer discovery, mer
 
 **Stack:** Astro · React · TypeScript · Tailwind CSS · Drizzle ORM · SQLite / PostgreSQL · Bun
 
+[![CI](https://github.com/iceswift/dealdoor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iceswift/dealdoor/actions/workflows/ci.yml)
+
+## Visual Tour
+
+Real screenshots from the public demo, captured October 23, 2026. Sample analytics are intentionally shown as they are, including empty states.
+
+![DealDoor home and local deal discovery](docs/showcase/home.jpg)
+
+| Deal details | Merchant workspace |
+| --- | --- |
+| ![Deal details and coupon](docs/showcase/deal-detail.jpg) | ![Merchant dashboard](docs/showcase/dashboard.jpg) |
+| Analytics | Read-only moderation |
+| ![Merchant analytics empty state](docs/showcase/analytics.jpg) | ![Admin moderation](docs/showcase/admin.jpg) |
+
+**[Watch the 72-second walkthrough](docs/showcase/walkthrough.mp4)** · **[Full screenshot gallery and chapter guide](docs/showcase/README.md)**
+
+The silent walkthrough is an edited sequence of actual screenshots, not a recording of live interactions.
+
 ## Demo Accounts
 
 **[Open the live demo](https://dealdoor.suwiwat.com)** · **[Sign in](https://dealdoor.suwiwat.com/auth/login)**
@@ -136,6 +154,9 @@ Some modules are foundations rather than complete production integrations. Boost
 The [design documentation](docs/README.md) records broader product and engineering plans. Treat those documents as design intent where they differ from executable code.
 
 ## Further Reading
+
+- [Known limitations and prioritized roadmap](docs/portfolio-roadmap.md)
+- [CI workflow](.github/workflows/ci.yml): locked dependency install, Vitest, production build, and isolated demo smoke checks. It does not deploy the home server. Linting, standalone type checking, PostgreSQL integration, and browser automation are not claimed as CI coverage.
 
 - [Product plan](docs/01-product-plan.md)
 - [Data architecture](docs/03-data-architecture.md)
