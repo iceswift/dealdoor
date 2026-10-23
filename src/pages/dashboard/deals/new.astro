@@ -3,6 +3,7 @@
 
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import DealForm from '../../../components/dashboard/DealForm.tsx';
+import { getDemoPolicy } from '../../../lib/demo';
 import Icon from '../../../components/icons/index.astro';
 import { requireDashboardShop } from '../../../lib/dashboard/server';
 
@@ -29,6 +30,6 @@ try {
       </div>
     </section>
 
-    <DealForm client:load shopName={shop.name} shopLogoUrl={shop.logoImage} shopAddress={shop.address} />
+    <DealForm client:load uploadsDisabled={!getDemoPolicy().uploadsAllowed} shopName={shop.name} shopLogoUrl={shop.logoImage} shopAddress={shop.address} />
   </div>
 </DashboardLayout>

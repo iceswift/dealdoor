@@ -3,6 +3,7 @@
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import ShopFormWrapper from '../../components/dashboard/ShopFormWrapper.tsx';
+import { getDemoPolicy } from '../../lib/demo';
 import { getDashboardContext } from '../../lib/dashboard/server';
 
 const context = await getDashboardContext(Astro.locals.user);
@@ -12,5 +13,5 @@ if (!context) {
 ---
 
 <DashboardLayout title="ข้อมูลร้านค้า" activeTab="edit">
-  <ShopFormWrapper client:load shop={context.shop} />
+  <ShopFormWrapper client:load shop={context.shop} uploadsDisabled={!getDemoPolicy().uploadsAllowed} />
 </DashboardLayout>

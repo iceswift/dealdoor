@@ -10,6 +10,8 @@ Attach a persistent volume at `/data` and configure:
 
 ```dotenv
 DEMO_MODE=true
+DEMO_ALLOW_REGISTRATION=false
+DEMO_ALLOW_UPLOADS=false
 DB_DRIVER=sqlite
 DATABASE_URL=/data/dealdoor-demo.db
 MEDIA_LOCAL_ROOT=/data/media
@@ -43,6 +45,7 @@ bun run test
 bun run build
 bun build db/seed.ts --target=node --packages=external --outfile=dist/demo-seed.mjs
 bun run smoke:demo
+node scripts/smoke-demo.mjs --allow-demo-writes
 ```
 
 The smoke script starts and stops its own production Node server on an available loopback port. It always creates a new SQLite database and local media directory under ignored `tmp/demo-smoke-*`, ignoring the caller's database/storage paths. It never resets an existing database or contacts the hosted demo. Fixtures are retained for inspection.
@@ -56,7 +59,9 @@ These checks do not verify a Railway build, live HTTPS/proxy cookies, map-provid
 - Use sample data only. Do not add personal information, real customer records, real payment credentials, or production storage credentials.
 - The shared merchant accounts intentionally allow edits. Visitors can change or pause sample deals and spend sample Boost credits; other visitors see those changes. Admin is inspection-only, not a way to exercise moderation writes.
 - Per-file image limits and request throttling exist, but there is no aggregate demo storage quota or periodic cleanup. Monitor the volume and do not present this as an abuse-proof public sandbox.
-- Registration remains enabled. New users can create sample content; there is no automatic reset/replenishment or guaranteed isolated session per visitor.
+- With `DEMO_MODE=true`, registration and file uploads are disabled by default, including direct API calls. The signup page redirects to login and image controls show existing samples without file inputs or remove buttons. Shop/deal text editing and viewing sample images remain available.
+- Only for private testing, set `DEMO_ALLOW_REGISTRATION=true` or `DEMO_ALLOW_UPLOADS=true` to opt in independently. Do not enable these on the public demo. With demo mode off, normal registration/upload behavior is unchanged. The optional smoke flag tests these opt-ins against disposable local fixtures.
+- There is no automatic reset/replenishment or guaranteed isolated session per visitor. Blocking file uploads prevents visitors from adding local media files; it is not a total disk quota. Content edits, analytics, reports, database growth, and logs still require monitoring and retention limits.
 - Do not configure external delivery/payment integrations for this demo. Seeded contact links are sample content, not verified businesses.
 - Keep Railway credentials outside the repository. The current tracked tree contains environment templates, not live environment files, SQLite databases, or project-token files; this is not a full historical secret audit.
 

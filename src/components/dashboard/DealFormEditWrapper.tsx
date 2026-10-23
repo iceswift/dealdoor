@@ -5,12 +5,13 @@ import type { Deal } from '../../lib/db-schema';
 import DealForm from './DealForm';
 
 interface DealFormEditWrapperProps {
+  uploadsDisabled?: boolean;
   shopName?: string;
   shopLogoUrl?: string | null;
   shopAddress?: string | null;
 }
 
-export default function DealFormEditWrapper({ shopName, shopLogoUrl, shopAddress }: DealFormEditWrapperProps) {
+export default function DealFormEditWrapper({ shopName, shopLogoUrl, shopAddress, uploadsDisabled }: DealFormEditWrapperProps) {
   const [deal, setDeal] = useState<Deal | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,6 +63,7 @@ export default function DealFormEditWrapper({ shopName, shopLogoUrl, shopAddress
 
   return (
     <DealForm
+      uploadsDisabled={uploadsDisabled}
       deal={deal}
       shopName={shopName}
       shopLogoUrl={shopLogoUrl}

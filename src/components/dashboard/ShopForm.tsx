@@ -6,6 +6,7 @@ import ImageUpload from '../shared/ImageUpload.tsx';
 import LocationPicker from './LocationPicker.tsx';
 
 interface ShopFormProps {
+  uploadsDisabled?: boolean;
   shop: Shop | null;
   onSuccess: (shop: Shop) => void;
   onChange?: (data: ShopFormState) => void;
@@ -291,7 +292,7 @@ function SectionIcon({ id }: { id: SectionId }) {
   );
 }
 
-export default function ShopForm({ shop, onSuccess, onChange, isCollapsed }: ShopFormProps) {
+export default function ShopForm({ shop, onSuccess, onChange, isCollapsed, uploadsDisabled }: ShopFormProps) {
   const [activeSection, setActiveSection] = useState<SectionId>(getInitialSection);
   const [formData, setFormData] = useState<ShopFormState>(() => initialState(shop));
   const [isMobileFormOpen, setIsMobileFormOpen] = useState(() => {
@@ -856,8 +857,8 @@ export default function ShopForm({ shop, onSuccess, onChange, isCollapsed }: Sho
           <section className="rounded-3xl border border-border/40 bg-card-bg p-5 shadow-sm">
             <h2 className="text-xl font-black text-secondary">รูปภาพร้าน</h2>
             <div className="mt-5 grid gap-6">
-              <ImageUpload type="cover" currentUrl={formData.coverImage} onUpload={(url) => setField('coverImage', url)} label="รูปหน้าปก" />
-              <ImageUpload type="logo" currentUrl={formData.logoImage} onUpload={(url) => setField('logoImage', url)} label="โลโก้ร้าน" />
+              <ImageUpload disabled={uploadsDisabled} type="cover" currentUrl={formData.coverImage} onUpload={(url) => setField('coverImage', url)} label="รูปหน้าปก" />
+              <ImageUpload disabled={uploadsDisabled} type="logo" currentUrl={formData.logoImage} onUpload={(url) => setField('logoImage', url)} label="โลโก้ร้าน" />
             </div>
           </section>
         )}

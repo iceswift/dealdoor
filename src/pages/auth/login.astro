@@ -3,6 +3,9 @@
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Icon from '../../components/icons/index.astro';
+import { getDemoPolicy } from '../../lib/demo';
+
+const registrationAllowed = getDemoPolicy().registrationAllowed;
 
 const redirectParam = Astro.url.searchParams.get('redirect');
 const safeRedirect = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
@@ -139,10 +142,10 @@ if (Astro.locals.user) {
           </button>
         </form>
 
-        <p class="mt-6 text-center text-xs text-text-secondary font-semibold">
+        {registrationAllowed ? <p class="mt-6 text-center text-xs text-text-secondary font-semibold">
           ยังไม่มีบัญชีสำหรับร้านค้า?
           <a href="/auth/register" class="font-bold text-primary hover:underline ml-1">สมัครสมาชิกที่นี่</a>
-        </p>
+        </p> : <p class="mt-6 text-center text-xs text-text-secondary font-semibold">Demo: กรุณาใช้บัญชีทดลอง ไม่เปิดรับสมัครสมาชิกใหม่</p>}
       </div>
     </div>
   </div>

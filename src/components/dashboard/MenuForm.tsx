@@ -15,6 +15,7 @@ type MenuFormState = {
 };
 
 interface MenuFormProps {
+  uploadsDisabled?: boolean;
   item?: MenuItem;
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -47,7 +48,7 @@ async function parseResponse(response: Response) {
   return payload;
 }
 
-export default function MenuForm({ item, onSuccess, onCancel }: MenuFormProps) {
+export default function MenuForm({ item, onSuccess, onCancel, uploadsDisabled }: MenuFormProps) {
   const [form, setForm] = useState<MenuFormState>(() => {
     if (item) return toForm(item);
     return emptyForm;
@@ -106,6 +107,7 @@ export default function MenuForm({ item, onSuccess, onCancel }: MenuFormProps) {
       </div>
 
       <ImageUpload
+        disabled={uploadsDisabled}
         type="menu"
         currentUrl={form.imageUrl}
         onUpload={(url) => setField('imageUrl', url)}

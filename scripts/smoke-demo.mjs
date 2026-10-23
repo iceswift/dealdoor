@@ -17,11 +17,14 @@ await once(reservation, 'listening');
 const port = reservation.address().port;
 await new Promise((done) => reservation.close(done));
 const origin = `http://127.0.0.1:${port}`;
+const allowDemoWrites = process.argv.includes('--allow-demo-writes');
 const env = {
   ...process.env,
   DEMO_MODE: 'true', DB_DRIVER: 'sqlite', DATABASE_URL: databasePath,
   STORAGE_DRIVER: 'local', MEDIA_LOCAL_ROOT: join(root, 'media'),
   HOST: '127.0.0.1', PORT: String(port), NODE_ENV: 'production',
+  DEMO_ALLOW_UPLOADS: String(allowDemoWrites),
+  DEMO_ALLOW_REGISTRATION: String(allowDemoWrites),
 };
 let child;
 let output = '';
@@ -85,6 +88,17 @@ try {
     await check(path);
   }
   await check('/dashboard', 302);
+  if (!allowDemoWrites) {
+    await check('/auth/register', 302);
+    const loginPage = await (await check('/auth/login')).text();
+    assert.ok(!loginPage.includes('href="/auth/register"'));
+    for (const path of ['/api/auth/register', '/api/auth/register/', '/api/upload', '/api/upload/', '/en/api/upload']) {
+      const blocked = await check(path, 403, { method: 'POST' });
+      assert.equal((await blocked.json()).error.code, 'DEMO_FEATURE_DISABLED');
+    }
+  } else {
+    await check('/auth/register');
+  }
   await check('/api/admin/stats', 401);
   const pro = await login('test@dealdoor.co');
   await check(`/api/shops/${shopId}`, 200, {
@@ -95,11 +109,20 @@ try {
   const upload = new FormData();
   upload.set('file', new Blob([file], { type: 'image/png' }), 'smoke.png');
   upload.set('type', 'logo');
-  const uploaded = await check('/api/upload', 201, { method: 'POST', headers: pro, body: upload });
-  const uploadedUrl = (await uploaded.json()).data.url;
-  assert.match(uploadedUrl, /^\/uploads\/logos\/[\w-]+\.webp$/);
-  const uploadedImage = await check(uploadedUrl);
-  assert.equal((await sharp(Buffer.from(await uploadedImage.arrayBuffer())).metadata()).format, 'webp');
+  let uploadedUrl;
+  if (allowDemoWrites) {
+    const uploaded = await check('/api/upload', 201, { method: 'POST', headers: pro, body: upload });
+    uploadedUrl = (await uploaded.json()).data.url;
+    assert.match(uploadedUrl, /^\/uploads\/logos\/[\w-]+\.webp$/);
+    const uploadedImage = await check(uploadedUrl);
+    assert.equal((await sharp(Buffer.from(await uploadedImage.arrayBuffer())).metadata()).format, 'webp');
+  } else {
+    const blocked = await check('/api/upload', 403, { method: 'POST', headers: pro, body: upload });
+    assert.equal((await blocked.json()).error.code, 'DEMO_FEATURE_DISABLED');
+    const form = await (await check('/dashboard/deals/new', 200, { headers: pro })).text();
+    assert.ok(!form.includes('type="file"'));
+    assert.match(form, /Demo:/);
+  }
   for (const path of ['/dashboard', '/dashboard/edit', '/dashboard/deals', '/dashboard/analytics', '/dashboard/boosts', '/dashboard/notifications']) {
     await check(path, 200, { headers: pro });
   }
@@ -139,7 +162,7 @@ try {
   assert.equal(reopened.prepare('SELECT COUNT(*) AS count FROM users').get().count, before);
   reopened.close();
   await check(assetPath);
-  await check(uploadedUrl);
+  if (uploadedUrl) await check(uploadedUrl);
   console.log(`Demo smoke passed: ${checks} HTTP checks; restart preserved edits, accounts, and media.`);
 } catch (error) {
   console.error(error);

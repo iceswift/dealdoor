@@ -3,6 +3,11 @@
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Icon from '../../components/icons/index.astro';
+import { getDemoPolicy } from '../../lib/demo';
+
+if (!getDemoPolicy().registrationAllowed) {
+  return Astro.redirect('/auth/login');
+}
 
 // ─── BACKEND WORKFLOW: AUTHENTICATED SESSION CHECK ───
 if (Astro.locals.user) {

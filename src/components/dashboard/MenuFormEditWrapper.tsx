@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { MenuItem } from '../../lib/db-schema';
 import MenuForm from './MenuForm';
 
-export default function MenuFormEditWrapper() {
+export default function MenuFormEditWrapper({ uploadsDisabled }: { uploadsDisabled?: boolean }) {
   const [item, setItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,6 +56,7 @@ export default function MenuFormEditWrapper() {
 
   return (
     <MenuForm
+      uploadsDisabled={uploadsDisabled}
       item={item}
       onSuccess={() => { window.location.href = '/dashboard/menu'; }}
       onCancel={() => { window.location.href = '/dashboard/menu'; }}

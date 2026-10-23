@@ -6,10 +6,11 @@ import ShopForm from './ShopForm';
 import LivePreview from './LivePreview';
 
 interface ShopFormWrapperProps {
+  uploadsDisabled?: boolean;
   shop: Shop | null;
 }
 
-export default function ShopFormWrapper({ shop }: ShopFormWrapperProps) {
+export default function ShopFormWrapper({ shop, uploadsDisabled }: ShopFormWrapperProps) {
   const [previewData, setPreviewData] = useState<any>(shop || {});
   const [showPreview, setShowPreview] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -19,6 +20,7 @@ export default function ShopFormWrapper({ shop }: ShopFormWrapperProps) {
       <div className={`grid gap-6 transition-all duration-300 ${isCollapsed ? 'xl:grid-cols-1' : 'xl:grid-cols-[1fr_360px]'}`}>
         <div className="min-w-0">
           <ShopForm
+            uploadsDisabled={uploadsDisabled}
             shop={shop}
             onSuccess={(updatedShop) => {
               setPreviewData(updatedShop);

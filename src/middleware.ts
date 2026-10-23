@@ -4,7 +4,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { getUserFromRequest } from './lib/auth';
 import { getSecurityHeaders, getClientIp, apiLimiter, authLimiter } from './lib/security';
 import { getLangFromRequest, getLocalizedPath, LOCALE_COOKIE, stripLocalePrefix } from './i18n';
-import { isDemoAdminWriteBlocked } from './lib/demo';
+import { getDemoPolicy, isDemoAdminWriteBlocked } from './lib/demo';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const clientIp = getClientIp(context.request, context.clientAddress);
@@ -13,6 +13,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const language = getLangFromRequest(context.request);
   const path = stripLocalePrefix(requestedPath);
   const requestId = crypto.randomUUID();
+  const demoPolicy = getDemoPolicy();
+  const featurePath = path.replace(/\/+$/, '');
+
+  // Reject disabled operations before parsing bodies, loading sessions, or processing images.
+  if ((!demoPolicy.registrationAllowed && featurePath === '/api/auth/register')
+    || (!demoPolicy.uploadsAllowed && featurePath === '/api/upload')) {
+    return Response.json({ success: false, error: {
+      code: 'DEMO_FEATURE_DISABLED',
+      message: featurePath === '/api/upload'
+        ? 'Demo: image uploads are disabled.'
+        : 'Demo: registration is disabled. Please use a sample account.',
+    } }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
+  }
 
   context.locals.language = language;
 

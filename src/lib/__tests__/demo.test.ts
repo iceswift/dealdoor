@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { isDemoAdminWriteBlocked } from '../demo';
+import { getDemoPolicy, isDemoAdminWriteBlocked } from '../demo';
+
+describe('demo feature policy', () => {
+  it('defaults to blocking registration and uploads only in demo mode', () => {
+    expect(getDemoPolicy({ DEMO_MODE: 'true' })).toEqual({ registrationAllowed: false, uploadsAllowed: false });
+    expect(getDemoPolicy({})).toEqual({ registrationAllowed: true, uploadsAllowed: true });
+  });
+  it('allows explicit independent opt-ins for private testing', () => {
+    expect(getDemoPolicy({ DEMO_MODE: 'true', DEMO_ALLOW_UPLOADS: 'true' }))
+      .toEqual({ registrationAllowed: false, uploadsAllowed: true });
+    expect(getDemoPolicy({ DEMO_MODE: 'true', DEMO_ALLOW_REGISTRATION: 'true' }))
+      .toEqual({ registrationAllowed: true, uploadsAllowed: false });
+  });
+  it('does not let demo switches disable production features', () => {
+    expect(getDemoPolicy({ DEMO_MODE: 'false', DEMO_ALLOW_UPLOADS: 'false', DEMO_ALLOW_REGISTRATION: 'false' }))
+      .toEqual({ registrationAllowed: true, uploadsAllowed: true });
+  });
+});
 
 describe('public demo admin permissions', () => {
   it('blocks destructive and modifying admin requests in the demo', () => {

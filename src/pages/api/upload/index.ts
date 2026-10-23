@@ -4,11 +4,13 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { validateUpload, saveImage, type UploadType } from '../../../lib/upload';
-import { handleApiError, badRequest, unauthorized } from '../../../lib/errors';
+import { handleApiError, badRequest, unauthorized, ApiError } from '../../../lib/errors';
+import { getDemoPolicy } from '../../../lib/demo';
 import { requireDashboardShop } from '../../../lib/dashboard/server';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
+    if (!getDemoPolicy().uploadsAllowed) throw new ApiError(403, 'DEMO_FEATURE_DISABLED', 'Demo: image uploads are disabled.');
     if (!locals.user) throw unauthorized();
     await requireDashboardShop(locals.user);
 

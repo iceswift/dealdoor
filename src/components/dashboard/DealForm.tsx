@@ -6,6 +6,7 @@ import ImageUpload from '../shared/ImageUpload.tsx';
 import { DEAL_CATEGORY_COLORS, type DealCategory } from '../../lib/constants';
 
 interface DealFormProps {
+  uploadsDisabled?: boolean;
   deal?: Deal | null;
   shopName?: string;
   shopLogoUrl?: string | null;
@@ -46,7 +47,7 @@ function toInputDate(value?: Date | string | null) {
   return date.toISOString().slice(0, 10);
 }
 
-export default function DealForm({ deal, shopName, shopLogoUrl, shopAddress, onSuccess, onCancel }: DealFormProps) {
+export default function DealForm({ deal, shopName, shopLogoUrl, shopAddress, onSuccess, onCancel, uploadsDisabled }: DealFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -174,6 +175,7 @@ export default function DealForm({ deal, shopName, shopLogoUrl, shopAddress, onS
             <label className="block">
               <span className="text-sm font-black text-secondary">รูปดีล</span>
               <ImageUpload
+                disabled={uploadsDisabled}
                 type="deal"
                 currentUrl={formData.imageUrl}
                 onUpload={(url) => updateField('imageUrl', url)}
