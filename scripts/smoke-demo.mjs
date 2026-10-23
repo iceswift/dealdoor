@@ -93,6 +93,13 @@ try {
     assert.ok(html.includes(`rel="canonical" href="${expectedOrigin}/moon-bowl-cafe"`));
     assert.ok(html.includes(`"url":"${expectedOrigin}/moon-bowl-cafe"`));
     assert.ok(!html.includes('https://dealdoor.co/'));
+    const proxyHeaders = {
+      origin: expectedOrigin,
+      'x-forwarded-proto': new URL(expectedOrigin).protocol.slice(0, -1),
+      'x-forwarded-host': new URL(expectedOrigin).host,
+    };
+    await check('/api/auth/logout', 200, { method: 'POST', headers: proxyHeaders });
+    await check('/api/auth/logout', 403, { method: 'POST', headers: { ...proxyHeaders, origin: 'https://untrusted.example' } });
   }
   await check('/dashboard', 302);
   if (!allowDemoWrites) {

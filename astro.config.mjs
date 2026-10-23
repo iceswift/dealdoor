@@ -6,9 +6,14 @@ import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
 import path from 'path';
 
+const publicSite = new URL(process.env.PUBLIC_SITE_URL || 'https://dealdoor.co');
+
 // https://astro.build/config
 export default defineConfig({
-  site: process.env.PUBLIC_SITE_URL || 'https://dealdoor.co',
+  site: publicSite.href,
+  security: {
+    allowedDomains: [{ protocol: publicSite.protocol.slice(0, -1), hostname: publicSite.hostname }],
+  },
   output: 'server',
   server: {
     host: 'localhost',

@@ -28,6 +28,8 @@ For the Home server, build the image with `--build-arg PUBLIC_SITE_URL=https://d
 
 Keep localhost bound to `127.0.0.1:4321` with the existing host cloudflared service forwarding HTTP to it. Verify HTTPS cookies, canonical/alternate links, QR targets, and notification SSE through the actual hostname before advertising the demo.
 
+Astro's `security.allowedDomains` trusts forwarded host/protocol only for the configured public origin. Keep the origin check enabled. The tunnel must preserve the public Host and send `X-Forwarded-Proto: https`; do not work around proxy mismatches by disabling CSRF protection. Run `SMOKE_EXPECT_SITE_URL=https://dealdoor.suwiwat.com` with the smoke command against a build made for that domain to test same-origin proxy logout and rejection of cross-origin requests.
+
 ## Sample accounts
 
 | Access | Email | Password |
