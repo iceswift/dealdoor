@@ -16,7 +16,15 @@ Built around Thai local businesses, the project connects customer discovery, mer
 
 ## Demo Accounts
 
-The dedicated demo deployment provides Free and Pro merchant accounts plus a read-only Admin account. Credentials and hosting details are documented in [Demo deployment](docs/demo-deployment.md). These accounts apply to the isolated demo environment, not production.
+**[Open the live demo](https://dealdoor.suwiwat.com)** · **[Sign in](https://dealdoor.suwiwat.com/auth/login)**
+
+| Access | Email | Password |
+| --- | --- | --- |
+| Free merchant | `free-demo@dealdoor.co` | `password123` |
+| Pro merchant | `test@dealdoor.co` | `password123` |
+| Read-only Admin | `admin@dealdoor.co` | `password123` |
+
+These are public credentials for isolated sample data, not production accounts. Merchant edits are shared between visitors. Registration and image uploads are disabled; Admin is read-only. The self-hosted demo has no uptime guarantee or automatic data reset. See [Demo deployment](docs/demo-deployment.md) for details.
 
 ## Product Experience
 
@@ -121,7 +129,7 @@ Suggested walkthrough: register a merchant account, complete onboarding, create 
 
 ## Project Status
 
-**An evolving portfolio project with implemented frontend and backend workflows.** This overview describes the code in this repository's current default branch; it does not claim a verified live deployment, production traffic, or a completed security review.
+**An evolving portfolio project with implemented frontend and backend workflows and a live sample-data demo.** HTTPS checks on October 23, 2026 verified health, all three sample logins, secure HTTP-only session cookies, logout invalidation, Admin write blocking, disabled registration/uploads, notification SSE initial delivery, and cookie-preference save/reload through the browser UI. This is not evidence of production traffic, load capacity, or a completed security review.
 
 Some modules are foundations rather than complete production integrations. Boost credit orders do not imply a live payment gateway, and browser-local saved deals do not imply cross-device synchronization. A production release still needs deployment-specific configuration and end-to-end verification of integrations and scheduled jobs.
 

@@ -1,4 +1,10 @@
-# Demo deployment on Railway
+# Demo deployment
+
+Live demo: https://dealdoor.suwiwat.com (self-hosted behind Cloudflare Tunnel). The Railway instructions below describe the earlier deployment setup, not the current live host.
+
+## Verified live checks
+
+On October 23, 2026, the public HTTPS deployment was checked for health, all three sample logins, Secure/HttpOnly session cookies, logout invalidation, read-only Admin, blocked registration/uploads, foreign-origin rejection, and initial notification SSE delivery. Browser UI checks verified saving analytics consent and retaining the selection after reload, then restoring necessary-only cookies. The Home server maintainer separately reported persistence after container recreation and limits of 512MiB RAM / 1 CPU. These checks are not a load test or an uptime guarantee; physical phone QR scanning and long-duration stream reconnection are still separate checks.
 
 This environment contains sample data only. Never point the demo at a production database.
 
