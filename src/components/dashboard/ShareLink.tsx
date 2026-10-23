@@ -1,6 +1,7 @@
 // src/components/dashboard/ShareLink.tsx
 
 import { useState } from 'react';
+import { useSiteOrigin } from '../../lib/use-site-origin';
 
 interface ShareLinkProps {
   slug: string;
@@ -9,7 +10,8 @@ interface ShareLinkProps {
 
 export default function ShareLink({ slug, shopName }: ShareLinkProps) {
   const [copied, setCopied] = useState(false);
-  const url = `https://dealdoor.co/${slug}`;
+  const origin = useSiteOrigin();
+  const url = `${origin}/${slug}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(url);

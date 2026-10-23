@@ -8,7 +8,7 @@ import path from 'path';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://dealdoor.co',
+  site: process.env.PUBLIC_SITE_URL || 'https://dealdoor.co',
   output: 'server',
   server: {
     host: 'localhost',

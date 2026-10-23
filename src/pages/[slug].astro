@@ -74,12 +74,13 @@ const highlightedDeal = dealId ? [...activeDeals, ...expiredDeals].find(d => d.i
 const invalidDealId = Boolean(dealId && !highlightedDeal);
 // ────────────────────────────────────────────────────────
 
-const localBusinessSchema = generateLocalBusinessSchema(shop);
-const offerSchemas = activeDeals.map(deal => generateOfferSchema(deal, shop));
+const siteOrigin = (Astro.site || Astro.url).origin;
+const localBusinessSchema = generateLocalBusinessSchema(shop, siteOrigin);
+const offerSchemas = activeDeals.map(deal => generateOfferSchema(deal, shop, siteOrigin));
 const breadcrumbSchema = generateBreadcrumbSchema([
-  { name: 'DealDoor', url: 'https://dealdoor.co' },
-  { name: 'Explore', url: 'https://dealdoor.co/explore' },
-  { name: shop.name, url: `https://dealdoor.co/${shop.slug}` },
+  { name: 'DealDoor', url: siteOrigin },
+  { name: 'Explore', url: `${siteOrigin}/explore` },
+  { name: shop.name, url: `${siteOrigin}/${shop.slug}` },
 ]);
 ---
 

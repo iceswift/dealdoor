@@ -22,6 +22,12 @@ NODE_ENV=production
 
 Railway supplies `PORT`. Use `/api/health` for readiness checks. New Railway services may ignore the legacy `railway.toml`; the root Dockerfile and service dashboard settings are authoritative.
 
+## Custom domain builds
+
+For the Home server, build the image with `--build-arg PUBLIC_SITE_URL=https://dealdoor.suwiwat.com` (or Compose `build.args.PUBLIC_SITE_URL`). This is a public, non-secret build-time value used for Astro site metadata, structured data, and sharing defaults. Setting only a container runtime environment variable does not rebuild the client bundle or Astro site setting. Rebuild the image when changing domains. Do not change sample account email addresses or invent replacement support/legal mailboxes; those are separate configuration/content decisions.
+
+Keep localhost bound to `127.0.0.1:4321` with the existing host cloudflared service forwarding HTTP to it. Verify HTTPS cookies, canonical/alternate links, QR targets, and notification SSE through the actual hostname before advertising the demo.
+
 ## Sample accounts
 
 | Access | Email | Password |

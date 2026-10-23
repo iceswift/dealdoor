@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { getOnboardingState, clearOnboardingState } from '../../lib/onboarding';
+import { useSiteOrigin } from '../../lib/use-site-origin';
 
 export default function ShareSuccess() {
+  const origin = useSiteOrigin();
   const [shopSlug, setShopSlug] = useState('');
   const [shopName, setShopName] = useState('');
   const [copied, setCopied] = useState(false);
@@ -55,7 +57,7 @@ export default function ShareSuccess() {
     }
   };
 
-  const url = `https://dealdoor.co/${shopSlug}`;
+  const url = `${origin}/${shopSlug}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(url);

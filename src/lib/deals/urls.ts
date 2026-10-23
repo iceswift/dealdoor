@@ -1,6 +1,6 @@
 import type { Deal, Shop } from '../db-schema';
 
-const SITE_URL = 'https://dealdoor.co';
+import { getSiteOrigin } from '../site';
 
 type ShopRef = Pick<Shop, 'slug'>;
 type DealRef = Pick<Deal, 'id'>;
@@ -17,7 +17,7 @@ export function getLegacyDealUrl(shop: ShopRef, deal: DealRef): string {
   return `${getShopUrl(shop)}?deal=${encodeURIComponent(deal.id)}`;
 }
 
-export function getAbsoluteDealUrl(shop: ShopRef, deal: DealRef, origin = SITE_URL): string {
+export function getAbsoluteDealUrl(shop: ShopRef, deal: DealRef, origin = getSiteOrigin()): string {
   return `${origin.replace(/\/$/, '')}${getDealUrl(shop, deal)}`;
 }
 

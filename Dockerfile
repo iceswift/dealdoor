@@ -6,6 +6,8 @@ COPY --from=oven/bun:1.3.14 /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -s /usr/local/bin/bun /usr/local/bin/bunx
 
 WORKDIR /app
+ARG PUBLIC_SITE_URL=https://dealdoor.co
+ENV PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 # Copy package files

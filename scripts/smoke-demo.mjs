@@ -87,6 +87,13 @@ try {
   for (const path of ['/', '/en', '/deals', '/explore', '/pricing', '/terms', '/privacy', '/cookies', '/moon-bowl-cafe']) {
     await check(path);
   }
+  if (process.env.SMOKE_EXPECT_SITE_URL) {
+    const expectedOrigin = new URL(process.env.SMOKE_EXPECT_SITE_URL).origin;
+    const html = await (await check('/moon-bowl-cafe')).text();
+    assert.ok(html.includes(`rel="canonical" href="${expectedOrigin}/moon-bowl-cafe"`));
+    assert.ok(html.includes(`"url":"${expectedOrigin}/moon-bowl-cafe"`));
+    assert.ok(!html.includes('https://dealdoor.co/'));
+  }
   await check('/dashboard', 302);
   if (!allowDemoWrites) {
     await check('/auth/register', 302);

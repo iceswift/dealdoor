@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import QRCodeLib from 'qrcode';
+import { useSiteOrigin } from '../../lib/use-site-origin';
 
 interface QRCodeSectionProps {
   slug: string;
@@ -14,11 +15,12 @@ export default function QRCodeSection({ slug, shopName, logoUrl }: QRCodeSection
   const [downloading, setDownloading] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const shopUrl = `https://dealdoor.co/${slug}`;
+  const origin = useSiteOrigin();
+  const shopUrl = `${origin}/${slug}`;
 
   useEffect(() => {
     generateQR();
-  }, [slug]);
+  }, [shopUrl]);
 
   const generateQR = async () => {
     try {

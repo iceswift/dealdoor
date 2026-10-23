@@ -1,6 +1,7 @@
 // src/lib/utils.ts
 
 import type { DealCategory } from './constants';
+import { getSiteOrigin } from './site';
 
 // ─── Slug Generation ─────────────────────────────────────
 
@@ -109,8 +110,8 @@ export function getDealUrl(slug: string, dealId: string): string {
   return `/${slug}?deal=${dealId}`;
 }
 
-export function getShareUrl(slug: string, dealId?: string): string {
-  const base = `https://dealdoor.co/${slug}`;
+export function getShareUrl(slug: string, dealId?: string, origin = getSiteOrigin()): string {
+  const base = `${origin}/${slug}`;
   return dealId ? `${base}?deal=${dealId}` : base;
 }
 

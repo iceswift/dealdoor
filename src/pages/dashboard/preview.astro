@@ -43,7 +43,7 @@ const { shop } = context;
           <span class="h-3 w-3 rounded-full bg-green-400"></span>
         </div>
         <div class="mx-auto max-w-md flex-1 truncate rounded-xl border border-border/30 bg-bg px-3 py-1 text-center text-xs font-bold text-text-tertiary">
-          https://dealdoor.co/{shop.slug}
+          {new URL(`/${shop.slug}`, Astro.site || Astro.url).href}
         </div>
       </div>
       <iframe src={`/${shop.slug}`} class="h-[70vh] w-full" title={`Preview ${shop.name}`}></iframe>

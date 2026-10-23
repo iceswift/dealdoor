@@ -24,7 +24,7 @@ const {
   title,
   description,
   image = '/og-default.png',
-  url = Astro.url.href,
+  url = new URL(Astro.url.pathname + Astro.url.search, Astro.site || Astro.url).href,
   type = 'website',
   hideHeader = false,
   hideFooter = false,
@@ -41,7 +41,7 @@ const alternateLanguage = lang === 'en' ? 'th' : 'en';
 const fullTitle = `${title} | DealDoor`;
 const defaultDescription = common('brand.description');
 const metaDescription = description || defaultDescription;
-const siteUrl = Astro.site?.href || 'https://dealdoor.co';
+const siteUrl = (Astro.site || Astro.url).origin;
 
 // ─── BACKEND WORKFLOW: AUTHENTICATED USER SESSION ───
 // This locals variable is injected by src/middleware.ts.
@@ -76,7 +76,7 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
   <meta property="og:url" content={url} />
   <meta property="og:title" content={fullTitle} />
   <meta property="og:description" content={metaDescription} />
-  <meta property="og:image" content={`${siteUrl}${image}`} />
+  <meta property="og:image" content={new URL(image, siteUrl).href} />
   <meta property="og:site_name" content="DealDoor" />
   <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'th_TH'} />
   
@@ -85,7 +85,7 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
   <meta property="twitter:url" content={url} />
   <meta property="twitter:title" content={fullTitle} />
   <meta property="twitter:description" content={metaDescription} />
-  <meta property="twitter:image" content={`${siteUrl}${image}`} />
+  <meta property="twitter:image" content={new URL(image, siteUrl).href} />
   
   <!-- Canonical -->
   <link rel="canonical" href={url} />
@@ -107,7 +107,7 @@ const profileTier = user?.role === 'admin' ? 'Admin' : profileShop?.tier === 'pr
   <meta name="apple-mobile-web-app-title" content="DealDoor" />
   
   <!-- Performance: DNS Prefetch -->
-  <link rel="dns-prefetch" href="//dealdoor.co" />
+  <link rel="dns-prefetch" href={`//${new URL(siteUrl).host}`} />
   
   <!-- Theme Script (prevent flash) - must be inline -->
   <script is:inline>

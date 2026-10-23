@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { showToast } from '../../lib/toast';
+import { getSiteOrigin } from '../../lib/site';
 
 interface SharePanelProps {
   slug: string;
@@ -12,7 +13,7 @@ interface SharePanelProps {
 type TabType = 'link' | 'qr' | 'social';
 type CopyState = 'idle' | 'copied' | 'selected';
 
-const productionOrigin = 'https://dealdoor.co';
+const productionOrigin = getSiteOrigin();
 
 async function copyToClipboard(text: string) {
   if (navigator.clipboard && window.isSecureContext) {
